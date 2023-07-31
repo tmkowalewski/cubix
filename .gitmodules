@@ -1,0 +1,3 @@
+[submodule "tkn-lib"]
+	path = tkn-lib
+	url = https://gitlab.in2p3.fr/tkn/tkn-lib.git
