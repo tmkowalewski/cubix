@@ -13,6 +13,10 @@
 #include "TGLabel.h"
 #include "TGButton.h"
 
+#if (OS_TYPE == OS_LINUX)
+#include "TGResourcePool.h"
+#endif
+
 #include "CXMainWindow.h"
 #include "CXSpreadIntensityMatrix.h"
 #include "CXBashColor.h"
