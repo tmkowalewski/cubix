@@ -8,11 +8,11 @@ stages:
 compile:builtin_tkn:
   stage: build
   script:
-    - mkdir builtin_tkn
-    - cd builtin_tkn
     - export ROOTSYS=/opt/root/
     - export PATH=$ROOTSYS/bin/:$PATH
     - export LD_LIBRARY_PATH=$ROOTSYS/lib/:$LD_LIBRARY_PATH
+    - mkdir builtin_tkn
+    - cd builtin_tkn
     - mkdir build
     - cd build
     - cmake -DCMAKE_BUILD_TYPE=Debug -DBUILTIN_TKN=On -DTKN_BRANCH=preprod -DCMAKE_INSTALL_PREFIX=../install ../..
@@ -25,10 +25,10 @@ compile:builtin_tkn:
 check:builtin_tkn:
   stage: test
   script:
-    - cd builtin_tkn
     - export ROOTSYS=/opt/root/
     - export PATH=$ROOTSYS/bin:$PATH
     - export LD_LIBRARY_PATH=$ROOTSYS/lib:$LD_LIBRARY_PATH
+    - cd builtin_tkn
     - source install/bin/thiscubix.sh
     - echo ${PATH}
     - echo ${LD_LIBRARY_PATH}
@@ -45,6 +45,9 @@ check:builtin_tkn:
 compile:tkn_link:
   stage: build
   script:
+    - export ROOTSYS=/opt/root/
+    - export PATH=$ROOTSYS/bin/:$PATH
+    - export LD_LIBRARY_PATH=$ROOTSYS/lib/:$LD_LIBRARY_PATH
     - mkdir tkn_link
     - cd tkn_link
     - mkdir tkn_build
@@ -67,10 +70,10 @@ compile:tkn_link:
 check:tkn_link:
   stage: test
   script:
-    - cd builtin_tkn
     - export ROOTSYS=/opt/root/
-    - export PATH=$ROOTSYS/bin:$PATH
-    - export LD_LIBRARY_PATH=$ROOTSYS/lib:$LD_LIBRARY_PATH
+    - export PATH=$ROOTSYS/bin/:$PATH
+    - export LD_LIBRARY_PATH=$ROOTSYS/lib/:$LD_LIBRARY_PATH
+    - cd builtin_tkn
     - source install/bin/thiscubix.sh
     - echo ${PATH}
     - echo ${LD_LIBRARY_PATH}
