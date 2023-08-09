@@ -94,7 +94,7 @@ pages:
     - master@ip2i_gamma/cubix/cubix
     - master-doc@ip2i_gamma/cubix/cubix
   script:
-    - mkdir public
+    - mkdir -p public
     - ls -lrth public/
     - dir="public/dev"
     - if [ "$CI_COMMIT_REF_SLUG" == "master" ] ; then dir="public" ; fi ;
