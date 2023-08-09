@@ -1,6 +1,9 @@
 #ifndef CXCFitSpek_h
 #define CXCFitSpek_h
 
+#include <cmath>
+#include <algorithm>
+
 // FitSpek.h: interface for the CXCFitSpek class.
 //
 //////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@ buildir=@CMAKE_CURRENT_BINARY_DIR@
 libdir=@CX_LIB_DIR@
 incdir=@CX_INCLUDE_DIR@
 bindir=@CX_BIN_DIR@
-cxversion=@CX_VERSION@
+cxversion=@Cubix_VERSION@
 
 root_cflags=$(root-config --cflags)
 root_libs=$(root-config --glibs)
@@ -35,7 +35,7 @@ Usage: `basename $0` [--version] [--gitinfos] [--bindir] [--libdir] [--incdir]\n
 print_help() {
     echo "Usage: `basename $0` [options]"
     echo ""
-    echo "  --version             Print the KaliVeda version"
+    echo "  --version             Print the Cubix version"
     echo "  --gitinfos            Print the git branch and commit"
     echo ""
     echo "  --bindir              Print the executable directory"

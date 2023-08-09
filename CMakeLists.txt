@@ -105,23 +105,22 @@ if(BUILTIN_TKN)
 
     if(NOT EXISTS ${dir}/CMakeLists.txt)
       execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive -- ${dir}
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-        COMMAND_ERROR_IS_FATAL ANY)
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
     endif()
 
     if(TKN_BRANCH)
         print(WARNING "Using the TkN branch: ${TKN_BRANCH}")
         execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${TKN_BRANCH}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/${dir}
-          COMMAND_ERROR_IS_FATAL ANY)
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/${dir})
     endif()
 
     SET(DB_DOWNLOAD ON CACHE BOOL "Download the TkN database at install")
     add_subdirectory(${dir})
     include_directories(${CMAKE_CURRENT_BINARY_DIR}/tkn-lib)
-    include_directories(${dir}/src/physics)
-    include_directories(${dir}/src/db)
+    include_directories(${dir}/src/sqlite3)
     include_directories(${dir}/src/base)
+    include_directories(${dir}/src/db)
+    include_directories(${dir}/src/physics)
 else()
     print(NOTICE "Looking for TkN:")
     find_package(tksqlite3 REQUIRED)
@@ -152,7 +151,7 @@ configure_file (
     "${CMAKE_CURRENT_BINARY_DIR}/cubix_config.h"
     )
 
-# to include tkn_config.h
+# to include cubix_config.h
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # ==================================================================
@@ -240,6 +239,8 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/thiscubix.sh DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/thiscubix.csh DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cubix-config DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/cubix-autocompletion.sh DESTINATION bin)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cubix_config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(FILES ${icons} DESTINATION icons COMPONENT icons)
 install(DIRECTORY ${database} DESTINATION ${CMAKE_INSTALL_PREFIX})
