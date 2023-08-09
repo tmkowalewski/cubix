@@ -1,0 +1,127 @@
+image: gitlab-registry.in2p3.fr/tkn/docker_tkn:ubuntu20
+
+stages:
+    - build
+    - test
+    - publish
+
+compile:builtin_tkn:
+  stage: build
+  script:
+    - mkdir builtin_tkn
+    - cd builtin_tkn
+    - export ROOTSYS=/opt/root/
+    - export PATH=$ROOTSYS/bin/:$PATH
+    - export LD_LIBRARY_PATH=$ROOTSYS/lib/:$LD_LIBRARY_PATH
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DBUILTIN_TKN=On -DTKN_BRANCH=preprod -DCMAKE_INSTALL_PREFIX=../install ../..
+    - cmake --build . -- -j4
+    - cmake --build . --target install
+  artifacts:
+    paths:
+      - builtin_tkn/
+
+check:builtin_tkn:
+  stage: test
+  script:
+    - cd builtin_tkn
+    - export ROOTSYS=/opt/root/
+    - export PATH=$ROOTSYS/bin:$PATH
+    - export LD_LIBRARY_PATH=$ROOTSYS/lib:$LD_LIBRARY_PATH
+    - source install/bin/thiscubix.sh
+    - echo ${PATH}
+    - echo ${LD_LIBRARY_PATH}
+    - pwd
+    - ls -lh
+    - ls -lh install/lib
+    - ldd install/bin/cubix
+    - cubix-config --gitinfos
+    - cubix-config --version
+    - cubix
+  dependencies:
+    - compile:builtin_tkn
+
+compile:tkn_link:
+  stage: build
+  script:
+    - mkdir tkn_link
+    - cd tkn_link
+    - mkdir tkn_build
+    - mkdir cubix_build
+    - git clone https://gitlab.in2p3.fr/tkn/tkn-lib tkn-sources
+    - cd tkn-sources
+    - git checkout preprod
+    - cd ../tkn_build
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=../install ../tkn-sources
+    - cmake --build . -- -j4
+    - cmake --build . --target install
+    - cd ../cubix_build
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=../install ../..
+    - cmake --build . -- -j4
+    - cmake --build . --target install
+  artifacts:
+    paths:
+      - tkn_link/
+
+check:tkn_link:
+  stage: test
+  script:
+    - cd builtin_tkn
+    - export ROOTSYS=/opt/root/
+    - export PATH=$ROOTSYS/bin:$PATH
+    - export LD_LIBRARY_PATH=$ROOTSYS/lib:$LD_LIBRARY_PATH
+    - source install/bin/thiscubix.sh
+    - echo ${PATH}
+    - echo ${LD_LIBRARY_PATH}
+    - pwd
+    - ls -lh
+    - ls -lh install/lib
+    - ldd install/bin/cubix
+    - cubix-config --gitinfos
+    - cubix-config --version
+    - cubix
+  dependencies:
+    - compile:tkn_link
+
+pages:
+  stage: build
+  only:
+    - preprod@ip2i_gamma/cubix/cubix
+    - master@ip2i_gamma/cubix/cubix
+    - master-doc@ip2i_gamma/cubix/cubix
+  script:
+    - ls -lrth public/
+    - dir="public/dev"
+    - if [ "$CI_COMMIT_REF_SLUG" == "master" ] ; then dir="public" ; fi ;
+    - if [ "$CI_COMMIT_REF_SLUG" == "master-doc" ] ; then dir="public" ; fi ;
+    - if [ "$CI_COMMIT_REF_SLUG" == "preprod" ] ; then dir="public/preprod" ; fi ;
+    - echo "dir $dir"
+    - if [ -d public/dev ] ; then mv public/dev ./ ; fi ;
+    - if [ -d public/preprod ] ; then mv public/preprod ./ ; fi ;
+    - ls -lrth
+    - ls -lrth public/
+    - if [[ $dir == "public" ]] ; then rm -rf public/* ; fi ;
+    - if [[ -d dev && $dir != "public/dev" ]] ; then echo "restaure old dev page" ; mv dev public/ ; fi ;
+    - if [[ -d preprod && $dir != "public/preprod" ]] ; then echo "restaure old preprod page" ; mv preprod public/ ; fi ;
+    - echo "Deploying to $dir"
+    - mkdir -p $dir
+    - ls -lrth ./ 
+    - ls -lrth public/
+    - export LC_ALL=C.UTF-8
+    - export LANG=C.UTF-8
+    - export CX_SOURCE=$PWD
+    - mkdir website
+    - cd website
+    - $CX_SOURCE/documentation/./make_doxygen.sh
+    - mv html/* ../$dir/
+    - ls -lrth ../ 
+  artifacts:
+    paths:
+      - public
+  cache:
+    paths:
+      - public
+
+
+

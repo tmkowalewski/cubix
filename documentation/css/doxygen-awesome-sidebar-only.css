@@ -1,0 +1,210 @@
+/**
+
+Doxygen Awesome
+https://github.com/jothepro/doxygen-awesome-css
+
+MIT License
+
+Copyright (c) 2021 jothepro
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+ */
+
+:root {
+    /* side nav width. MUST be = `TREEVIEW_WIDTH`.
+     * Make sure it is wide enought to contain the page title (logo + title + version)
+     */
+    --side-nav-fixed-width: 340px;
+    --menu-display: none;
+
+    --top-height: 120px;
+}
+
+
+.github-corner svg {
+    fill: var(--primary-light-color);
+    color: var(--page-background-color);
+    width: 72px;
+    height: 72px;
+}
+
+@media screen and (max-width: 767px) {
+    .github-corner svg {
+        width: 50px;
+        height: 50px;
+    }
+    #projectnumber {
+        margin-right: 22px;
+    }
+}
+
+.alter-theme-button {
+    display: inline-block;
+    cursor: pointer;
+    background: var(--primary-color);
+    color: var(--page-background-color) !important;
+    border-radius: var(--border-radius-medium);
+    padding: var(--spacing-small) var(--spacing-medium);
+    text-decoration: none;
+}
+
+.next_section_button {
+    display: block;
+    padding: var(--spacing-large) 0 var(--spacing-small) 0;
+    color: var(--page-background-color);
+    user-select: none;
+}
+
+.next_section_button::after {
+    /* clearfix */
+    content: "";
+    clear: both;
+    display: table;
+}
+
+.next_section_button a {
+    overflow: hidden;
+    float: right;
+    border: 1px solid var(--separator-color);
+    padding: var(--spacing-medium) calc(var(--spacing-large) / 2) var(--spacing-medium) var(--spacing-large);
+    border-radius: var(--border-radius-medium);
+    color: var(--page-secondary-foreground-color) !important;
+    text-decoration: none;
+    background-color: var(--page-background-color);
+    transition: color .08s ease-in-out, background-color .1s ease-in-out;
+}
+
+.next_section_button a:hover {
+    color: var(--page-foreground-color) !important;
+    background-color: var(--odd-color);
+}
+
+.next_section_button a::after {
+    content: '〉';
+    color: var(--page-secondary-foreground-color) !important;
+    padding-left: var(--spacing-large);
+    display: inline-block;
+    transition: color .08s ease-in-out, transform .09s ease-in-out;
+}
+
+.next_section_button a:hover::after {
+    color: var(--page-foreground-color) !important;
+    transform: translateX(3px);
+}
+
+.alter-theme-button:hover {
+    background: var(--primary-dark-color);
+}
+
+html.dark-mode .darkmode_inverted_image img, /* < doxygen 1.9.3 */
+html.dark-mode .darkmode_inverted_image object[type="image/svg+xml"] /* doxygen 1.9.3 */ {
+    filter: brightness(87%) hue-rotate(180deg) invert();
+}
+
+.bordered_image {
+    border-radius: var(--border-radius-small);
+    border: 1px solid var(--separator-color);
+    display: inline-block;
+    overflow: hidden;
+}
+
+html.dark-mode .bordered_image img, /* < doxygen 1.9.3 */
+html.dark-mode .bordered_image object[type="image/svg+xml"] /* doxygen 1.9.3 */ {
+    border-radius: var(--border-radius-small);
+}
+
+.title_screenshot {
+    filter: drop-shadow(0px 3px 10px rgba(0,0,0,0.22));
+    max-width: 500px;
+    margin: var(--spacing-large) 0;
+}
+
+.title_screenshot .caption {
+    display: none;
+}
+
+
+@media screen and (min-width: 768px) {
+    :root {
+        --searchbar-background: var(--page-background-color);
+    }
+
+    #side-nav {
+        min-width: var(--side-nav-fixed-width);
+        max-width: var(--side-nav-fixed-width);
+        top: var(--top-height);
+    }
+
+    #nav-tree, #side-nav {
+        height: calc(100vh - var(--top-height)) !important;
+    }
+
+    #nav-tree {
+        padding: 0;
+    }
+
+    #top {
+        display: block;
+        border-bottom: none;
+        height: var(--top-height);
+        margin-bottom: calc(0px - var(--top-height));
+        max-width: var(--side-nav-fixed-width);
+        background: var(--side-nav-background);
+    }
+    #main-nav {
+        float: left;
+        padding-right: 0;
+    }
+
+    .ui-resizable-handle {
+        cursor: default;
+        width: 1px !important;
+        box-shadow: 0 calc(-2 * var(--top-height)) 0 0 var(--separator-color);
+    }
+
+    #nav-path {
+        position: fixed;
+        right: 0;
+        left: var(--side-nav-fixed-width);
+        bottom: 0;
+        width: auto;
+    }
+
+    #doc-content {
+        height: calc(100vh - 31px) !important;
+        padding-bottom: calc(3 * var(--spacing-large));
+        padding-top: calc(var(--top-height) - 80px);
+        box-sizing: border-box;
+        margin-left: var(--side-nav-fixed-width) !important;
+    }
+
+    #MSearchBox {
+        width: calc(var(--side-nav-fixed-width) - calc(2 * var(--spacing-medium)));
+    }
+
+    #MSearchField {
+        width: calc(var(--side-nav-fixed-width) - calc(2 * var(--spacing-medium)) - 65px);
+    }
+
+    #MSearchResultsWindow {
+        left: var(--spacing-medium) !important;
+        right: auto;
+    }
+}

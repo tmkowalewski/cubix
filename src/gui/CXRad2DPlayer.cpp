@@ -1,0 +1,240 @@
+#include "CXRad2DPlayer.h"
+
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <sstream>
+
+#include "TGButton.h"
+#include "TGTextEntry.h"
+#include "TGLabel.h"
+#include "TROOT.h"
+#include "TFrame.h"
+#include "TGListBox.h"
+
+#include "CXMainWindow.h"
+#include "CXRadCubeTH1Proj.h"
+#include "CXGateBox.h"
+#include "TGNumberEntry.h"
+#include "CXSavedList.h"
+
+using namespace std;
+
+CXRad2DPlayer::CXRad2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h, CXMainWindow *window) : TGVerticalFrame(MotherFrame, w, h, kFixedWidth)
+{
+    fMainWindow = window;
+
+    /// GxG
+    TGGroupFrame *fGroupFrame = new TGGroupFrame(MotherFrame, "Radware's 2D player", kVerticalFrame);
+    fGroupFrame->SetTextColor(CXred);
+    fGroupFrame->SetTitlePos(TGGroupFrame::kLeft); // right aligned
+    AddFrame(fGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 0, 0, 0, 0));
+
+    TGGroupFrame *fSubGroupFrame = new TGGroupFrame(fGroupFrame, "Projections", kVerticalFrame);
+    fSubGroupFrame->SetTextColor(CXblue);
+    fSubGroupFrame->SetTitlePos(TGGroupFrame::kLeft); // right aligned
+    fGroupFrame->AddFrame(fSubGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, -10, -10, 0, 0));
+
+    TGCompositeFrame *fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    TGTextButton *GateButton = new TGTextButton(fHorizontalFrame, "Gate");
+    GateButton->SetTextColor(CXred);
+    GateButton->Connect("Clicked()", "CXRad2DPlayer", this, "AddGate()");
+    fHorizontalFrame->AddFrame(GateButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
+
+    TGTextButton *ClearButton = new TGTextButton(fHorizontalFrame, "Clear");
+    ClearButton->SetTextColor(CXgreen);
+    ClearButton->Connect("Clicked()", "CXRad2DPlayer", this, "ClearGates()");
+    fHorizontalFrame->AddFrame(ClearButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
+
+    TGTextButton *LastGateButton = new TGTextButton(fHorizontalFrame, "Last");
+    LastGateButton->Connect("Clicked()", "CXRad2DPlayer", this, "ApplyLastGates()");
+    fHorizontalFrame->AddFrame(LastGateButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
+
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    TGTextButton *ProjectButton = new TGTextButton(fHorizontalFrame, "Project");
+    ProjectButton->Connect("Clicked()", "CXRad2DPlayer", this, "Project()");
+    fHorizontalFrame->AddFrame(ProjectButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,5,10,0,0));
+
+    fFixRange = new TGCheckButton(fHorizontalFrame, "Fix Range", 0);
+    fFixRange->SetState(kButtonUp);
+    fHorizontalFrame->AddFrame(fFixRange,new TGLayoutHints(kLHintsLeft | kLHintsCenterY ,5,10,0,0));
+
+    fBckSubtract = new TGCheckButton(fHorizontalFrame, "BG sub", 0);
+    fBckSubtract->SetState(kButtonDown);
+    fHorizontalFrame->AddFrame(fBckSubtract,new TGLayoutHints(kLHintsLeft | kLHintsCenterY ,5,10,0,0));
+
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Rebin projection: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,20,0,0));
+    fRebinValue = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fHorizontalFrame->AddFrame(fRebinValue,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX ,1,3,5,5));
+
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fSubGroupFrame = new TGGroupFrame(MotherFrame, "Stored spectra", kVerticalFrame);
+    fSubGroupFrame->SetTextColor(CXblue);
+    fSubGroupFrame->SetTitlePos(TGGroupFrame::kLeft); // right aligned
+    AddFrame(fSubGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandY | kLHintsExpandX, 3, 3, 0, 0));
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Draw Options:"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
+    fDrawOpt = new TGTextEntry(fHorizontalFrame, "hist");
+    fDrawOpt->SetToolTipText("hist, same, norm, add, add(fact)");
+    fHorizontalFrame->AddFrame(fDrawOpt,new TGLayoutHints(kLHintsLeft | kLHintsExpandX | kLHintsCenterY ,0,0,0,0));
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
+
+    fStoredSpectraBox = new TGListBox(fSubGroupFrame);
+    fStoredSpectraBox->GetContainer()->RemoveInput(kButtonReleaseMask | kButtonMotionMask);
+    fSubGroupFrame->AddFrame(fStoredSpectraBox, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,-10,-10,0,0));
+    fStoredSpectraBox->Connect("DoubleClicked(Int_t)", "CXRad2DPlayer", this, "UpdateDrawOpt()");
+    fStoredSpectraBox->Connect("DoubleClicked(Int_t)", "CXSavedList", fMainWindow->GetSaveList(), "DoubleClicked(Int_t)");
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    TGTextButton *Button = new TGTextButton(fHorizontalFrame, "Remove");
+    Button->Connect("Clicked()", "CXSavedList", fMainWindow->GetSaveList(), "RemoveSelectedEntry()");
+    fHorizontalFrame->AddFrame(Button,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,5,10,0,0));
+    Button = new TGTextButton(fHorizontalFrame, "Clear");
+    Button->Connect("Clicked()", "CXSavedList", fMainWindow->GetSaveList(), "ClearStoredList()");
+    fHorizontalFrame->AddFrame(Button,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,5,10,0,0));
+    Button = new TGTextButton(fHorizontalFrame, "Save");
+    Button->Connect("Clicked()", "CXSavedList", fMainWindow->GetSaveList(), "SaveStoredList()");
+    fHorizontalFrame->AddFrame(Button,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,5,10,0,0));
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fListOfStoredSpectra = fMainWindow->GetSaveList()->GetListOfStoredSpectra();
+    fMainWindow->GetSaveList()->AddListBox(fStoredSpectraBox);
+}
+
+CXRad2DPlayer::~CXRad2DPlayer(){
+    delete GetProj();
+}
+
+CXRadCubeTH1Proj *CXRad2DPlayer::GetProj(){
+
+    if(((TString)fMainWindow->GetCanvas()->GetName()).BeginsWith("Rad2D")){
+        fMainWindow->SetSelectedPad(fMainWindow->GetCanvas()->GetPad(1));
+        fMainWindow->GetCanvas()->SetSelectedPad((TPad*)fMainWindow->GetCanvas()->GetPad(1));
+        fMainWindow->GetCanvas()->SetClickSelectedPad((TPad*)fMainWindow->GetCanvas()->GetPad(1));
+        gPad = fMainWindow->GetCanvas()->GetSelectedPad();
+    }
+
+    TH1 *hist = fMainWindow->GetHisto();
+
+    if(hist && hist->InheritsFrom("CXRadCubeTH1Proj")){
+        return dynamic_cast<CXRadCubeTH1Proj*>(hist);
+    }
+    else{
+        cout<<"No Projection for Rad2DPlayer found in the current pad"<<endl;
+        return nullptr;
+    }
+}
+
+void CXRad2DPlayer::Project()
+{
+
+    fCurrentProj = GetProj();
+
+    if(fCurrentProj) {
+        fCurrentProj->Project(fFixRange->GetState(),fBckSubtract->GetState(), fRebinValue->GetIntNumber());
+
+        TList *gates = fCurrentProj->GetGatesList();
+        fMainWindow->GetSavedGatesList()->Clear();
+        for(int i=0 ; i<gates->GetEntries() ; i++){
+            fMainWindow->GetSavedGatesList()->Add(gates->At(i)->Clone());
+        }
+    }
+}
+
+void CXRad2DPlayer::ApplyLastGates()
+{
+    fCurrentProj = GetProj();
+
+    if(fCurrentProj){
+        ClearGates();
+
+        fCurrentProj->fCurrentPad->cd();
+
+        TList *gates = fCurrentProj->GetGatesList();
+        gates->Clear();
+        for(int i=0 ; i<fMainWindow->GetSavedGatesList()->GetEntries() ; i++){
+            CXGateBox *box = (CXGateBox*)fMainWindow->GetSavedGatesList()->At(i)->Clone();
+            box->SetPad(fCurrentProj->fCurrentPad);
+            gates->Add(box);
+            box->Draw();
+        }
+        fCurrentProj->UpdateGates();
+    }
+}
+
+void CXRad2DPlayer::AddGate()
+{
+    fCurrentProj = GetProj();
+
+    if(fCurrentProj)
+        fCurrentProj->AddGate1();
+}
+
+void CXRad2DPlayer::ClearGates(){
+    fCurrentProj = GetProj();
+
+    if(fCurrentProj)
+        fCurrentProj->ClearGates();
+}
+
+void CXRad2DPlayer::SetMainWindow(CXMainWindow *w)
+{
+    fMainWindow = w;
+}
+
+void CXRad2DPlayer::Init(TH2 *hist)
+{
+    TH1 *TotalProj = nullptr;
+    TH1 *Background = nullptr;
+
+    if(hist == nullptr) {
+        cout<<"No input, ignored"<<endl;
+        return;
+    }
+    if(!hist->InheritsFrom("TH2")) {
+        cout<<"Input is not a TH2 histogram"<<endl;
+        return;
+    }
+
+    CXRadCubeTH1Proj *NewProj = new CXRadCubeTH1Proj(hist);
+    NewProj->SetMainWindow(fMainWindow);
+    NewProj->Set2DPlayer(this);
+    fMainWindow->NewTab(1,2,"RadGG");
+
+    TotalProj = NewProj->GetTotalProj();
+    TotalProj->SetName(Form("%s_TotProj",hist->GetName()));
+    TotalProj->SetTitle(Form("%s TotProj",hist->GetTitle()));
+
+    Background = NewProj->GetBackground();
+    Background->SetName(Form("%s_Background",hist->GetName()));
+    Background->SetTitle(Form("%s_Background",hist->GetTitle()));
+    Background->SetLineColor(kRed);
+    Background->SetLineStyle(kDashed);
+
+    TVirtualPad *pad = fMainWindow->GetCanvas()->cd(1);
+    NewProj->Draw("hist");
+    Background->Draw("hist same");
+    NewProj->SetCurrentPad(dynamic_cast<TPad*>(pad));
+    pad->Update();
+    pad->SetBit(TPad::kCannotMove);
+    pad->GetFrame()->SetBit(TObject::kCannotPick);
+
+    pad = fMainWindow->GetCanvas()->GetPad(2);
+    NewProj->SetProjPad(dynamic_cast<TPad*>(pad));
+
+    gROOT->SetSelectedPad(fMainWindow->GetCanvas()->GetPad(1));
+}
+
+void CXRad2DPlayer::UpdateDrawOpt()
+{
+    fMainWindow->GetSaveList()->SetListDrawOption(fDrawOpt->GetText());
+}
+
+ClassImp(CXRad2DPlayer)

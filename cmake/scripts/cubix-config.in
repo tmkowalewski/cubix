@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+
+srcdir=@CMAKE_CURRENT_SOURCE_DIR@
+buildir=@CMAKE_CURRENT_BINARY_DIR@
+libdir=@CX_LIB_DIR@
+incdir=@CX_INCLUDE_DIR@
+bindir=@CX_BIN_DIR@
+cxversion=@CX_VERSION@
+
+root_cflags=$(root-config --cflags)
+root_libs=$(root-config --glibs)
+
+# fill $lib_list with all installed libraries
+# we look for 'lib*.so' symbolic links
+
+tmp3=""
+libextent=".so"
+if [ @APPLE@ ] ; then libextent=".dylib" ; fi
+unset lib_list
+tmp=`find $libdir -name 'lib*'${libextent}`
+for file in $tmp
+do
+  if [ -e "$file" ]; then
+       tmp2=`basename $file ${libextent}`
+       tmp3="$tmp2 $tmp3"
+    fi
+done
+
+lib_list=`echo $tmp3 | sed 's/lib/-l/g'`
+
+usage="\
+Usage: `basename $0` [--version] [--gitinfos] [--bindir] [--libdir] [--incdir]\n\
+                     [--srcdir] [--builddir] [--libs] [--cflags] [--help]"
+
+print_help() {
+    echo "Usage: `basename $0` [options]"
+    echo ""
+    echo "  --version             Print the KaliVeda version"
+    echo "  --gitinfos            Print the git branch and commit"
+    echo ""
+    echo "  --bindir              Print the executable directory"
+    echo "  --libdir              Print the library directory"
+    echo "  --incdir              Print the header directory"
+    echo "  --srcdir              Print the source directory"
+    echo "  --builddir            Print the CMake build directory"
+    echo ""
+    echo "  --libs                Print linker directives for all libraries"
+    echo "  --cflags              Print all flags for compiling (including ROOT flags)"
+    echo "  --help                Print this message"
+}
+
+if test $# -eq 0; then
+   echo -e "${usage}" 1>&2
+   exit 1
+fi
+
+out=""
+
+# Set the C++ standard version
+cxxversionflag="@configstd@ "
+
+while test $# -gt 0; do
+  case "$1" in
+  -*=*) optarg=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'` ;;
+  *)    optarg= ;;
+  esac
+
+  case $1 in
+    --version)
+      ### Output the version number.
+      out="$out $cxversion"
+      ;;
+    --bindir)
+      ### output the executable directory
+      out="$out $bindir"
+      ;;
+    --builddir)
+      ### output the build directory
+      out="$out $buildir"
+      ;;
+    --srcdir)
+      ### output the source directory
+      out="$out $srcdir"
+      ;;
+    --libdir)
+      ### output the library directory
+      out="$out $libdir"
+      ;;
+    --incdir)
+      ### output the header directory
+      out="$out $incdir"
+      ;;
+    --gitinfos)
+      ### output git infos
+            dotgit="$srcdir/.git"
+            tmp=`git --git-dir=$dotgit describe --all 2> /dev/null`
+            tmp2=`git --git-dir=$dotgit describe --tags 2> /dev/null`
+            out="$out $tmp@$tmp2"
+            ;;
+    --libs)
+      ### output all libraries for linking
+      out="$out $lib_list"
+      ;;
+    --cflags)
+      ### output all flags for compiling
+      if [ "@USE_ROOT@" == "OFF" ] ; then
+          out="$out -I$incdir ${cxxversionflag} -m64 -lm -ldl"
+      else
+          out="$out -I$incdir $root_cflags"
+      fi
+      ;;
+    --help)
+      ### Print a help message
+      print_help
+      exit 0
+      ;;
+    *)
+      ### Give an error
+      echo "Unknown argument \"$1\"!" 1>&2
+      print_help
+      exit 1
+      ;;
+  esac
+  shift
+done
+
+### Output the stuff
+echo $out

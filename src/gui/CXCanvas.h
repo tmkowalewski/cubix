@@ -1,0 +1,148 @@
+//Author: jdudouet
+
+#ifndef __CXCanvas_H
+#define __CXCanvas_H
+
+#include "TCanvas.h"
+#include "TH2.h"
+#include "TH1.h"
+#include "TGFrame.h"
+#include "TList.h"
+#include "TGFileDialog.h"
+#include "TSystem.h"
+#include "TGClient.h"
+
+class TGraph;
+class CXMainWindow;
+class CXCanvas : public TCanvas {
+
+protected:
+
+   CXMainWindow *fMainWindow = nullptr;
+
+   Double_t xmin, xmax, ymin, ymax;
+   Double_t oldx, oldy;
+   Double_t xinit, yinit;
+   //! variables for pan & scan
+   Int_t X0, Y0;           //! coordinates of initial click in pad pixels
+   Int_t NdisXbins, NdisYbins;      //! number of displayed bins on X & Y
+   Int_t NXbins, Xfirst0, Xlast0;   //! number of bins on x-axis, initial displayed bins
+   Int_t NYbins, Yfirst0, Ylast0;   //! number of bins on y-axis, initial displayed bins
+   TAxis* theXaxis, *theYaxis;   //! the axes of the histogram
+   Double_t XbinPixel, YbinPixel;   //! size of bins in pixels
+   Int_t Xf1, Xl1, Yf1, Yl1;  //! last modification to axis limits
+
+   Bool_t   moved1D = false;
+   Bool_t   moved2D = false;
+   Bool_t   button1double = false;
+   Bool_t   fPPressed;
+   Bool_t   fJPressed;
+   Bool_t   fAgeOfEmpireMode;
+   Bool_t   fVenerMode;
+   Bool_t   fHasDisabledClasses;
+   TString  fDisabledClasses;
+   Bool_t   fHasDisabledObject;
+
+   TList    fDisabledObjects;
+   TList    fShortCuts;
+   Int_t    fEnabledShortcuts;
+   TString  fSavedAs;
+
+   TGFrame* fKeyHandler;         //! handler for keys
+   Bool_t   fFreezed;
+
+   TBox *fZoomBox = nullptr;
+
+   Int_t fLastX;
+   Int_t fLastY;
+   Int_t fLastEvent;
+   TObject *fLastSelected;
+
+   TH1 *fSelectedHisto;
+   Float_t ScaleFact;
+
+   Int_t fNPads;
+
+public:
+   CXCanvas();
+//   using TCanvas::TCanvas;
+   CXCanvas(const char* name, const char* title, Int_t ww, Int_t wh, Bool_t keyHandler = kTRUE);
+   CXCanvas(const char* name, Int_t ww, Int_t wh, Int_t winid);
+   virtual ~CXCanvas();
+
+   void HandleInput(EEventType event, Int_t px, Int_t py);
+   void EventProcessed(Event_t *ev, Window_t);
+
+   Bool_t IsLogz();
+   Bool_t IsLogy();
+   Bool_t IsLogx();
+
+   void DisableClass(const char* className);
+   void DisableObject(TObject* obj);
+   void ResetDisabledClass();
+   void ResetDisabledObject();
+
+   void SaveCanvasAs();
+   TCanvas *GetTCanvas();
+
+   void SetMainWindow(CXMainWindow *w);
+
+   TH1 *GetSelectedHisto(){return fSelectedHisto;}
+
+   Int_t GetNPads(){return fNPads;}
+   void SetNPads(Int_t npads) {fNPads = npads;}
+
+   void FreezCavans(Bool_t freez) { fFreezed = freez;}
+
+   void ShowShortcutsInfos(); // *MENU*
+
+   void SetAgeOfEmpireMode(Int_t value = 1); // *TOGGLE*
+   void SetVenerMode(Int_t value = 1); // *TOGGLE*
+
+   Int_t GetVenerMode() { return fVenerMode; }
+
+   Int_t GetAgeOfEmpireMode() {return fAgeOfEmpireMode;}
+
+   void SetEnabledShortcuts(Int_t value = 1); // *TOGGLE*
+   Int_t GetEnabledShortcuts() { return fEnabledShortcuts; }
+
+   TH1* FindHisto(TVirtualPad *pad = nullptr);
+   TGraph* FindGraph();
+
+   void SaveHistToAsciiFile();
+
+   void CopyObject(TObject *obj);
+   void CutObject(TObject *obj);
+   void UndrawObject(TObject *obj);
+   void Paste(); // *MENU*
+
+protected:
+
+//   virtual Bool_t HandleKey(Event_t* /*event*/){return kTRUE;}
+   virtual Bool_t HandleKey(Int_t px, Int_t py);
+
+   void DynamicZoom(Int_t Sign, Int_t px, Int_t py);
+   void DynamicZoomTH1(Int_t Sign, Int_t px, Int_t py);
+   void RunAutoExec();
+   void DrawEventStatus(Int_t event, Int_t px, Int_t py, TObject* selected);
+   void ZoomSelected(TH2* TheHisto);
+
+   void MoveAxis(TAxis* ax, Int_t sign);
+   void ProfileX(TH2* hh);
+   void ProfileY(TH2* hh);
+   void ProjectionX(TH2* hh);
+   void ProjectionY(TH2* hh);
+
+   Bool_t ExpandFunctionRange();
+
+   void InitInfos();
+   void AddShortcutsInfo(const char* cut, const char* desc);
+
+   ClassDef(CXCanvas, 1) //TCanvas with mouse-controlled dynamic zoom and pan & scan
+};
+
+//................  global variable
+R__EXTERN TObject* gCopyObject;
+R__EXTERN TString gDrawOptions;
+
+#endif

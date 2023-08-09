@@ -1,0 +1,20 @@
+#
+#---Config file for Cubix framework to be used with find_package()
+#
+
+@PACKAGE_INIT@
+
+#---set some useful paths
+set_and_check(CX_LIB_DIR       "@PACKAGE_CX_LIB_DIR@")
+set_and_check(CX_BIN_DIR       "@PACKAGE_CX_BIN_DIR@")
+set_and_check(CX_INCLUDE_DIR   "@PACKAGE_CX_INCLUDE_DIR@")
+set_and_check(CX_INSTALL_DIR   "@PACKAGE_CX_INSTALL_DIR@")
+
+#---set list of all installed libraries using exported targets
+include(${CX_INSTALL_DIR}/cmake/CubixTargets.cmake)
+
+#---set installed components
+set(CX_FOUND TRUE)
+
+message("Cubix found in: ${CX_INSTALL_DIR}")
+message("Cubix version:  @Cubix_VERSION@")
