@@ -73,7 +73,7 @@ check:tkn_link:
     - export ROOTSYS=/opt/root/
     - export PATH=$ROOTSYS/bin/:$PATH
     - export LD_LIBRARY_PATH=$ROOTSYS/lib/:$LD_LIBRARY_PATH
-    - cd builtin_tkn
+    - cd tkn_link
     - source install/bin/thiscubix.sh
     - echo ${PATH}
     - echo ${LD_LIBRARY_PATH}

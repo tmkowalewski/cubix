@@ -151,7 +151,7 @@ configure_file (
     "${CMAKE_CURRENT_BINARY_DIR}/cubix_config.h"
     )
 
-# to include tkn_config.h
+# to include cubix_config.h
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # ==================================================================
@@ -239,6 +239,8 @@ install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/thiscubix.sh DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/thiscubix.csh DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cubix-config DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/cubix-autocompletion.sh DESTINATION bin)
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cubix_config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(FILES ${icons} DESTINATION icons COMPONENT icons)
 install(DIRECTORY ${database} DESTINATION ${CMAKE_INSTALL_PREFIX})
