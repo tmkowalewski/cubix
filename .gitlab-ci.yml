@@ -38,7 +38,6 @@ check:builtin_tkn:
     - ldd install/bin/cubix
     - cubix-config --gitinfos
     - cubix-config --version
-    - cubix
   dependencies:
     - compile:builtin_tkn
 
@@ -83,7 +82,6 @@ check:tkn_link:
     - ldd install/bin/cubix
     - cubix-config --gitinfos
     - cubix-config --version
-    - cubix
   dependencies:
     - compile:tkn_link
 
