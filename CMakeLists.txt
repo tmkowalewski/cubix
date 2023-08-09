@@ -105,15 +105,13 @@ if(BUILTIN_TKN)
 
     if(NOT EXISTS ${dir}/CMakeLists.txt)
       execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive -- ${dir}
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-        COMMAND_ERROR_IS_FATAL ANY)
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
     endif()
 
     if(TKN_BRANCH)
         print(WARNING "Using the TkN branch: ${TKN_BRANCH}")
         execute_process(COMMAND ${GIT_EXECUTABLE} checkout ${TKN_BRANCH}
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/${dir}
-          COMMAND_ERROR_IS_FATAL ANY)
+          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/${dir})
     endif()
 
     SET(DB_DOWNLOAD ON CACHE BOOL "Download the TkN database at install")

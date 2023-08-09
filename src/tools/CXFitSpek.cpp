@@ -4,8 +4,6 @@
 
 #include <memory.h>
 #include <stdlib.h>
-#include <cmath>
-#include <algorithm>
 
 #include "CXFitSpek.h"
 
