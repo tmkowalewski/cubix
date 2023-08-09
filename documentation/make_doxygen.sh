@@ -22,7 +22,7 @@ mkdir -p $DOXY_DIR/examples
 cp $CX_SOURCE/examples/*.{cpp,C} $DOXY_DIR/examples
 
 cp -r $CX_SOURCE/src $DOXY_DIR
-find cubix.doxygen/src \( -name '*.hpp' -o -name '*.json' -o -name '*LinkDef.h' -o -name '*.md'  -o -name '*.txt' -o -name '*.cmake' -o -name 'sqlite3' -o -name 'tkn-lib' \) -exec rm -rf {} +
+find cubix.doxygen/src \( -name '*.hpp' -o -name '*.json' -o -name '*LinkDef.h' -o -name '*.md'  -o -name '*.txt' -o -name '*.cmake' -o -name 'sqlite3' -o -name 'tkn-lib' -o -name 'src' \) -exec rm -rf {} +
 
 MAJOR=`grep -m1 Cubix_VERSION_MAJOR ${CX_SOURCE}/CMakeLists.txt | cut -d\" -f2`
 MINOR=`grep -m1 Cubix_VERSION_MINOR ${CX_SOURCE}/CMakeLists.txt | cut -d\" -f2`
