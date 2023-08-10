@@ -49,7 +49,7 @@
 #include "TPadPainter.h"
 #include "TFrame.h"
 #include "TCanvasImp.h"
-#include "Tsystem.h"
+#include "TSystem.h"
 #include "TGFileDialog.h"
 
 #include <Riostream.h>
