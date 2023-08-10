@@ -32,6 +32,7 @@
  ********************************************************************************/
 
 #include "CXNucChart.h"
+#include "cubix_config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,6 +60,10 @@
 #include "TPaletteAxis.h"
 #include "TVirtualX.h"
 #include "TSystem.h"
+
+#if (OS_TYPE == OS_LINUX)
+#include "TGResourcePool.h"
+#endif
 
 #include "CXMainWindow.h"
 #include "CXCanvas.h"

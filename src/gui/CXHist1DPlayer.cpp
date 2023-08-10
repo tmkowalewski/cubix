@@ -32,6 +32,7 @@
  ********************************************************************************/
 
 #include "CXHist1DPlayer.h"
+#include "cubix_config.h"
 
 #include <iostream>
 #include <iomanip>
@@ -44,9 +45,12 @@
 #include "TROOT.h"
 #include "TGListBox.h"
 #include "TGClient.h"
-#include "TGResourcePool.h"
 #include "TSystem.h"
 #include "TError.h"
+
+#if (OS_TYPE == OS_LINUX)
+#include "TGResourcePool.h"
+#endif
 
 #include "CXMainWindow.h"
 #include "CXArrow.h"
@@ -635,6 +639,7 @@ void CXHist1DPlayer::HandleMyButton()
 
 void CXHist1DPlayer::PrintInListBox(TString mess, Int_t Type)
 {
+
 #if (OS_TYPE == OS_LINUX)
     const TGFont *ufont;         // will reflect user font changes
     ufont = gClient->GetFont("-*-courier-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
