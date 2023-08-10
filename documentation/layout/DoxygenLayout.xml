@@ -5,5 +5,5 @@
     <tab type="pages" visible="no" title="" intro=""/>
     <tab type="user" url="@ref install" title="Download and Install"/>
     <tab type="user" url="@ref release-notes" title="Release Notes"/>
-    <tab type="user" url="@ref user-guide" title="TkN user guide"/>
+    <tab type="user" url="@ref user-guide" title="The graphical interface"/>
   </navindex>

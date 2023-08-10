@@ -1,3 +1,36 @@
+/********************************************************************************
+ *   Copyright (c) : Université de Lyon 1, CNRS/IN2P3, UMR5822,                 *
+ *                   IP2I, F-69622 Villeurbanne Cedex, France                   *
+ *   Contibutor(s) :                                                            *
+ *      Jérémie Dudouet jeremie.dudouet@cnrs.fr [2023]                          *
+ *                                                                              *
+ *    This software is governed by the CeCILL-B license under French law and    *
+ *    abiding by the  rules of distribution of free  software.  You can use,    *
+ *    modify  and/ or  redistribute  the  software under  the  terms of  the    *
+ *    CeCILL-B license as circulated by CEA, CNRS and INRIA at the following    *
+ *    URL \"http://www.cecill.info\".                                           *
+ *                                                                              *
+ *    As a counterpart to the access  to the source code and rights to copy,    *
+ *    modify  and redistribute granted  by the  license, users  are provided    *
+ *    only with a limited warranty  and the software's author, the holder of    *
+ *    the economic  rights, and the  successive licensors have  only limited    *
+ *    liability.                                                                *
+ *                                                                              *
+ *    In this respect, the user's attention is drawn to the risks associated    *
+ *    with loading,  using, modifying  and/or developing or  reproducing the    *
+ *    software by the user in light of its specific status of free software,    *
+ *    that  may mean that  it is  complicated to  manipulate, and  that also    *
+ *    therefore  means that it  is reserved  for developers  and experienced    *
+ *    professionals having in-depth  computer knowledge. Users are therefore    *
+ *    encouraged  to load  and test  the software's  suitability  as regards    *
+ *    their  requirements  in  conditions  enabling the  security  of  their    *
+ *    systems  and/or data to  be ensured  and, more  generally, to  use and    *
+ *    operate it in the same conditions as regards security.                    *
+ *                                                                              *
+ *    The fact that  you are presently reading this means  that you have had    *
+ *    knowledge of the CeCILL-B license and that you accept its terms.          *
+ ********************************************************************************/
+
 #include "CXNucChart.h"
 
 #include <stdio.h>
@@ -8,7 +41,6 @@
 #include "TGListBox.h"
 #include "KeySymbols.h"
 #include "TGLabel.h"
-#include "TGResourcePool.h"
 #include "TGStatusBar.h"
 #include "TRootEmbeddedCanvas.h"
 #include "TGComboBox.h"
@@ -26,12 +58,13 @@
 #include "TExec.h"
 #include "TPaletteAxis.h"
 #include "TVirtualX.h"
+#include "Tsystem.h"
 
 #include "CXMainWindow.h"
 #include "CXCanvas.h"
 #include "CXNucleusBox.h"
-#include "CXLevelSchemePlayer.h"
-#include "CXGuiLSPlayer.h"
+
+#include "tkmanager.h"
 
 using namespace std;
 
@@ -429,7 +462,7 @@ void CXNucChart::UpdateNucChart()
         if(fViewMode->GetSelected() == M_DecayMode) {
             Int_t value;
 
-            tkstring decay = nuc->get_property("decay_modes");
+            tkn::tkstring decay = nuc->get_property("decay_modes");
             auto token = decay.replace_all("]","[").tokenize("[");
             if(token.size() == 0) decay = "";
             else decay = token.front();
@@ -455,7 +488,7 @@ void CXNucChart::UpdateNucChart()
             if(level_scheme->get_levels().size()>1) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),level_scheme->get_levels().at(1)->get_energy());
         }
         if(fViewMode->GetSelected() == M_BE2E2B2 && (nuc->get_z()%2==0 && nuc->get_n()%2==0)) {
-            auto gamma = level_scheme->get_decay<tkgammadecay>("2+1->0+1",false);
+            auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
             if(!gamma) continue;
             // here we ask, if known, the BE2 value (1: electric, 2:L, 1: Weisskopf units)
             auto BE2 = gamma->get_trans_prob(true,2,false);
@@ -463,7 +496,7 @@ void CXNucChart::UpdateNucChart()
             fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),BE2);
         }
         if(fViewMode->GetSelected() == M_BE2WU) {
-            auto gamma = level_scheme->get_decay<tkgammadecay>("2+1->0+1",false);
+            auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
             if(!gamma) continue;
             // here we ask, if known, the BE2 value (1: electric, 2:L, 1: Weisskopf units)
             auto BE2W = gamma->get_trans_prob(true,2,true);
@@ -666,7 +699,7 @@ void CXNucChart::PrintInfos(bool inprompt)
         }
         PrintInListBox(Form("Nucleus: %s (Z:%d, N:%d)",fSelectedNucleus->get_symbol().data(),fSelectedNucleus->get_z(),fSelectedNucleus->get_n()),kPrint);
 
-        auto gamma = fSelectedLevelScheme->get_decay<tkgammadecay>("2+1->0+1",false);
+        auto gamma = fSelectedLevelScheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
         if(gamma) {
             auto BE2 = gamma->get_trans_prob_measure(true,2,false);
             auto BE2W = gamma->get_trans_prob_measure(true,2,true);
@@ -771,7 +804,7 @@ void CXNucChart::NucNotValidated()
 void CXNucChart::UpdateNucFromSymb()
 {
     if(gmanager->known_nucleus(fNucleusTextEntry->GetText())) {
-        tknucleus nuc(fNucleusTextEntry->GetText());
+        tkn::tknucleus nuc(fNucleusTextEntry->GetText());
         SelectNucleus(nuc.get_z(),nuc.get_n());
         fNucChartHist->GetXaxis()->SetRangeUser(nuc.get_n()-5,nuc.get_n()+5);
         fNucChartHist->GetYaxis()->SetRangeUser(nuc.get_z()-5,nuc.get_z()+5);
@@ -898,7 +931,7 @@ TString CXNucChart::PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> lev, TStr
         cout<<endl;
     }
 
-    for(auto &dec: lev->get_decays<tkgammadecay>()) {
+    for(auto &dec: lev->get_decays<tkn::tkgammadecay>()) {
         Float_t Energy = dec->get_energy();
 
         auto NucLevI = dec->get_level_from();

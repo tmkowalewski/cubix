@@ -15,7 +15,7 @@ The source code is available on [GitLab](https://gitlab.in2p3.fr/ip2i_gamma/cubi
 
 The Cubix project is governed by the CeCILL-B license under French law and abiding by the  rules of distribution of free software. You can use, modify and/or redistribute the  software under the terms of the CeCILL-B license as circulated by CEA, CNRS and INRIA at the following link [www.cecill.info](http://www.cecill.info).
 
-When citing Cubix, please use the DOI specific to your Cubix version available on Zenodo [![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.7400805.svg)](https://zenodo.org/record/7400805).
+If you used Cubix in your published work, please cite it using the DOI specific to your Cubix version available on Zenodo [![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.7400805.svg)](https://zenodo.org/record/7400805).
 
 # Contacts
 

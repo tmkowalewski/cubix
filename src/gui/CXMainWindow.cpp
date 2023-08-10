@@ -1,9 +1,41 @@
+/********************************************************************************
+ *   Copyright (c) : Université de Lyon 1, CNRS/IN2P3, UMR5822,                 *
+ *                   IP2I, F-69622 Villeurbanne Cedex, France                   *
+ *   Contibutor(s) :                                                            *
+ *      Jérémie Dudouet jeremie.dudouet@cnrs.fr [2023]                          *
+ *                                                                              *
+ *    This software is governed by the CeCILL-B license under French law and    *
+ *    abiding by the  rules of distribution of free  software.  You can use,    *
+ *    modify  and/ or  redistribute  the  software under  the  terms of  the    *
+ *    CeCILL-B license as circulated by CEA, CNRS and INRIA at the following    *
+ *    URL \"http://www.cecill.info\".                                           *
+ *                                                                              *
+ *    As a counterpart to the access  to the source code and rights to copy,    *
+ *    modify  and redistribute granted  by the  license, users  are provided    *
+ *    only with a limited warranty  and the software's author, the holder of    *
+ *    the economic  rights, and the  successive licensors have  only limited    *
+ *    liability.                                                                *
+ *                                                                              *
+ *    In this respect, the user's attention is drawn to the risks associated    *
+ *    with loading,  using, modifying  and/or developing or  reproducing the    *
+ *    software by the user in light of its specific status of free software,    *
+ *    that  may mean that  it is  complicated to  manipulate, and  that also    *
+ *    therefore  means that it  is reserved  for developers  and experienced    *
+ *    professionals having in-depth  computer knowledge. Users are therefore    *
+ *    encouraged  to load  and test  the software's  suitability  as regards    *
+ *    their  requirements  in  conditions  enabling the  security  of  their    *
+ *    systems  and/or data to  be ensured  and, more  generally, to  use and    *
+ *    operate it in the same conditions as regards security.                    *
+ *                                                                              *
+ *    The fact that  you are presently reading this means  that you have had    *
+ *    knowledge of the CeCILL-B license and that you accept its terms.          *
+ ********************************************************************************/
+
 #include "CXMainWindow.h"
 
 #include "TStyle.h"
 #include "TG3DLine.h"
 #include "TApplication.h"
-#include "TGraphErrors.h"
 #include "TGMenu.h"
 #include "TGSplitter.h"
 #include "TRootEmbeddedCanvas.h"
@@ -11,24 +43,19 @@
 #include "TGStatusBar.h"
 #include "TVirtualPadEditor.h"
 #include "TFrame.h"
-#include "TGFileBrowser.h"
 #include "KeySymbols.h"
-#include "TGListView.h"
 #include "TClassMenuItem.h"
 #include "TROOT.h"
-#include "TGFSContainer.h"
 #include "TBrowser.h"
 #include "TClass.h"
-#include "TExec.h"
 #include "TVirtualX.h"
-#include "TCanvasImp.h"
-#include "TRootCanvas.h"
+#include "Tsystem.h"
+#include "TGFileDialog.h"
 
-#include "CXGateBox.h"
 #include "CXBgdUtility.h"
 #include "CXGuiToolbar.h"
 #include "CXFileList.h"
-#include "CXGuiLSPlayer.h"
+#include "CXGuiENSDFPlayer.h"
 #include "CXHist1DPlayer.h"
 #include "CXHist1DCalib.h"
 #include "CXHist2DPlayer.h"
@@ -39,9 +66,10 @@
 #include "CXRadCubePlayer.h"
 #include "CXSavedList.h"
 #include "CXRadCubeTH1Proj.h"
-#include "CXTH1Proj.h"
 #include "CXArrow.h"
 #include "CXBashColor.h"
+
+#include "tkmanager.h"
 
 using namespace std;
 
@@ -255,7 +283,7 @@ void CXMainWindow::Init()
     // ------- LS Player Tool -----------
     Name = "LS Player";
     fLSPlayerToolTab = fMainTab->AddTab(Name);
-    fLSPlayerTool = new CXGuiLSPlayer(fLSPlayerToolTab,10,10);
+    fLSPlayerTool = new CXGuiENSDFPlayer(fLSPlayerToolTab,10,10);
     fLSPlayerTool->SetMainWindow(this);
     fLSPlayerTool->SetName(Name);
     fLSPlayerToolTab->AddFrame(fLSPlayerTool, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
