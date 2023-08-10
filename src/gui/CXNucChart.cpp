@@ -58,7 +58,7 @@
 #include "TExec.h"
 #include "TPaletteAxis.h"
 #include "TVirtualX.h"
-#include "Tsystem.h"
+#include "TSystem.h"
 
 #include "CXMainWindow.h"
 #include "CXCanvas.h"

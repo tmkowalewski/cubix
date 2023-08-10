@@ -45,7 +45,7 @@
 #include "TGListBox.h"
 #include "TError.h"
 #include "TGFileDialog.h"
-#include "Tsystem.h"
+#include "TSystem.h"
 
 #include "CXMainWindow.h"
 
