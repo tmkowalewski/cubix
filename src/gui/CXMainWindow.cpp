@@ -49,7 +49,7 @@
 #include "TBrowser.h"
 #include "TClass.h"
 #include "TVirtualX.h"
-#include "Tsystem.h"
+#include "TSystem.h"
 #include "TGFileDialog.h"
 
 #include "CXBgdUtility.h"
