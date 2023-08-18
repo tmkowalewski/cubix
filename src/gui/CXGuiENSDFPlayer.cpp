@@ -84,16 +84,6 @@ CXGuiENSDFPlayer::CXGuiENSDFPlayer(const TGCompositeFrame *MotherFrame, UInt_t w
 
     fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 0, 0, 10, 3));
 
-    TGTextButton *fPlotLSButton = new TGTextButton(fGroupFrame, "Plot LS");
-    fPlotLSButton->Connect("Clicked()", "CXGuiENSDFPlayer", this, "PlotLS()");
-    fGroupFrame->AddFrame(fPlotLSButton,new TGLayoutHints(kLHintsCenterX | kLHintsCenterY | kLHintsExpandX,15,15,10,10));
-
-
-    fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(fArrowMode = new TGCheckButton(fHorizontalFrame, "Collored arrows mode", 99), new TGLayoutHints(kLHintsTop | kLHintsRight,5,0,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterX | kLHintsCenterY, 0, 0, 0, 0));
-
-
     fGroupFrame = new TGGroupFrame(MotherFrame, "Parameters", kVerticalFrame);
     fGroupFrame->SetTextColor(CXblue);
     fGroupFrame->SetTitlePos(TGGroupFrame::kLeft); // right aligned
@@ -322,20 +312,6 @@ void CXGuiENSDFPlayer::GetLifeTime(Float_t &min, Float_t &max)
 void CXGuiENSDFPlayer::ManuallyAddNucleus()
 {
     fListOfNucleus->SetTextColor(CXred);
-}
-
-void CXGuiENSDFPlayer::PlotLS()
-{
-    TString Nuclei = fListOfNucleus->GetText();
-    TObjArray *arr = Nuclei.Tokenize(" ");
-
-    for(int i=0 ; i<arr->GetEntries() ; i++) {
-        TString Nuc = arr->At(i)->GetName();
-
-        fLSPlayer->PlotLevelScheme(Nuc,"ENSDF",fCurrentDataSet);
-    }
-
-    delete arr;
 }
 
 void CXGuiENSDFPlayer::UpdateDataSet()

@@ -63,8 +63,6 @@ CXGammaSearch::CXGammaSearch(const TGWindow *p, const TGWindow *main, UInt_t w, 
     TGTransientFrame(p, main, w, h, kHorizontalFrame),
     fMainWindow(mwin)
 {
-    fDataBaseFolder = Form("%s/DataBase/LevelScheme/ENSDF/",getenv("GWSYS"));
-
     fSp = new CXSpreadIntensityMatrix;
 
     TGCompositeFrame *Main = new TGCompositeFrame(this,600,100,kVerticalFrame);

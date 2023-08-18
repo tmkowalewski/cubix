@@ -1,10 +1,6 @@
 /** @mainpage Cubix
 
-<!--# The Cubix spectra player-->
-
 <p style="text-align:center;"><img src="logo.png" alt="Logo" width="200"></p>
-
-<!--![](icons/logo.png)-->
 
 Cubix is a ROOT based graphical interface providing a large number of tools for gamma-ray spectrocopy analysis like peak fits, calibrations, gamma-gamma analysis. 
 It is linked with the [TkN](https://tkn.in2p3.fr/) to provide a direct access to nuclear databases like [NUDAT3](https://www.nndc.bnl.gov/nudat3/), [ENSDF](https://www.nndc.bnl.gov/ensdf/), [XUNDL](https://www.nndc.bnl.gov/ensdf/xundl/)).

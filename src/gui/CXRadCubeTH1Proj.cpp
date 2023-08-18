@@ -216,8 +216,8 @@ void CXRadCubeTH1Proj::Project(Bool_t FixRange,Bool_t BGSubtract, Int_t Rebin)
         SavedRange[1] = fProjPad->GetUxmax();
     }
 
-    vector< pair<double, double> > gates1; //{make_pair(205.5,214.5)};
-    vector< pair<double, double> > gates2; //{make_pair(345.5,355.5)};
+    vector< pair<float, float> > gates1; //{make_pair(205.5,214.5)};
+    vector< pair<float, float> > gates2; //{make_pair(345.5,355.5)};
 
     for(int i=0 ; i<fListOfGates->GetEntries() ; i++)
     {

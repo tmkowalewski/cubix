@@ -54,15 +54,15 @@ protected:
 
 private:
 
-    CXMainWindow      *fMainWindow{};
+    CXMainWindow *fMainWindow = nullptr;
 
-    TGLabel *fLabel;
-    TGGroupFrame *fGroupFrame;
-    TGCompositeFrame *fHorizontalFrame;
+    TGLabel *fLabel = nullptr;
+    TGGroupFrame *fGroupFrame = nullptr;
+    TGCompositeFrame *fHorizontalFrame = nullptr;
 
-    TGCheckButton *fActivate;
-    TGCheckButton *fDoSmoothing;
-    TGCheckButton *fDoCompton;
+    TGCheckButton *fActivate = nullptr;
+    TGCheckButton *fDoSmoothing = nullptr;
+    TGCheckButton *fDoCompton = nullptr;
 
     int fNumberIterations1D;
     int fNumberIterations2DX;

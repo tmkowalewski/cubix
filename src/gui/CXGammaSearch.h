@@ -98,8 +98,6 @@ private:
     TGRadioButton *fCoincMode;
     TGRadioButton *fNoCoincMode;
 
-    TString fDataBaseFolder;
-
     TGListBox *fResultsBox;
 
     std::vector < std::vector < GammaTransition > > fListOfGoodGammas;

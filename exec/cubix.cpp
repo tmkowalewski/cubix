@@ -1,4 +1,3 @@
-#include <iostream>
 /********************************************************************************
  *   Copyright (c) : Université de Lyon 1, CNRS/IN2P3, UMR5822,                 *
  *                   IP2I, F-69622 Villeurbanne Cedex, France                   *
@@ -32,6 +31,7 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
+#include <iostream>
 #include <iomanip>
 
 #include "TRint.h"
@@ -86,6 +86,8 @@ int main(int argc, char **argv)
     TString file="";
     if(argc==2) file = argv[1];
 
+    argc=1;
+
     auto Cubix_App = new TRint("App", &argc, argv,nullptr,0,kTRUE);
 
     print_splash_screen();
@@ -98,8 +100,7 @@ int main(int argc, char **argv)
     gApplication->InitializeGraphics();
 
     fCXMainWindow = new CXMainWindow(gClient->GetRoot(), 1300, 600 );
-    if(!gSystem->AccessPathName(file) && file.EndsWith(".root"))
-        fCXMainWindow->OpenFile(file);
+    if(!gSystem->AccessPathName(file)) fCXMainWindow->OpenFile(file);
 
     Cubix_App->Run();
 

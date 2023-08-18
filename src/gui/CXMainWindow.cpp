@@ -424,6 +424,7 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
         }
         if((EKeySym)EventY==kKey_f && fCTRL) {
             fHist1DPlayer->DoFit();
+            fCanvas->Update();
         }
         if((EKeySym)EventY==kKey_s && !fCTRL) {
             if(IsHist1DPlayerEnabled==false)
@@ -1445,7 +1446,6 @@ void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
 
 void CXMainWindow::OpenFile(TString filename)
 {
-    cout<<"display filename"<<endl;
     fFileList->DisplayFile(filename);
 }
 

@@ -34,3 +34,5 @@ echo "PROJECT_NUMBER = ${PROJECT_NUMBER}" >> $DOXY_FILE
 
 doxygen $DOXY_FILE
 
+mkdir -p html/images
+cp html/*.png html/images

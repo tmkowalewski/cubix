@@ -65,11 +65,9 @@ Int_t CXRadReader::ReadCube(const TString &FileName)
 {
     gbash_color->InfoMessage("Reading Cube file: " + FileName);
 
-    fName = FileName.Copy().ReplaceAll(".cub","");
-
-    strcpy(xxgd.cubnam,FileName.Data());
+    xxgd.cubnam = FileName;
     if (open3dfile(xxgd.cubnam, &xxgd.numchs)) {
-        gbash_color->ErrorMessage(Form("%s not readable", xxgd.cubnam));
+        gbash_color->ErrorMessage(Form("%s not readable", xxgd.cubnam.Data()));
         return 1;
     }
     if (xxgd.numchs > MAXCHS){
@@ -77,7 +75,7 @@ Int_t CXRadReader::ReadCube(const TString &FileName)
         return 1;
     }
 
-    gbash_color->InfoMessage(Form("%s loaded (%d channels)",xxgd.cubnam, xxgd.numchs));
+    gbash_color->InfoMessage(Form("%s loaded (%d channels)",xxgd.cubnam.Data(), xxgd.numchs));
 
     fCubeFileName = FileName;
     return 0;
@@ -95,10 +93,7 @@ Int_t CXRadReader::ReadTabFile(const TString &FileName)
     else {
         gbash_color->InfoMessage("Reading ADC-to-Cube lookup table file: " + FileName);
 
-        char  filnam[800];
-        strcpy(filnam,FileName.Data());
-
-        if (read_tab_file(filnam, &xxgd.nclook, &xxgd.lookmin, &xxgd.lookmax, xxgd.looktab, 16384)) {
+        if (read_tab_file(FileName, &xxgd.nclook, &xxgd.lookmin, &xxgd.lookmax, xxgd.looktab, 16384)) {
             gbash_color->ErrorMessage(FileName + " not readable");
             return 1;
         }
@@ -134,20 +129,19 @@ Int_t CXRadReader::ReadTotProj(const TString &FileName)
         gbash_color->InfoMessage("Reading Total projection file: " + FileName);
 
         int   nch;
-        char  filnam[800], namesp[16];
+        TString  filnam, namesp;
         xxgd.le2pro2d = 0;
 
-        strcpy(filnam,FileName.Data());
-        if (read_spe_file(filnam, &xxgd.bspec[0][0], namesp, &nch, MAXCHS)) {
-            gbash_color->ErrorMessage(Form("%s not readable ==> EXIT",filnam));
+        if (read_spe_file(FileName, &xxgd.bspec[0][0], namesp, &nch, MAXCHS)) {
+            gbash_color->ErrorMessage(Form("%s not readable ==> EXIT",filnam.Data()));
             return 1;
         }
         if (nch != xxgd.numchs){
-            gbash_color->ErrorMessage(Form("%s spectrum lenght (%d) has wrong length ( must be %d) ==> EXIT",filnam, nch, xxgd.numchs));
+            gbash_color->ErrorMessage(Form("%s spectrum lenght (%d) has wrong length ( must be %d) ==> EXIT",filnam.Data(), nch, xxgd.numchs));
             return 1;
         }
 
-        gbash_color->InfoMessage(Form("Total projection file loaded: %s",filnam));
+        gbash_color->InfoMessage(Form("Total projection file loaded: %s",filnam.Data()));
     }
 
     fTotalProjFileName = FileName;
@@ -161,18 +155,18 @@ TH1 *CXRadReader::GetHistFromSpeFile(const TString &filename)
         return nullptr;
     }
 
-    gbash_color->InfoMessage("Exporting radware spectrum: " + filename + " in ROOT histogram");
+    gbash_color->InfoMessage("Exporting radware 1D spectrum: " + filename + " in ROOT histogram");
 
     TObjArray *arr = filename.Tokenize("/");
     TString name = arr->Last()->GetName();
     delete arr;
 
-    double spec[MAXCHS];
-    char  filnam[800],namesp[800];
-    int   nch;
-    strcpy(filnam,filename.Data());
-    if (read_spe_file(filnam, &spec[0], namesp, &nch, MAXCHS)) {
-        gbash_color->ErrorMessage(Form("%s not readable ==> EXIT",filnam));
+    float spec[MAXCHS];
+    TString name_spectrum;
+    int nch;
+
+    if (read_spe_file(filename, &spec[0], name_spectrum, &nch, MAXCHS)) {
+        gbash_color->ErrorMessage(Form("%s not readable ==> EXIT",filename.Data()));
         return nullptr;
     }
 
@@ -182,16 +176,65 @@ TH1 *CXRadReader::GetHistFromSpeFile(const TString &filename)
     }
 
     return h;
+}
 
-    return nullptr;
+TH2 *CXRadReader::GetHistFrom2dpFile(const TString &filename)
+{
+    if(!gSystem->IsFileInIncludePath(filename)) {
+        gbash_color->WarningMessage("File " + filename + " not found ");
+        return nullptr;
+    }
+
+    gbash_color->InfoMessage("Exporting radware 2D spectrum: " + filename + " in ROOT histogram");
+
+    TObjArray *arr = filename.Tokenize("/");
+    TString name = arr->Last()->GetName();
+    delete arr;
+
+    int   reclen, ich;
+    char  filnam[800];
+
+    strlcpy(filnam,filename.Data(),800);
+    if (!inq_file(filnam, &reclen)) {
+        gbash_color->ErrorMessage(Form("File %s does not exist",filnam));
+        return nullptr;
+    }
+    FILE *file = fopen(filnam, "r");
+    int histsize = reclen;
+
+    int   luch[MAXCHS];
+
+    luch[0] = 0;
+    for (int iy = 1; iy < histsize; ++iy) {
+        luch[iy] = luch[iy-1] + histsize - iy;
+    }
+    reclen *= 4;
+    for (int iy = 0; iy < histsize; ++iy) {
+        fseek(file, iy*reclen, SEEK_SET);
+        fread(xxgd.tmpspec, reclen, 1, file);
+        for (int ix = 0; ix <= iy; ++ix) {
+            ich = luch[ix] + iy;
+            xxgd.pro2d_temp[ich] = xxgd.tmpspec[ix];
+        }
+    }
+    fclose(file);
+
+    TH2F *h = new TH2F(name,name,histsize,0,histsize,histsize,0,histsize);
+    for (int iy = 0; iy < histsize; ++iy) {
+        for (int ix = 0; ix <= iy; ++ix) {
+            int ich = luch[ix] + iy;
+            h->SetBinContent(ix+1,iy+1,xxgd.pro2d_temp[ich]);
+            h->SetBinContent(iy+1,ix+1,xxgd.pro2d_temp[ich]);
+        }
+    }
+
+    return h;
 }
 
 void CXRadReader::SaveBackground(const TString &filename)
 {
-    char  filnam[800];
-    strcpy(filnam,filename.Data());
-
-    wspec(filnam, xxgd.background, xxgd.numchs);
+    TString name = filename;
+    wspec(name, xxgd.background, xxgd.numchs);
 }
 
 Int_t CXRadReader::Read2DProj(const TString &FileName)
@@ -212,7 +255,7 @@ Int_t CXRadReader::Read2DProj(const TString &FileName)
         int   reclen, ich;
         char  filnam[800];
 
-        strcpy(filnam,FileName.Data());
+        strlcpy(filnam,FileName.Data(),800);
         if (!inq_file(filnam, &reclen)) {
             gbash_color->ErrorMessage(Form("File %s does not exist",filnam));
             return 1;
@@ -259,7 +302,6 @@ Int_t CXRadReader::ReadGG(TH2 *h)
     }
 
     //Init
-
     xxgd.luch[0] = 0;
     for (int iy = 1; iy < xxgd.numchs; ++iy) {
         xxgd.luch[iy] = xxgd.luch[iy-1] + xxgd.numchs - iy;
@@ -273,12 +315,11 @@ Int_t CXRadReader::ReadGG(TH2 *h)
     }
 
     // LUT
-
     for (int i= 0; i < xxgd.numchs; ++i) {
         xxgd.elo_sp[i] = h->GetXaxis()->GetBinLowEdge(i+1);
         xxgd.ehi_sp[i] = h->GetXaxis()->GetBinUpEdge(i+1);
 
-        double_t eg = (xxgd.elo_sp[i] + xxgd.ehi_sp[i]) / 2.0F;
+        float eg = (xxgd.elo_sp[i] + xxgd.ehi_sp[i]) / 2.0F;
         xxgd.eff_sp[i] = 1;
         xxgd.energy_sp[i] = eg;
         xxgd.ewid_sp[i] = xxgd.ehi_sp[i] - xxgd.elo_sp[i];
@@ -352,7 +393,7 @@ Int_t CXRadReader::ReadGG(TH2 *h)
     return 0;
 }
 
-void CXRadReader::ReEvalBackground(double_t Xmin, double_t XMax, double_t LenghtFactor, double_t Width, double_t FWHM_0, double_t FWHM_1, double_t FWHM_2)
+void CXRadReader::ReEvalBackground(float Xmin, float XMax, float LenghtFactor, float Width, float FWHM_0, float FWHM_1, float FWHM_2)
 {
     if(hBackground == nullptr) {
         gbash_color->ErrorMessage("No existing background");
@@ -387,19 +428,18 @@ Int_t CXRadReader::ReadBackground(const TString &FileName)
 
         gbash_color->InfoMessage("Reading Total projection file: " + FileName);
 
-        double fsum1;
-        double bspec2[4][MAXCHS];
+        float fsum1;
+        float bspec2[4][MAXCHS];
         int   nch;
-        char  filnam[800], namesp[16];
+        TString  filnam, namesp;
         xxgd.le2pro2d = 0;
 
-        strcpy(filnam,FileName.Data());
-        if (read_spe_file(filnam, &xxgd.bspec[2][0], namesp, &nch, MAXCHS)) {
-            gbash_color->ErrorMessage(Form("%s not readable ==> EXIT",filnam));
+        if (read_spe_file(FileName, &xxgd.bspec[2][0], namesp, &nch, MAXCHS)) {
+            gbash_color->ErrorMessage(Form("%s not readable ==> EXIT",FileName.Data()));
             return 1;
         }
         if (nch != xxgd.numchs){
-            gbash_color->ErrorMessage(Form("%s spectrum lenght (%d) has wrong length ( must be %d) ==> EXIT",filnam,nch,xxgd.numchs));
+            gbash_color->ErrorMessage(Form("%s spectrum lenght (%d) has wrong length ( must be %d) ==> EXIT",FileName.Data(),nch,xxgd.numchs));
             return 1;
         }
 
@@ -422,7 +462,7 @@ Int_t CXRadReader::ReadBackground(const TString &FileName)
             xxgd.bspec[5][i] = bspec2[3][i];
         }
 
-        gbash_color->InfoMessage(Form("Background file loaded: %s",filnam));
+        gbash_color->InfoMessage(Form("Background file loaded: %s",FileName.Data()));
 
         fBackgroundFileName =FileName;
     }
@@ -430,12 +470,13 @@ Int_t CXRadReader::ReadBackground(const TString &FileName)
     return 0;
 }
 
-Int_t CXRadReader::ReadCalibs(const TString &EnergyFileName, const TString &EfficiencyFileName, double_t CompFactor)
+Int_t CXRadReader::ReadCalibs(const TString &EnergyFileName, const TString &EfficiencyFileName, float CompFactor)
 {
-    double f1, f2, x1, x2, x3;
-    double  x, eg, eff;
+    float f1, f2, x1, x2, x3;
+    float  x, eg, eff;
     int    i, j, jj, iorder, nterms;
-    char   title[800], filnam[800];
+    char   title[800];
+    TString filnam;
 
     /* get energy calibration */
 
@@ -448,7 +489,7 @@ Int_t CXRadReader::ReadCalibs(const TString &EnergyFileName, const TString &Effi
         gbash_color->InfoMessage("No Calibration file set or found, no energy calibration applied");
 
     if(readcal){
-        strcpy(filnam,EnergyFileName.Data());
+        filnam = EnergyFileName;
         if (read_cal_file(filnam, title, &iorder, fGains)) {
             gbash_color->ErrorMessage(EnergyFileName + " not readable");
             return 1;
@@ -475,7 +516,7 @@ Int_t CXRadReader::ReadCalibs(const TString &EnergyFileName, const TString &Effi
         gbash_color->InfoMessage("No Efficiency file set or found, no efficiency value applied");
 
     if(readcal){
-        strcpy(filnam,EfficiencyFileName.Data());
+        filnam = EfficiencyFileName;
         if (read_eff_file(filnam, title, feff_pars)) {
             gbash_color->ErrorMessage(EfficiencyFileName + " not readable ==> EXIT");
             return 1;
@@ -492,8 +533,8 @@ Int_t CXRadReader::ReadCalibs(const TString &EnergyFileName, const TString &Effi
 
     for (i = 0; i < xxgd.nclook; ++i) {
         if (xxgd.looktab[i] != jj) {
-//            x = ((double) i - 0.5f);
-            x = ((double) i);
+//            x = ((float) i - 0.5f);
+            x = ((float) i);
             eg = fGains[nterms - 1];
             for (j = nterms - 1; j >= 1; --j) {
                 eg = fGains[j - 1] + eg * x;
@@ -505,7 +546,8 @@ Int_t CXRadReader::ReadCalibs(const TString &EnergyFileName, const TString &Effi
     }
 
     if (xxgd.looktab[xxgd.nclook - 1] != 0) {
-        x = ((double) xxgd.nclook - 1.0);
+//        x = ((float) xxgd.nclook - 1.0);
+        x = ((float) xxgd.nclook);
         eg = fGains[nterms - 1];
         for (j = nterms - 1; j >= 1; --j) {
             eg = fGains[j - 1] + eg * x;
@@ -622,7 +664,7 @@ void CXRadReader::BuildHistos()
 
 double CXRadReader::EffFuncFormula(double *x, double *p)
 {
-    double EG = x[0];
+    float EG = x[0];
     double eff=0;
 
     // Paramters from Radware's web site: https://radware.phy.ornl.gov/gf3/#5.3.
@@ -637,34 +679,34 @@ double CXRadReader::EffFuncFormula(double *x, double *p)
     // If more data that better defines the turnover region is added later, B and/or G may then be freed.
     // Typical values for B and G, for coaxial Ge detectors, are of the order 1 and 20, respectively.
 
-    double A=p[0];
-    double B=p[1];
-    double C=p[2];
+    float A=p[0];
+    float B=p[1];
+    float C=p[2];
 
     //high energy
-    double D=p[3];
-    double E=p[4];
-    double F=p[5];
+    float D=p[3];
+    float E=p[4];
+    float F=p[5];
 
     // interaction parameter between the two regions
     // the larger G is, the sharper will be the turnover at the top, between the two curves.
     // If the efficiency turns over gently, G will be small.
-    double G=p[6];
+    float G=p[6];
 
 
-    double E1=p[7]; //100 keV
-    double E2=p[8]; //1000 keV
+    float E1=p[7]; //100 keV
+    float E2=p[8]; //1000 keV
 
-    double x1 = log(EG / E1);
-    double x2 = log(EG / E2);
+    float x1 = log(EG / E1);
+    float x2 = log(EG / E2);
 
-    double f1 = A + B*x1 + C*x1*x1;
-    double f2 = D + E*x2 + F*x2*x2;
+    float f1 = A + B*x1 + C*x1*x1;
+    float f2 = D + E*x2 + F*x2*x2;
 
     if (f1 <= 0. || f2 <= 0.)
         eff = 1.0;
     else {
-        double x3 = exp(-G * log(f1)) + exp(-G * log(f2));
+        float x3 = exp(-G * log(f1)) + exp(-G * log(f2));
 
         if (x3 <= 0.) eff = 1.0;
         else eff = exp(exp(-log(x3) / G));
@@ -673,7 +715,7 @@ double CXRadReader::EffFuncFormula(double *x, double *p)
     return eff;
 }
 
-TH1 *CXRadReader::Project(const vector< pair<double, double> > &gatesX, const vector< pair<double, double> > &gatesY, Bool_t BGSubtract)
+TH1 *CXRadReader::Project(const vector< pair<float, float> > &gatesX, const vector< pair<float, float> > &gatesY, Bool_t BGSubtract)
 {
     Int_t Status;
 
@@ -697,7 +739,7 @@ TH1 *CXRadReader::Project(const vector< pair<double, double> > &gatesX, const ve
     return fGatedSpectrumNoBG;
 }
 
-int CXRadReader::Project2D(vector< pair<double, double> > gates)
+int CXRadReader::Project2D(vector< pair<float, float> > gates)
 {
     /* read gate of energy elo to ehi and calculate expected spectrum */
     /* spec[0][] = background-subtracted gate */
@@ -707,7 +749,7 @@ int CXRadReader::Project2D(vector< pair<double, double> > gates)
     /* spec[4][] = square of statistical uncertainty */
     /* spec[5][] = square of statistical plus systematic uncertainties */
 
-    strcpy(xxgd.old_name_gat, xxgd.name_gat);
+    xxgd.old_name_gat = xxgd.name_gat;
 
     /* copy data from 2D projection */
     xxgd.bf1 = 0.0;
@@ -722,20 +764,18 @@ int CXRadReader::Project2D(vector< pair<double, double> > gates)
         }
     }
 
-    TString Name = "Rad2D_";
-    if(fName != "") Name = "RadCube_";
+    xxgd.name_gat = "Rad2D_";
+    if(fName != "") xxgd.name_gat = "RadCube_";
 
     for(auto i=0U ; i<gates.size() ; i++){
 
-        double elo = gates[i].first;
-        double ehi = gates[i].second;
+        float elo = gates[i].first;
+        float ehi = gates[i].second;
 
-        Name += Form("%s%.1f(%.1f)", (i==0) ? "" : "+", (ehi+elo)*0.5,(ehi-elo)*0.5);
+        xxgd.name_gat += Form("%s%.1f(%.1f)", (i==0) ? "" : "+", (ehi+elo)*0.5,(ehi-elo)*0.5);
 
         add_gate(elo, ehi);
     }
-
-    snprintf(xxgd.name_gat, sizeof(xxgd.name_gat), "%s", Name.Data());
 
     /* subtract background */
     for (int ix = 0; ix < xxgd.numchs; ++ix) {
@@ -760,7 +800,7 @@ int CXRadReader::Project2D(vector< pair<double, double> > gates)
     fGatedSpectrum->GetXaxis()->SetTitleOffset(1.2);
     fGatedSpectrum->GetYaxis()->SetTitleOffset(0.8);
     fGatedSpectrum->SetStats();
-    fGatedSpectrum->SetNameTitle(Name,Name);
+    fGatedSpectrum->SetNameTitle(xxgd.name_gat,xxgd.name_gat);
 
     delete fGatedSpectrumNoBG;
     fGatedSpectrumNoBG = dynamic_cast<TH1*>(hTotalProj->Clone());
@@ -770,7 +810,7 @@ int CXRadReader::Project2D(vector< pair<double, double> > gates)
     fGatedSpectrum->GetXaxis()->SetTitleOffset(1.2);
     fGatedSpectrum->GetYaxis()->SetTitleOffset(0.8);
     fGatedSpectrum->SetStats();
-    fGatedSpectrumNoBG->SetNameTitle(Form("%s_NoBG",Name.Data()),Form("%s_NoBG",Name.Data()));
+    fGatedSpectrumNoBG->SetNameTitle(Form("%s_NoBG",xxgd.name_gat.Data()),Form("%s_NoBG",xxgd.name_gat.Data()));
 
     for (int i = 0; i < xxgd.numchs; ++i) {
         fGatedSpectrum->SetBinContent(i+1,xxgd.spec[0][i] * xxgd.ewid_sp[0]);
@@ -780,10 +820,9 @@ int CXRadReader::Project2D(vector< pair<double, double> > gates)
     return 0;
 }
 
-
-int CXRadReader::Project3D(vector< pair<double, double> > gatesX, vector< pair<double, double> > gatesY)
+int CXRadReader::Project3D(vector< pair<float, float> > gatesX, vector< pair<float, float> > gatesY)
 {
-    strcpy(xxgd.old_name_gat, xxgd.name_gat);
+    xxgd.old_name_gat = xxgd.name_gat;
 
     /* copy data from 2D projection */
     xxgd.bf1 = 0.0;  xxgd.bf2 = 0.0;  xxgd.bf4 = 0.0;  xxgd.bf5 = 0.0;
@@ -802,15 +841,15 @@ int CXRadReader::Project3D(vector< pair<double, double> > gatesX, vector< pair<d
 
     for(auto i=0U ; i<gatesX.size() ; i++){
 
-        double eloX = gatesX[i].first;
-        double ehiX = gatesX[i].second;
+        float eloX = gatesX[i].first;
+        float ehiX = gatesX[i].second;
 
         NameX += Form("%s%.1f(%.1f)", (i==0) ? "" : "+",(eloX+ehiX)*0.5,TMath::Abs(eloX-ehiX)*0.5);
 
         for(auto j=0U ; j<gatesY.size() ; j++) {
 
-            double eloY = gatesY[j].first;
-            double ehiY = gatesY[j].second;
+            float eloY = gatesY[j].first;
+            float ehiY = gatesY[j].second;
 
             NameY += Form("%s%.1f(%.1f)", (j==0) ? "" : "+",(eloY+ehiY)*0.5,TMath::Abs(eloY-ehiY)*0.5);
 
@@ -819,7 +858,7 @@ int CXRadReader::Project3D(vector< pair<double, double> > gatesX, vector< pair<d
         }
     }
 
-    snprintf(xxgd.name_gat, sizeof(xxgd.name_gat), "%s/%s", NameX.Data(), NameY.Data());
+    xxgd.name_gat = Form("%s/%s", NameX.Data(), NameY.Data());
 
     if (nsum > 1)
         cout<<Form("Sum of %d double-gates...", nsum)<<endl;
@@ -859,12 +898,11 @@ int CXRadReader::Project3D(vector< pair<double, double> > gatesX, vector< pair<d
 Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
 {
     int length = gd3d->length;
-    char outnam[256];
     unsigned int mc[512], *data2d;
     unsigned short mc2[512];
     int i, j, k, x, y, z, ix, iy, iz;
     int ax[512], ay[512], az[512];
-    double data1d[RW_MAXCH];
+    float data1d[RW_MAXCH];
 
     unsigned char lobyte[RW_MAXCH+6];
     unsigned short overflows[RW_MAXCH][2], numoverflows;
@@ -1009,17 +1047,16 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
 
     if(Mode == 2) {
         TString nameout = FileName.ReplaceAll(".cub",".2dp");
-        strcpy(outnam,nameout.Data());
 
-        file=fopen(outnam,"w+");
+        file=fopen(nameout,"w+");
 
         for (y=0; y<length; y++) {
             for (x=0; x<=y; x++) {
-                data1d[x] = (double)(*(data2d + y*length + x));
+                data1d[x] = (float)(*(data2d + y*length + x));
             }
             data1d[y] = 2.0*data1d[y];
             for (x=y+1; x<length; x++) {
-                data1d[x] = (double)(*(data2d + x*length + y));
+                data1d[x] = (float)(*(data2d + x*length + y));
             }
             if (!(fwrite(data1d, 4*length, 1, file))) {
                 gbash_color->ErrorMessage("Cannot write 2d file, aborting...");
@@ -1030,231 +1067,41 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
     }
     if(Mode == 1) {
         TString nameout = FileName.ReplaceAll(".cub",".spe");
-        strcpy(outnam,nameout.Data());
 
         for (y=0; y<length; y++) {
             data1d[y] = 0.0;
             for (x=0; x<=y; x++) {
-                data1d[x] += (double)(*(data2d + y*length + x));
-                data1d[y] += (double)(*(data2d + y*length + x));
+                data1d[x] += (float)(*(data2d + y*length + x));
+                data1d[y] += (float)(*(data2d + y*length + x));
             }
         }
 
-        wspec(outnam, data1d, length);
+        wspec(nameout, data1d, length);
     }
     cout<<endl;
     return 0;
 }
 
-//******************************* RW util.c Stuffs ***********************************//
-
-/* ======================================================================= */
-int CXRadReader::read_tab_file(char *filnam, int *nclook, int *lookmin, int *lookmax, short *looktab, int dimlook)
-{
-    /* read lookup table from .tab file = filnam
-     into array looktab of dimension dimlook
-     Nclook = number of channels read
-     lookmin, lookmax = min/max values in lookup table
-     returns 1 for open/read error
-     default file extension = .tab */
-
-    char cbuf[800];
-    int  j, rl, swap = -1;
-    FILE *file;
-
-    setext(filnam, ".tab", 800);
-
-    /* OPEN (ILU,FILE=FILNAM,FORM='UNFORMATTED',STATUS='OLD')
-     READ (ILU) NCLOOK,LOOKMIN,LOOKMAX
-     READ (ILU) (LOOKTAB(I),I=1,NCLOOK) */
-
-    if (!(file = open_readonly(filnam))) return 1;
-    rl = get_file_rec(file, cbuf, 800, 0);
-    if (rl != 12  && rl != -12) {
-        file_error("read lookup-table from", filnam);
-        fclose(file);
-        return 1;
-    }
-    if (rl < 0) {
-        /* file has wrong byte order - swap bytes */
-        cout<<"*** Swapping bytes read from file " << filnam <<endl;
-        swap = 1;
-        for (j = 0; j < 3; ++j) {
-            swapb4(cbuf + 4*j);
-        }
-    }
-    memcpy(nclook,  cbuf,     4);
-    memcpy(lookmin, cbuf + 4, 4);
-    memcpy(lookmax, cbuf + 8, 4);
-
-    if (*nclook < 2 || *nclook > dimlook) {
-        file_error("read lookup-table from", filnam);
-        fclose(file);
-        return 1;
-    }
-
-    rl = get_file_rec(file, looktab, 2*dimlook, swap);
-    fclose(file);
-    if (rl != 2*(*nclook) && rl != -2*(*nclook)) {
-        file_error("read lookup-table from", filnam);
-        return 1;
-    }
-    if (rl < 0) {
-        /* file has wrong byte order - swap bytes */
-        for (j = 0; j < *nclook; ++j) {
-            swapb2((char *) (looktab + j));
-        }
-    }
-
-    return 0;
-} /* read_tab_file */
-
-
-/* ====================================================================== */
-int CXRadReader::setext(char *filnam, const char *cext, int filnam_len)
-{
-    /* set default extension of filename filnam to cext
-     leading spaces are first removed from filnam
-     if extension is present, it is left unchanged
-     if no extension is present, cext is used
-     returned value pointer to the dot of the .ext
-     cext should include the dot plus a three-letter extension */
-
-    int nc, iext;
-
-    /* remove leading spaces from filnam */
-    nc = strlen(filnam);
-    if (nc > filnam_len) nc = filnam_len;
-    while (nc > 0 && filnam[0] == ' ') {
-        memmove(filnam, filnam+1, nc--);
-        filnam[nc] = '\0';
-    }
-    /* remove trailing spaces from filnam */
-    while (nc > 0 && filnam[nc-1] == ' ') {
-        filnam[--nc] = '\0';
-    }
-    /* look for file extension in filnam
-     if there is none, put it to cext */
-    iext = 0;
-    if (nc > 0) {
-        for (iext = nc-1;
-             (iext > 0 &&
-              filnam[iext] != ']' &&
-              filnam[iext] != '/' &&
-              filnam[iext] != ':');
-             iext--) {
-            if (filnam[iext] == '.') return iext;
-        }
-        iext = nc;
-    }
-    strncpy(&filnam[iext], cext, filnam_len - iext - 1);
-    return iext;
-} /* setext */
-
-/* ======================================================================= */
-FILE *CXRadReader::open_readonly(char *filename)
-{
-    /* open old file for READONLY (if possible)
-     filename  = file name
-     provided for VMS compatibility */
-
-    FILE *file;
-    if (!(file = fopen(filename, "r"))) file_error("open", filename);
-    return file;
-} /* open_readonly */
-
-
-/* ======================================================================= */
-int CXRadReader::get_file_rec(FILE *fd, void *data, int maxbytes, int swap_bytes)
-{
-    /* read one fortran-unformatted style binary record into data */
-    /* for unix systems, swap_bytes controls how get_file_rec deals with
-     swapping the bytes of the record length tags at the start and end
-     of the records.  Set swap_bytes to
-       0 to try to automatically sense if the bytes need swapping
-       1 to force the byte swap, or
-      -1 to force no byte swap */
-    /* returns number of bytes read in record,
-     or number of bytes * -1 if bytes need swapping,
-     or 0 for error */
-    int  reclen, j1, j2;
-    if (fread(&reclen, 4, 1, fd) != 1) return 0;
-    if (reclen == 0) return 0;
-    j1 = reclen;
-    if ((swap_bytes == 1) ||
-            (swap_bytes == 0 && reclen >= 65536)) swapb4((char *) &reclen);
-    if (reclen > maxbytes) goto ERR1;
-    if (fread(data, reclen, 1, fd) != 1 ||
-            fread(&j2, 4, 1, fd) != 1) goto ERR2;
-    /* if (j1 != j2) goto ERR2; */
-    if (reclen == j1) return reclen;
-    return (-reclen);
-
-ERR1:
-    gbash_color->ErrorMessage(Form("ERROR: record is too big for get_file_rec\n"
-                                   "       max size = %d, record size = %d.\n",maxbytes, reclen));
-    return 0;
-ERR2:
-    gbash_color->ErrorMessage(Form("ERROR during read in get_file_rec.\n"));
-    return 0;
-} /* get_file_rec */
-
-
-/* ======================================================================= */
-int CXRadReader::file_error(const char *error_type, char *filename)
-{
-    /* write error message */
-    /* cannot perform operation error_type on file filename */
-
-    if (strlen(error_type) + strlen(filename) > 58) {
-        gbash_color->ErrorMessage(Form("ERROR - cannot %s file\n%s\n", error_type, filename));
-    } else {
-        gbash_color->ErrorMessage(Form("ERROR - cannot %s file %s\n", error_type, filename));
-    }
-    return 0;
-} /* file_error */
-
-/* ======================================================================= */
-void CXRadReader::swapb8(char *buf)
-{
-    char c;
-    c = buf[7]; buf[7] = buf[0]; buf[0] = c;
-    c = buf[6]; buf[6] = buf[1]; buf[1] = c;
-    c = buf[5]; buf[5] = buf[2]; buf[2] = c;
-    c = buf[4]; buf[4] = buf[3]; buf[3] = c;
-} /* swapb8 */
-void CXRadReader::swapb4(char *buf)
-{
-    char c;
-    c = buf[3]; buf[3] = buf[0]; buf[0] = c;
-    c = buf[2]; buf[2] = buf[1]; buf[1] = c;
-} /* swapb4 */
-void CXRadReader::swapb2(char *buf)
-{
-    char c;
-    c = buf[1]; buf[1] = buf[0]; buf[0] = c;
-} /* swapb2 */
-
-int CXRadReader::open3dfile(char *name, int *numchs_ret)
+int CXRadReader::open3dfile(TString &name, int *numchs_ret)
 {
     int length, i, nummc, sr;
     FHead3D head;
     Record3D rec;
-    char cname[256], *tmp;
+    TString cname;
+    char *tmp;
 
-    strcpy(cname, name);
-    if ((tmp = strchr(cname,' '))) *tmp = 0;
+    cname = name;
 
     if (!gd3d) gd3d = &gd3dn[0];
 
     if (!cname[0] || !(gd3d->CubeFile3d=fopen(cname,"r"))) {
-        printf("\007  ERROR -- Cannot open file %s for reading.\n", cname);
+        gbash_color->ErrorMessage(Form("Cannot open file %s for reading", cname.Data()));
         return 1;
     }
 
 #define QUIT close3dfile(); return 1;
     if (!fread(&head,1024,1,gd3d->CubeFile3d)) {
-        printf("\007  ERROR -- Cannot read file %s.\n",name);
+        gbash_color->ErrorMessage(Form("Cannot read file %s",name.Data()));
         QUIT;
     }
     if (head.cps > 6) {
@@ -1276,7 +1123,7 @@ int CXRadReader::open3dfile(char *name, int *numchs_ret)
     else if (!(strncmp(head.id,"FOLDOUT         ",16)) && head.cps == 2)
         gd3d->cubetype = 3;
     else {
-        printf("\007  ERROR -- Invalid header in file %s.\n",name);
+        gbash_color->ErrorMessage(Form("Invalid header in file %s",name.Data()));
         QUIT;
     }
 
@@ -1347,12 +1194,12 @@ int CXRadReader::open3dfile(char *name, int *numchs_ret)
         /* save SR list to end of file */
         fclose(gd3d->CubeFile3d);
         if (!(gd3d->CubeFile3d=fopen(cname,"a+"))) {
-            printf("\007  ERROR -- Cannot open file %s for writing.\n", name);
+            gbash_color->ErrorMessage(Form("Cannot open file %s for writing",name.Data()));
             QUIT;
 
         }
         if (!fwrite(gd3d->mcnum,4*(1+gd3d->numsr),1,gd3d->CubeFile3d)) {
-            printf("\007  ERROR -- Could not write SuperRecord list... aborting.\n");
+            gbash_color->ErrorMessage("Could not write SuperRecord list... aborting");
             QUIT;
         }
         fflush(gd3d->CubeFile3d);
@@ -1375,35 +1222,12 @@ int CXRadReader::close3dfile(void)
     return 0;
 }
 
-void CXRadReader::swap4(int *in)
-{
-    char *c, tmp;
-
-    c = (char *) in;
-    tmp = *c;
-    *c = *(c+3);
-    *(c+3) = tmp;
-    tmp = *(c+1);
-    *(c+1) = *(c+2);
-    *(c+2) = tmp;
-}
-
-void CXRadReader::swap2(unsigned short *in)
-{
-    char *c, tmp;
-
-    c = (char *) in;
-    tmp = *c;
-    *c = *(c+1);
-    *(c+1) = tmp;
-}
-
-int CXRadReader::read_spe_file(char *filnam, double *sp, char *namesp, int *numch, int idimsp)
+int CXRadReader::read_spe_file(const TString &filnam, float *sp, TString &namesp, int *numch, int idimsp)
 {
     float *data = new float[idimsp];
+    for(int i=0 ; i<idimsp ; i++) data[i]=0.;
 
-    /* read spectrum from .spe file = filnam
-     into array sp of dimension idimsp
+    /* read spectrum from .spe file = filnam into array sp of dimension idimsp
      numch = number of channels read
      namesp = name of spectrum (character*8)
      returns 1 for open/read error
@@ -1413,28 +1237,30 @@ int CXRadReader::read_spe_file(char *filnam, double *sp, char *namesp, int *numc
     int  idim1, idim2, j, rl, swap = -1;
     FILE *file;
 
-    setext(filnam, ".spe", 800);
-
     /* read spectrum in standard gf3 format
      OPEN(ILU,FILE=FILNAM,FORM='UNFORMATTED',STATUS='OLD')
      READ(ILU) NAMESP, IDIM1, IDIM2, IRED1, IRED2
      READ(ILU,ERR=90) (SP(I),I=1,NUMCH) */
-    if (!(file = open_readonly(filnam))) return 1;
+    if (!(file = open_readonly(filnam))) {
+        delete [] data;
+        return 1;
+    }
     rl = get_file_rec(file, cbuf, 800, 0);
     if (rl != 24  && rl != -24) {
         file_error("read", filnam);
         fclose(file);
+        delete [] data;
         return 1;
     }
     if (rl < 0) {
         /* file has wrong byte order - swap bytes */
-        cout<<Form("*** Swapping bytes read from file %s", filnam)<<endl;
+        cout<<Form("*** Swapping bytes read from file %s", filnam.Data())<<endl;
         swap = 1;
         for (j = 2; j < 4; ++j) {
             swapb4(cbuf + 4*j);
         }
     }
-    strncpy(namesp, cbuf, 8);
+    namesp = TString(cbuf,8);
     memcpy(&idim1, cbuf + 8, 4);
     memcpy(&idim2, cbuf + 12, 4);
     *numch = idim1 * idim2;
@@ -1444,9 +1270,11 @@ int CXRadReader::read_spe_file(char *filnam, double *sp, char *namesp, int *numc
         cout<<Form("First %d chs only taken.", idimsp)<<endl;
     }
     rl = get_file_rec(file, data, 4*idimsp, swap);
+
     fclose(file);
     if (rl != 4*(*numch) && rl != -4*(*numch)) {
         file_error("read spectrum from", filnam);
+        delete [] data;
         return 1;
     }
     if (rl < 0) {
@@ -1456,7 +1284,6 @@ int CXRadReader::read_spe_file(char *filnam, double *sp, char *namesp, int *numc
         }
     }
 
-
     for(int i=0 ; i<idimsp ; i++) sp[i] = data[i];
     delete [] data;
 
@@ -1464,50 +1291,7 @@ int CXRadReader::read_spe_file(char *filnam, double *sp, char *namesp, int *numc
 } /* read_spe_file */
 
 /* ======================================================================= */
-int CXRadReader::inq_file(char *filename, int *reclen)
-{
-    /* inquire for file existence and record length in longwords
-     returns 0 for file not exists, 1 for file exists */
-
-    int  ext;
-    char jfile[800];
-    struct stat statbuf;
-
-    *reclen = 0;
-    if (stat(filename, &statbuf)) return 0;
-
-    ext = 0;
-    strncpy(jfile, filename, 800);
-    ext = setext(jfile, "    ", 800);
-    if (!strcmp(&jfile[ext], ".mat") ||
-            !strcmp(&jfile[ext], ".MAT") ||
-            !strcmp(&jfile[ext], ".esc") ||
-            !strcmp(&jfile[ext], ".ESC")) {
-        *reclen = 2048;
-    } else if (!strcmp(&jfile[ext], ".spn") ||
-               !strcmp(&jfile[ext], ".SPN") ||
-               !strcmp(&jfile[ext], ".m4b") ||
-               !strcmp(&jfile[ext], ".M4B") ||
-               !strcmp(&jfile[ext], ".e4k") ||
-               !strcmp(&jfile[ext], ".E4K")) {
-        *reclen = 4096;
-    } else if (!strcmp(&jfile[ext], ".cub") ||
-               !strcmp(&jfile[ext], ".CUB")) {
-        *reclen = 256;
-    } else if (!strcmp(&jfile[ext], ".2dp") ||
-               !strcmp(&jfile[ext], ".2DP")) {
-        if (statbuf.st_size <= 0) {
-            *reclen = 0;
-        } else {
-            *reclen = (int) (0.5 + sqrt((double) (statbuf.st_size/4)));
-        }
-    }
-    return 1;
-} /* inq_file */
-
-
-/* ======================================================================= */
-int CXRadReader::read_cal_file(char *filnam, char *title, int *iorder, double *gain)
+int CXRadReader::read_cal_file(TString &filnam, char *title, int *iorder, double *gain)
 {
     /* read energy calib parameters from .aca/.cal file = filnam
      into title, iorder, gain
@@ -1597,12 +1381,14 @@ int CXRadReader::read_cal_file(char *filnam, char *title, int *iorder, double *g
 } /* read_cal_file */
 
 /* ======================================================================= */
-int CXRadReader::read_eff_file(char *filnam, char *title, double *pars)
+int CXRadReader::read_eff_file(TString &filnam, char *title, double *pars_d)
 {
     /* read efficiency parameters from .aef/.eff file = filnam
      into title, pars
      returns 1 for open/read erro
      default file extension = .aef, .eff */
+
+    float pars[10];
 
     char cbuf[800];
     int  j, rl;
@@ -1635,10 +1421,10 @@ int CXRadReader::read_eff_file(char *filnam, char *title, double *pars)
                 !strstr(line, "EFFIT PARAMETER FILE") ||
                 !strncpy(title, line+1, 40) ||
                 !(fgets(line, 120, file)) ||
-                (sscanf(line, "%lf %lf %lf %lf %lf",
+                (sscanf(line, "%f %f %f %f %f",
                         pars, pars+1, pars+2, pars+3, pars+4) != 5) ||
                 !(fgets(line, 120, file)) ||
-                (sscanf(line, "%lf %lf %lf %lf %lf",
+                (sscanf(line, "%f %f %f %f %f",
                         pars+5, pars+6, pars+7, pars+8, pars+9) != 5)) {
             file_error("read", fn1);
             fclose(file);
@@ -1684,6 +1470,9 @@ int CXRadReader::read_eff_file(char *filnam, char *title, double *pars)
     if (strlen(title) > 39) title[39] = '\0';
     if ((c = strchr(title,'\n'))) *c = '\0';
     gbash_color->InfoMessage(Form("%s", title));
+
+    for(int i=0 ; i<10 ; i++) pars_d[i] = pars[i];
+
     return 0;
 } /* read_eff_file */
 
@@ -1694,9 +1483,9 @@ void CXRadReader::setcubenum(int cubenum)
 }
 
 /* ======================================================================= */
-int CXRadReader::add_gate(double elo, double ehi)
+int CXRadReader::add_gate(float elo, float ehi)
 {
-    double r1;
+    float r1;
     int   ix, iy, ich, ihi, ilo;
 
     /* read gate of energy elo to ehi and calculate expected spectrum */
@@ -1730,8 +1519,8 @@ int CXRadReader::add_gate(double elo, double ehi)
         xxgd.bf5 += xxgd.bspec[5][iy];
 
         for (ix = 0; ix < xxgd.numchs; ++ix) {
-            if ((double) abs(ix - iy) < xxgd.v_width) {
-                r1 = (double) (ix - iy) / xxgd.v_width;
+            if ((float) abs(ix - iy) < xxgd.v_width) {
+                r1 = (float) (ix - iy) / xxgd.v_width;
                 xxgd.spec[0][ix] += xxgd.v_depth[iy] * (1.0f - r1 * r1);
             }
         }
@@ -1741,7 +1530,7 @@ int CXRadReader::add_gate(double elo, double ehi)
 } /* add_gate */
 
 /* ======================================================================= */
-int CXRadReader::add_trip_gate(double elo1, double ehi1, double elo2, double ehi2)
+int CXRadReader::add_trip_gate(float elo1, float ehi1, float elo2, float ehi2)
 {
     int   ichxy, ichxz, ichyz, ix, iy, iz;
     int   ihi1, ihi2, ilo1, ilo2;
@@ -1812,8 +1601,8 @@ int CXRadReader::read_cube(int ilo1, int ihi1, int ilo2, int ihi2)
     if (!xxgd.many_cubes) {
         read3dcube(ilo1, ihi1, ilo2, ihi2, ispec);
         for (i = 0; i < xxgd.numchs; ++i) {
-            xxgd.spec[0][i] += (double) ispec[i];
-            xxgd.spec[3][i] += (double) ispec[i];
+            xxgd.spec[0][i] += (float) ispec[i];
+            xxgd.spec[3][i] += (float) ispec[i];
         }
 
     } else {
@@ -1821,9 +1610,9 @@ int CXRadReader::read_cube(int ilo1, int ihi1, int ilo2, int ihi2)
         setcubenum(0);
         read3dcube(ilo1, ihi1, ilo2, ihi2, ispec);
         for (i = 0; i < xxgd.numchs; ++i) {
-            xxgd.spec[0][i] += (double) ispec[i];
-            xxgd.spec[3][i] += (double) ispec[i];
-            xxgd.spec[4][i] += (double) ispec[i] /
+            xxgd.spec[0][i] += (float) ispec[i];
+            xxgd.spec[3][i] += (float) ispec[i];
+            xxgd.spec[4][i] += (float) ispec[i] /
                     (xxgd.ewid_sp[i] * xxgd.ewid_sp[i]);
         }
 
@@ -1831,10 +1620,10 @@ int CXRadReader::read_cube(int ilo1, int ihi1, int ilo2, int ihi2)
             setcubenum(icubenum + 1);
             read3dcube(ilo1, ihi1, ilo2, ihi2, ispec);
             for (i = 0; i < xxgd.numchs; ++i) {
-                xxgd.spec[0][i] += xxgd.cubefact[icubenum] * (double) ispec[i];
-                xxgd.spec[3][i] += xxgd.cubefact[icubenum] * (double) ispec[i];
+                xxgd.spec[0][i] += xxgd.cubefact[icubenum] * (float) ispec[i];
+                xxgd.spec[3][i] += xxgd.cubefact[icubenum] * (float) ispec[i];
                 xxgd.spec[4][i] += xxgd.cubefact[icubenum] *
-                        xxgd.cubefact[icubenum] * (double) ispec[i] /
+                        xxgd.cubefact[icubenum] * (float) ispec[i] /
                         (xxgd.ewid_sp[i]*xxgd.ewid_sp[i]);
             }
         }
@@ -2359,13 +2148,13 @@ void CXRadReader::decompress3d (unsigned char in[1024], unsigned int out[256])
 }
 
 /* ======================================================================= */
-int CXRadReader::autobkgnd(double_t Xmin, double_t XMax)
+int CXRadReader::autobkgnd(float Xmin, float XMax)
 {
     /* maxspec needs to be modified since gfexec is called recursively
      and forgets the number of displayed spectra
      find background over +/- w2*FWHM */
 
-    double fwhm, x, x1, y1, x2, y2, bg, r1;
+    float fwhm, x, x1, y1, x2, y2, bg, r1;
     int   i, hi, lo, jch, ihi=0, ilo=0, ihi2, ilo2;
 
 
@@ -2389,7 +2178,7 @@ int CXRadReader::autobkgnd(double_t Xmin, double_t XMax)
     /* do three background-smoothing-type iterations */
     for (i = 1; i <= 3; ++i) {
         for (int ich = ilo + 2; ich < ihi - 2; ich += 5) {
-            x = (double) ich;
+            x = (float) ich;
             fwhm = sqrt(fFWHMPars[0] + fFWHMPars[1] * x + fFWHMPars[2] * x * x);
             r1 = fBGLenghtFactor * fDefaultWidth * fwhm;
             lo = ich - rint(r1);
@@ -2401,7 +2190,7 @@ int CXRadReader::autobkgnd(double_t Xmin, double_t XMax)
             if (ilo2 > rint(x1)) ilo2 = rint(x1);
             if (ihi2 < rint(x2)) ihi2 = rint(x2);
             for (jch = rint(x1); jch <= rint(x2); ++jch) {
-                x = (double) jch;
+                x = (float) jch;
                 bg = y1 - (x1 - x) * (y1 - y2) / (x1 - x2);
                 xxgd.tmpspec[jch] = bg;
             }
@@ -2414,8 +2203,8 @@ int CXRadReader::autobkgnd(double_t Xmin, double_t XMax)
 
     for (int ich = 0; ich < xxgd.numchs; ++ich) xxgd.bspec[2][ich] = xxgd.tmpspec[ich] * xxgd.ewid_sp[ich];
 
-    double fsum1;
-    double bspec2[4][MAXCHS];
+    float fsum1;
+    float bspec2[4][MAXCHS];
 
     xxgd.le2pro2d = 0;
 
@@ -2446,66 +2235,66 @@ int CXRadReader::autobkgnd(double_t Xmin, double_t XMax)
 
 
 /* ======================================================================= */
-int CXRadReader::find_bg2(int loch, int hich, double *x1, double *y1, double *x2, double *y2)
+int CXRadReader::find_bg2(int loch, int hich, float *x1, float *y1, float *x2, float *y2)
 {
-    double a, y;
+    float a, y;
     int   i, mid;
 
     mid = (loch + hich) / 2;
 
     /* find channel with least counts on each side of middle */
     *y1 = (xxgd.tmpspec[loch] + xxgd.tmpspec[loch + 1] + xxgd.tmpspec[loch + 2]) / 3.f;
-    *x1 = (double) (loch + 1);
+    *x1 = (float) (loch + 1);
     for (i = loch + 2; i <= mid - 2; ++i) {
         a = (xxgd.tmpspec[i-1] + xxgd.tmpspec[i] + xxgd.tmpspec[i+1]) / 3.f;
         if (*y1 > a) {
             *y1 = a;
-            *x1 = (double) i;
+            *x1 = (float) i;
         }
     }
     *y2 = (xxgd.tmpspec[mid + 2] + xxgd.tmpspec[mid + 3] + xxgd.tmpspec[mid + 4]) / 3.f;
-    *x2 = (double) (mid + 3);
+    *x2 = (float) (mid + 3);
     for (i = mid + 4; i <= hich - 1; ++i) {
         a = (xxgd.tmpspec[i-1] + xxgd.tmpspec[i] + xxgd.tmpspec[i+1]) / 3.f;
         if (*y2 > a) {
             *y2 = a;
-            *x2 = (double) i;
+            *x2 = (float) i;
         }
     }
     /* check that there are no channels between loch and hich
      that are below the background. */
     if (*y2 > *y1) {
         for (i = rint(*x1) + 1; i <= mid - 2; ++i) {
-            y = *y1 - (*x1 - (double) i) * (*y1 - *y2) / (*x1 - *x2);
+            y = *y1 - (*x1 - (float) i) * (*y1 - *y2) / (*x1 - *x2);
             a = (xxgd.tmpspec[i-1] + xxgd.tmpspec[i] + xxgd.tmpspec[i+1]) / 3.f;
             if (y > a) {
                 *y1 = a;
-                *x1 = (double) i;
+                *x1 = (float) i;
             }
         }
         for (i = rint(*x2) + 1; i <= hich - 1; ++i) {
-            y = *y1 - (*x1 - (double) i) * (*y1 - *y2) / (*x1 - *x2);
+            y = *y1 - (*x1 - (float) i) * (*y1 - *y2) / (*x1 - *x2);
             a = (xxgd.tmpspec[i-1] + xxgd.tmpspec[i] + xxgd.tmpspec[i+1]) / 3.f;
             if (y > a) {
                 *y2 = a;
-                *x2 = (double) i;
+                *x2 = (float) i;
             }
         }
     } else {
         for (i = rint(*x1) - 1; i >= loch + 1; --i) {
-            y = *y1 - (*x1 - (double) i) * (*y1 - *y2) / (*x1 - *x2);
+            y = *y1 - (*x1 - (float) i) * (*y1 - *y2) / (*x1 - *x2);
             a = (xxgd.tmpspec[i-1] + xxgd.tmpspec[i] + xxgd.tmpspec[i+1]) / 3.f;
             if (y > a) {
                 *y1 = a;
-                *x1 = (double) i;
+                *x1 = (float) i;
             }
         }
         for (i = rint(*x2) - 1; i >= mid + 3; --i) {
-            y = *y1 - (*x1 - (double) i) * (*y1 - *y2) / (*x1 - *x2);
+            y = *y1 - (*x1 - (float) i) * (*y1 - *y2) / (*x1 - *x2);
             a = (xxgd.tmpspec[i-1] + xxgd.tmpspec[i] + xxgd.tmpspec[i+1]) / 3.f;
             if (y > a) {
                 *y2 = a;
-                *x2 = (double) i;
+                *x2 = (float) i;
             }
         }
     }
@@ -2513,98 +2302,3 @@ int CXRadReader::find_bg2(int loch, int hich, double *x1, double *y1, double *x2
     if (*y2 < 1.f) *y2 = 1.f;
     return 0;
 } /* find_bg2 */
-
-
-/* ======================================================================= */
-int CXRadReader::wspec(char *filnam, double *spec, int idim)
-{
-    /* write spectra in gf3 format
-     filnam = name of file to be created and written
-     spec = spectrum of length idim */
-
-    char buf[32];
-    int  j, c1 = 1, rl = 0;
-    char namesp[8];
-    FILE *file;
-
-    j = setext(filnam, ".spe", 800);
-    if (!(file = open_new_file(filnam, 0))) return 1;
-    strncpy(namesp, filnam, 8);
-    if (j < 8) memset(&namesp[j], ' ', 8-j);
-
-    /* WRITE(1) NAMESP,IDIM,1,1,1 */
-    /* WRITE(1) SPEC */
-#define W(a,b) { memcpy(buf + rl, a, b); rl += b; }
-    W(namesp,8); W(&idim,4); W(&c1,4); W(&c1,4); W(&c1,4);
-#undef W
-    if (put_file_rec(file, buf, rl) ||
-            put_file_rec(file, spec, 4*idim)) {
-        file_error("write to", filnam);
-        fclose(file);
-        return 1;
-    }
-    fclose(file);
-    return 0;
-} /* wspec */
-
-
-/* ======================================================================= */
-FILE *CXRadReader::open_new_file(char *filename, int /*force_open*/)
-{
-    /* safely open a new file
-     filename: name of file to be opened
-     force_open = 0 : allow return value NULL for no file opened
-     force_open = 1 : require that a file be opened */
-
-    char tfn[800];
-    FILE *file = NULL;
-
-    strncpy(tfn, filename, 800);
-
-    if ((file = fopen(filename, "w+")))
-        return file;
-    file_error("open or overwrite", filename);
-    return nullptr;
-
-} /* open_new_file */
-
-/* ======================================================================= */
-int CXRadReader::put_file_rec(FILE *fd, void *data, int numbytes)
-{
-    /* write one fortran-unformatted style binary record into data */
-    /* returns 1 for error */
-
-#ifdef VMS  /* vms */
-    int   j1;
-    short rh[2];
-    char  *buf;
-
-    buf = data;
-    j1 = numbytes;
-    if (numbytes <= 2042) {
-        rh[0] = numbytes + 2; rh[1] = 3;
-    } else {
-        rh[0] = 2044; rh[1] = 1;
-        while (j1 > 2042) {
-            if (fwrite(rh, 2, 2, fd) != 2 ||
-                    fwrite(buf, 2042, 1, fd) != 1) return 1;
-            rh[1] = 0; j1 -= 2042; buf += 2042;
-        }
-        rh[0] = j1 + 2; rh[1] = 2;
-    }
-    if (fwrite(rh, 2, 2, fd) != 2 ||
-            fwrite(buf, j1, 1, fd) != 1) return 1;
-    /* if numbytes is odd, write an extra (padding) byte */
-    if (2*(numbytes>>1) != numbytes) {
-        j1 = 0;
-        fwrite(&j1, 1, 1, fd);
-    }
-
-#else /* unix */
-
-    if (fwrite(&numbytes, 4, 1, fd) != 1 ||
-            fwrite(data, numbytes, 1, fd) != 1 ||
-            fwrite(&numbytes, 4, 1, fd) != 1) return 1;
-#endif
-    return 0;
-} /*put_file_rec */

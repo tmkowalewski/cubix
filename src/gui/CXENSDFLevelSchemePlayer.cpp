@@ -247,7 +247,7 @@ void CXENSDFLevelSchemePlayer::DrawArrow(TH1 *hist, const std::shared_ptr<tkn::t
 
     double spinI = level_from->get_spin_parity()->get_spin().get_value();
 
-    if(fGuiLSPlayer->UseSpins() && (spinI<fMinSpin || spinI>fMaxSpin)) return;
+    if(fGuiLSPlayer->UseSpins() && (!level_from->get_spin_parity()->get_spin().is_known() || spinI<fMinSpin || spinI>fMaxSpin)) return;
 
     if(fGuiLSPlayer->GetYrastMode() && !level_from->is_yrast(true)) return;
 
@@ -595,12 +595,10 @@ void CXENSDFLevelSchemePlayer::PlotLevelScheme(TString NucName, TString Type, TS
 
 void CXENSDFLevelSchemePlayer::ProcessedEventLevelScheme(Int_t eventType, Int_t /*eventX*/, Int_t eventY, TObject* obj)
 {
-    if( eventType == kKeyPress )
-    {
+    if( eventType == kKeyPress ) {
         EKeySym keysym = (EKeySym)eventY;
 
-        if ( keysym == kKey_r)
-        {
+        if ( keysym == kKey_r) {
             Int_t index = -1;
             if(fListOfBoxes->FindObject(obj))
                 index = fListOfBoxes->IndexOf(obj);

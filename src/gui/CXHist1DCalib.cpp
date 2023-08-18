@@ -130,7 +130,7 @@ CXHist1DCalib::CXHist1DCalib(const TGCompositeFrame *MotherFrame, UInt_t w, UInt
     fListOfObjects = new TList;
     fListOfObjects->SetOwner();
 
-    fSourcesFolder = Form("%s/DataBase/Sources",getenv("GWSYS"));
+    fSourcesFolder = Form("%s/databases/Sources",getenv("CUBIX_SYS"));
 
     fRecalEnergy = new CXRecalEnergy;
 }

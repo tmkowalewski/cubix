@@ -31,94 +31,83 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
-#ifndef CXGuiENSDFPlayer_H
-#define CXGuiENSDFPlayer_H
+#include "CXProgressBar.h"
 
-#include "RQ_OBJECT.h"
-#include "TGFrame.h"
-#include "TGTextEntry.h"
-#include "TGNumberEntry.h"
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 
-#include "tklevel_scheme.h"
+#include "TString.h"
 
 using namespace std;
 
-class TGCheckButton;
-class CXENSDFLevelSchemePlayer;
-class CXMainWindow;
-class TGComboBox;
-
-class CXGuiENSDFPlayer : public  TGVerticalFrame
+CXProgressBar::CXProgressBar(ULong64_t Nevts) :
+    fWatch(new TStopwatch()),
+    fNEvts(Nevts),
+    fCurrentEntry(0),
+    fLastValidEntry(0),
+    fLastValidTime(0.)
 {
-    RQ_OBJECT("CXGuiENSDFPlayer");
+    fWatch->Start();
+}
 
-public:
+CXProgressBar::~CXProgressBar()
+{
+    fWatch->Stop();
 
-private:
+    Double_t  realt = fWatch->RealTime();
+    Double_t  cput  = fWatch->CpuTime();
 
-    CXMainWindow *fMainWindow = nullptr;
+    Int_t  hours = Int_t(realt / 3600);
+    realt -= hours * 3600;
+    Int_t  min   = Int_t(realt / 60);
+    realt -= min * 60;
+    Int_t  sec   = Int_t(realt);
 
-    TGTextEntry *fListOfNucleus = nullptr;
+    if (cput  < 0) cput  = 0;
 
-    TGComboBox *fDataSetMode = nullptr;
+    Printf("Real time %d:%02d:%02d, CP time %.3f", hours, min, sec, cput);
 
-    Bool_t fYrastMode;
+    delete fWatch;
+}
 
-    TGCheckButton *fYrastButton;
+void CXProgressBar::UpdateStatus()
+{
+    Int_t Step = (Int_t)(((Double_t)fCurrentEntry)/(((Double_t)fNEvts)/20.));
 
-    TGNumberEntry *fTextSize;
-    TGCheckButton *fFullGammaTitle;
-    TGNumberEntry *fBranchingRatio[2];
-    TGCheckButton *fUseBranchingRatio;
-    TGNumberEntry *fELevel[2];
-    TGCheckButton *fUseELevels;
-    TGNumberEntry *fSpins[2];
-    TGCheckButton *fUseSpins;
-    TGNumberEntry *fLifeTime[2];
-    TGCheckButton *fUseLifeTime;
-    TGComboBox    *fLifeTimeScale[2];
+    Int_t RefreshRate = (Int_t)(((Float_t)fNEvts)/1e5); // Pour 1 affichage par seconde a un rate de 50evts/s
+    if(RefreshRate == 0) RefreshRate = 1;
 
-    CXENSDFLevelSchemePlayer *fLSPlayer = nullptr;
+    if(((Int_t)(fNEvts/RefreshRate)) == 0  || ((Int_t)fCurrentEntry)%((Int_t)(fNEvts/RefreshRate))==0)
+    {
+        Float_t Frac = ((Double_t)fCurrentEntry)/((Double_t)fNEvts);
 
-    Bool_t fNucleiAreKnown = false;
-    Int_t fNumberOfNuclei = 0;
+        clog<<"\rTotal "<<fNEvts<<" events |";
+        for(int it=0 ; it<Step; it++)
+            clog<<"=";
+        clog<<">";
+        for(int it=Step+1 ; it<20 ; it++)
+            clog<<".";
+        clog<<"| "<<setw(6)<<Form("%.2f%%",Frac*100.);
+        fWatch->Stop();
 
-    shared_ptr<tkn::tklevel_scheme> fSelectedLevelScheme;
-    TString fCurrentDataSet = "ADOPTED LEVELS, GAMMAS";
-    Int_t fSelectedEntry=0;
-    Bool_t fNoUpdateDataSet = false;
+        Float_t Time = fWatch->CpuTime();
+        Float_t TimeLeftTotSec = ((1-Frac)*Time)/Frac;
+        UInt_t TimeLeftInHour = (UInt_t)(TimeLeftTotSec/3600.);
+        UInt_t TimeLeftInMin = (UInt_t)((TimeLeftTotSec - TimeLeftInHour*3600.)/60.);
+        UInt_t TimeLeftInSec = (UInt_t)(TimeLeftTotSec - TimeLeftInHour*3600. - TimeLeftInMin*60.);
 
-public:
-    CXGuiENSDFPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
-    ~CXGuiENSDFPlayer();
+        Float_t Rate = ((Float_t)(fCurrentEntry-fLastValidEntry))/((Float_t)(Time-fLastValidTime));
 
-    void SetMainWindow(CXMainWindow *w);
+        //Float_t Rate = ((Float_t)(fCurrentEntry))/((Float_t)(Time));
+        if(isnan(Rate)) Rate=0.;
+        if(isinf(Rate)) Rate=0.;
 
-    void ManuallyAddNucleus();
-    void CheckListOfNuclei();
-    void UpdateGammaRays();
+        fLastValidEntry = fCurrentEntry;
+        fLastValidTime = Time;
 
-    void GetBranchingRatio(Int_t &min, Int_t &max);
-    void GetELevels(Float_t &min, Float_t &max);
-    void GetSpins(Int_t &min, Int_t &max);
-    void GetLifeTime(Float_t &min, Float_t &max);
-
-    Bool_t GetYrastMode(){return fYrastMode;}
-
-    Float_t GetTextSize(){return fTextSize->GetNumber();}
-    Bool_t IsFullTitleMode(){return fFullGammaTitle->GetState();}
-    Bool_t UseBranchingRatio(){return fUseBranchingRatio->GetState();}
-    Bool_t UseELevels(){return fUseELevels->GetState();}
-    Bool_t UseLifeTime(){return fUseLifeTime->GetState();}
-    Bool_t UseSpins(){return fUseSpins->GetState();}
-
-    void UpdateDataSet();
-
-protected:
-
-private:
-
-    ClassDef(CXGuiENSDFPlayer,0);
-};
-
-#endif
+        clog<<" [ "<<setw(5)<<Form("%.1f",Rate)<<" evts/s, time left: "<<Form("%3dh%.2dmin%.2ds ]",TimeLeftInHour,TimeLeftInMin,TimeLeftInSec);
+        fWatch->Start(false);
+        clog<<flush;
+    }
+}

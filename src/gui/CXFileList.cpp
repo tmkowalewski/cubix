@@ -146,14 +146,14 @@ void CXFileList::DoubleClicked(TGListTreeItem *item, Int_t /*a_int*/)
         if(obj){
             obj->IsA()->SetName("");
 
-//            TString filename = fBrowser->FullPathName(item);
+            //            TString filename = fBrowser->FullPathName(item);
             TString filename = item->GetText();
             if(gSystem->IsFileInIncludePath(filename)) {
                 if(filename.EndsWith(".root"))
                     DisplayFile(filename);
                 if(filename.EndsWith(".cub"))
                     DisplayRadCube(filename);
-                if(filename.EndsWith(".spe"))
+                if(filename.EndsWith(".spe") || filename.EndsWith(".2dp"))
                     DisplayRadSpe(filename);
             }
         }
@@ -186,39 +186,42 @@ void CXFileList::DisplayFile(const TString &fname)
         fCurrentFile = nullptr;
         fFolders.clear();
     }
+    if(fname.EndsWith(".root")) {
+        // Display content of ROOT file.
+        TFile *file = TFile::Open(fname);
+        fContents->RemoveAll();
+        //    fContents->AddFile(gSystem->WorkingDirectory());
+        fContents->SetPagePosition(0,0);
+        fContents->SetColHeaders("Name","Title");
 
-    // Display content of ROOT file.
-    TFile *file = TFile::Open(fname);
-    fContents->RemoveAll();
-    //    fContents->AddFile(gSystem->WorkingDirectory());
-    fContents->SetPagePosition(0,0);
-    fContents->SetColHeaders("Name","Title");
+        TIter next(file->GetListOfKeys());
+        TKey *key;
 
-    TIter next(file->GetListOfKeys());
-    TKey *key;
+        while ((key=dynamic_cast<TKey*>(next()))) {
+            TString cname = key->GetClassName();
+            TString name = key->GetName();
+            auto *entry = new TGLVEntry(fContents,name,cname);
+            entry->SetSubnames(key->GetTitle());
 
-    while ((key=dynamic_cast<TKey*>(next()))) {
-        TString cname = key->GetClassName();
-        TString name = key->GetName();
-        auto *entry = new TGLVEntry(fContents,name,cname);
-        entry->SetSubnames(key->GetTitle());
+            if(cname=="TList" || cname=="TDirectoryFile")
+                entry->SetPictures(gClient->GetPicture("folder_s.xpm"),gClient->GetPicture("folder_t.xpm"));
+            if(cname=="TCutG")
+                entry->SetPictures(gClient->GetPicture("bld_cut.png"),gClient->GetPicture("bld_cut.png"));
+            if(cname.BeginsWith("TGraph"))
+                entry->SetPictures(gClient->GetPicture("graph.xpm"),gClient->GetPicture("graph.xpm"));
 
-        if(cname=="TList" || cname=="TDirectoryFile")
-            entry->SetPictures(gClient->GetPicture("folder_s.xpm"),gClient->GetPicture("folder_t.xpm"));
-        if(cname=="TCutG")
-            entry->SetPictures(gClient->GetPicture("bld_cut.png"),gClient->GetPicture("bld_cut.png"));
-        if(cname.BeginsWith("TGraph"))
-            entry->SetPictures(gClient->GetPicture("graph.xpm"),gClient->GetPicture("graph.xpm"));
+            fContents->AddItem(entry);
 
-        fContents->AddItem(entry);
-
-        // user data is a filename
-        entry->SetUserData((void*)StrDup(fname));
+            // user data is a filename
+            entry->SetUserData((void*)StrDup(fname));
+        }
+        fCurrentFile = file;
+        fFolders.push_back(file);
+    }
+    if(fname.EndsWith(".spe") || fname.EndsWith(".2dp")) {
+        DisplayRadSpe(fname);
     }
     fMain->Resize();
-    fCurrentFile = file;
-    fFolders.push_back(file);
-
     fContents->SetViewMode(EListViewMode::kLVList);
 }
 
@@ -234,14 +237,14 @@ void CXFileList::DisplayRadCube(const TString &fname)
     fContents->RemoveAll();
     fContents->SetColHeaders("DataType","File");
 
-//    fCubeFileName = fname.Copy().ReplaceAll(Form("%s/",gSystem->pwd()),"");
+    //    fCubeFileName = fname.Copy().ReplaceAll(Form("%s/",gSystem->pwd()),"");
     fCubeFileName = fname.Copy();
 
     entry = new TGLVEntry(fContents,"Cube File","TH3F");
     entry->SetSubnames(fCubeFileName);
     fContents->AddItem(entry);
 
-//    gSystem->ChangeDirectory(gSystem->DirName(fCubeFileName));
+    //    gSystem->ChangeDirectory(gSystem->DirName(fCubeFileName));
 
     // Read Conf file
     fConfFileName = fCubeFileName.Copy().ReplaceAll(".cub",".conf");
@@ -326,9 +329,17 @@ void CXFileList::DisplayRadSpe(const TString &fname)
 
     TString filanem = fname.Copy().ReplaceAll(Form("%s/",gSystem->pwd()),"");
 
-    TH1 *hist = fRadReader->GetHistFromSpeFile(filanem);
+    TH1 *hist = nullptr;
 
-    fMainWindow->DoDraw(hist,fBrowser->GetDrawOption());
+    cout << endl;
+    cout << fname << " " << filanem << " " << fRadReader << endl;
+
+    if(fname.EndsWith(".spe")) hist = fRadReader->GetHistFromSpeFile(filanem);
+    else if(fname.EndsWith(".2dp")) hist = fRadReader->GetHistFrom2dpFile(filanem);
+
+    cout << hist << endl;
+
+    if(hist) fMainWindow->DoDraw(hist,fBrowser->GetDrawOption());
 }
 
 void CXFileList::DisplayList(TList *list)
