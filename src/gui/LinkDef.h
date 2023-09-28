@@ -26,8 +26,8 @@
 #pragma link C++ class CXSavedList+;
 #pragma link C++ class CXFit+;
 #pragma link C++ class CXBgdFit+;
-#pragma link C++ class CXGuiLSPlayer+;
-#pragma link C++ class CXLevelSchemePlayer+;
+#pragma link C++ class CXGuiENSDFPlayer+;
+#pragma link C++ class CXENSDFLevelSchemePlayer+;
 #pragma link C++ class CXGammaSearch+;
 #pragma link C++ class CXNucChart+;
 #pragma link C++ class CXNucleusBox+;

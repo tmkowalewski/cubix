@@ -1,11 +1,43 @@
-//Author: jdudouet
+/********************************************************************************
+ *   Copyright (c) : Université de Lyon 1, CNRS/IN2P3, UMR5822,                 *
+ *                   IP2I, F-69622 Villeurbanne Cedex, France                   *
+ *   Contibutor(s) :                                                            *
+ *      Jérémie Dudouet jeremie.dudouet@cnrs.fr [2023]                          *
+ *                                                                              *
+ *    This software is governed by the CeCILL-B license under French law and    *
+ *    abiding by the  rules of distribution of free  software.  You can use,    *
+ *    modify  and/ or  redistribute  the  software under  the  terms of  the    *
+ *    CeCILL-B license as circulated by CEA, CNRS and INRIA at the following    *
+ *    URL \"http://www.cecill.info\".                                           *
+ *                                                                              *
+ *    As a counterpart to the access  to the source code and rights to copy,    *
+ *    modify  and redistribute granted  by the  license, users  are provided    *
+ *    only with a limited warranty  and the software's author, the holder of    *
+ *    the economic  rights, and the  successive licensors have  only limited    *
+ *    liability.                                                                *
+ *                                                                              *
+ *    In this respect, the user's attention is drawn to the risks associated    *
+ *    with loading,  using, modifying  and/or developing or  reproducing the    *
+ *    software by the user in light of its specific status of free software,    *
+ *    that  may mean that  it is  complicated to  manipulate, and  that also    *
+ *    therefore  means that it  is reserved  for developers  and experienced    *
+ *    professionals having in-depth  computer knowledge. Users are therefore    *
+ *    encouraged  to load  and test  the software's  suitability  as regards    *
+ *    their  requirements  in  conditions  enabling the  security  of  their    *
+ *    systems  and/or data to  be ensured  and, more  generally, to  use and    *
+ *    operate it in the same conditions as regards security.                    *
+ *                                                                              *
+ *    The fact that  you are presently reading this means  that you have had    *
+ *    knowledge of the CeCILL-B license and that you accept its terms.          *
+ ********************************************************************************/
+
+#include <unistd.h>
 
 #include "CXCanvas.h"
 #include "TROOT.h"
 #include "TBox.h"
 #include "TAxis.h"
 #include "TContextMenu.h"
-#include "TRootCanvas.h"
 #include "TGWindow.h"
 #include "KeySymbols.h"
 #include "TMath.h"
@@ -16,6 +48,9 @@
 #include "CXGateBox.h"
 #include "TPadPainter.h"
 #include "TFrame.h"
+#include "TCanvasImp.h"
+#include "TSystem.h"
+#include "TGFileDialog.h"
 
 #include <Riostream.h>
 
@@ -24,7 +59,6 @@
 
 #include "CXMainWindow.h"
 #include "CXRadCubeTH1Proj.h"
-#include "CXTH1Proj.h"
 #include "TVirtualX.h"
 
 using namespace std;
@@ -68,7 +102,6 @@ Pan: hold down mouse wheel (centre button) and move
 //  Arrows   move on histogram or axis
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Riostream.h"
 #include "TGClient.h"
 
 //________________________________________________________________
@@ -978,14 +1011,6 @@ Bool_t CXCanvas::HandleKey(Int_t px, Int_t py)
             UndrawObject(fSelected);
             break;
 
-        case kKey_e:
-            GetCanvasImp()->ShowEditor(!GetCanvasImp()->HasEditor());
-            break;
-
-            //        case kKey_f:
-            //            if (fSelected->InheritsFrom("TH1"))(dynamic_cast<TH1*>(fSelected))->FitPanel();
-            //            break;
-
         case kKey_g:
             if (GetGridx() && GetGridy()) {
                 SetGrid(0, 0);
@@ -1356,57 +1381,57 @@ void CXCanvas::InitInfos()
     fEnabledShortcuts = 1;
     fSavedAs = "";
 
-    AddShortcutsInfo("n", "new Canvas");
-    AddShortcutsInfo("", "");
+    AddShortcutsInfo("","");
+    AddShortcutsInfo("<ctrl> i", "show this shortcuts infos");
+    AddShortcutsInfo("","");
+    AddShortcutsInfo("Histogram manipulation", "");
     AddShortcutsInfo("<ctrl> c", "copy the object under cursor");
     AddShortcutsInfo("<ctrl> x", "cut the object under cursor");
     AddShortcutsInfo("<ctrl> v", "paste the last object copied");
     AddShortcutsInfo("<ctrl> d", "undraw the object under cursor (object not deleted)");
     AddShortcutsInfo("<Maj>  S", "Add selected object to stored spectra");
+    AddShortcutsInfo("<ctrl> n", "normalize the histogram in area");
+    AddShortcutsInfo("<ctrl> m", "normalize the histogram to the maximum");
+    AddShortcutsInfo("", "");
 
-    AddShortcutsInfo("","");
+    AddShortcutsInfo("Canvas manipulation", "");
+    AddShortcutsInfo("n", "new Canvas");
+    AddShortcutsInfo("<ctrl> g", "set/unset grid on X and Y axes");
+    AddShortcutsInfo("<Maj>  C", "set/unset CrossHair (wheel click to measure distances)");
+    AddShortcutsInfo("<ctrl> u", "update canvas");
+    AddShortcutsInfo("F12", "unzoom");
+    AddShortcutsInfo("F9",  "set/unset log scale on X axis");
+    AddShortcutsInfo("F10", "set/unset log scale on Y axis");
+    AddShortcutsInfo("F11", "set/unset log scale on Z axis");
+    AddShortcutsInfo("Arrows", "move on histogram or axis");
+    AddShortcutsInfo("<ctrl> +", "set minimum +1 (TH2)");
+    AddShortcutsInfo("<ctrl> -", "set minimum -1 (TH2)");
+    AddShortcutsInfo("<ctrl> w", "set/unset 'Age Of Empire' mode (TH2)");
+    AddShortcutsInfo("", "");
+
+    AddShortcutsInfo("Peak utilities","");
     AddShortcutsInfo("s", "Peak search");
-    AddShortcutsInfo("f", "define a new gamma fit");
-    AddShortcutsInfo("<ctrl> f", "Fit");
-    AddShortcutsInfo("<ctrl> a", "Calibrate");
+    AddShortcutsInfo("f", "Start a new fit");
+    AddShortcutsInfo("<ctrl> f", "Perform the fit for the selected peaks (or double click)");
+    AddShortcutsInfo("<ctrl> a", "Start the calibration utility");
     AddShortcutsInfo("c", "clear the current Pad (arrows, fits...)");
     AddShortcutsInfo("","");
+
     AddShortcutsInfo("Gamma Gamma mode","");
     AddShortcutsInfo("g", "Add a gate");
+    AddShortcutsInfo("g+g", "Add a gate at energy and width specified");
     AddShortcutsInfo("b", "Add a background");
+    AddShortcutsInfo("b+b", "Add a background at energy and width specified");
     AddShortcutsInfo("c", "Clear all gates and background");
     AddShortcutsInfo("d", "Remove the gate under the cursor");
     AddShortcutsInfo("p", "Do the projection");
     AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> f", "start the standarf fit panel");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> g", "set/unset grid on X and Y axes");
-    AddShortcutsInfo("<Maj>  C", "set/unset CrossHair (wheel click to measure distances)");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> n", "normalize the histogram in area");
-    AddShortcutsInfo("<ctrl> m", "normalize the histogram to the maximum");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> j x", "draw projection X (TH2)");
-    AddShortcutsInfo("<ctrl> j y", "draw projection Y (TH2)");
-    AddShortcutsInfo("<ctrl> p x", "draw profile X (TH2)");
-    AddShortcutsInfo("<ctrl> p y", "draw profile Y (TH2)");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> s", "save canvas as");
-    AddShortcutsInfo("<ctrl> u", "update canvas");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> +", "set minimum +1 (TH2)");
-    AddShortcutsInfo("<ctrl> -", "set minimum -1 (TH2)");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> w", "set/unset 'Age Of Empire' mode (TH2)");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("F9",  "set/unset log scale on X axis");
-    AddShortcutsInfo("F10", "set/unset log scale on Y axis");
-    AddShortcutsInfo("F11", "set/unset log scale on Z axis");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("Arrows", "move on histogram or axis");
-    AddShortcutsInfo("F12", "unzoom");
-    AddShortcutsInfo("","");
-    AddShortcutsInfo("<ctrl> i", "show this shortcuts infos");
+
+//    AddShortcutsInfo("","");
+//    AddShortcutsInfo("<ctrl> j x", "draw projection X (TH2)");
+//    AddShortcutsInfo("<ctrl> j y", "draw projection Y (TH2)");
+//    AddShortcutsInfo("<ctrl> p x", "draw profile X (TH2)");
+//    AddShortcutsInfo("<ctrl> p y", "draw profile Y (TH2)");
 }
 
 void CXCanvas::ProfileX(TH2* hh)

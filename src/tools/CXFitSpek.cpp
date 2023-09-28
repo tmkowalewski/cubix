@@ -1,29 +1,40 @@
-// FitSpek.cpp: implementation of the CXCFitSpek class.
-//
-//////////////////////////////////////////////////////////////////////
+/********************************************************************************
+ *   Copyright (c) : Université de Lyon 1, CNRS/IN2P3, UMR5822,                 *
+ *                   IP2I, F-69622 Villeurbanne Cedex, France                   *
+ *   Contibutor(s) :                                                            *
+ *      Jérémie Dudouet jeremie.dudouet@cnrs.fr [2023]                          *
+ *                                                                              *
+ *    This software is governed by the CeCILL-B license under French law and    *
+ *    abiding by the  rules of distribution of free  software.  You can use,    *
+ *    modify  and/ or  redistribute  the  software under  the  terms of  the    *
+ *    CeCILL-B license as circulated by CEA, CNRS and INRIA at the following    *
+ *    URL \"http://www.cecill.info\".                                           *
+ *                                                                              *
+ *    As a counterpart to the access  to the source code and rights to copy,    *
+ *    modify  and redistribute granted  by the  license, users  are provided    *
+ *    only with a limited warranty  and the software's author, the holder of    *
+ *    the economic  rights, and the  successive licensors have  only limited    *
+ *    liability.                                                                *
+ *                                                                              *
+ *    In this respect, the user's attention is drawn to the risks associated    *
+ *    with loading,  using, modifying  and/or developing or  reproducing the    *
+ *    software by the user in light of its specific status of free software,    *
+ *    that  may mean that  it is  complicated to  manipulate, and  that also    *
+ *    therefore  means that it  is reserved  for developers  and experienced    *
+ *    professionals having in-depth  computer knowledge. Users are therefore    *
+ *    encouraged  to load  and test  the software's  suitability  as regards    *
+ *    their  requirements  in  conditions  enabling the  security  of  their    *
+ *    systems  and/or data to  be ensured  and, more  generally, to  use and    *
+ *    operate it in the same conditions as regards security.                    *
+ *                                                                              *
+ *    The fact that  you are presently reading this means  that you have had    *
+ *    knowledge of the CeCILL-B license and that you accept its terms.          *
+ ********************************************************************************/
 
 #include <memory.h>
 #include <stdlib.h>
 
 #include "CXFitSpek.h"
-
-//#ifndef max
-//#define max(a,b)            (((a) > (b)) ? (a) : (b))
-//#endif
-
-//#ifndef min
-//#define min(a,b)            (((a) < (b)) ? (a) : (b))
-//#endif
-
-//#ifdef _DEBUG
-//#undef THIS_FILE
-//static char THIS_FILE[]=__FILE__;
-//#define new DEBUG_NEW
-//#endif
-
-//////////////////////////////
-// Construction/Destruction //
-//////////////////////////////
 
 using namespace std;
 
@@ -240,156 +251,6 @@ double CXCFitSpek::LineFunc(double xx)
   return val;
 }
 
-////////////////////////////////////////////////////////////////////////////
-// Calcola i primi momenti (Area, Posizione, Sigma) e il loro errore      //
-// sottrae un fondo lineare calcolato dai primi e ultimi nChanBack canali //
-////////////////////////////////////////////////////////////////////////////
-
-bool CXCFitSpek::CalcPeakMoments(float *pSpek, int chanA, int chanB, int nChanBack)
-{
-  // nothing valid yet
-  Reset();
-
-  if(chanA < chanB) {
-    m_nChanA = chanA;
-    m_nChanB = chanB;
-  }
-  else {
-    m_nChanA = chanB;
-    m_nChanB = chanA;
-  }
-  m_nBgChanA = m_nChanA;
-  m_nBgChanB = m_nChanB;
-  m_nNdat    = m_nChanB - m_nChanA + 1;
-
-  int ndat = m_nNdat - 2 * nChanBack;
-  if(ndat < 3)
-    return false;
-
-// i primi e gli ultimi nChanBack canali vengono usati per calcolare un fondo inclinato
-
-  m_dBack0 = 0.;
-  m_dBack1 = 0.;
-  if(nChanBack > 0) {
-    double s1 = 0., sx = 0., sxx = 0., sy = 0., syx = 0.;
-    double x, y, e;
-    for(int ii = m_nChanA; ii <= m_nChanB; ii++) {
-      if(ii < m_nChanA+nChanBack || ii > m_nChanB-nChanBack) {
-        y    = pSpek[ii];
-        x    = ii - m_nChanA + 0.5;
-        e    = 1.;        // andrebbe sostituito con l'errore statistico ???
-        s1  += e;
-        sx  += e*x;
-        sxx += e*x*x;
-        sy  += e*y;
-        syx += e*y*x;
-      }
-    }
-    double deter = s1*sxx-sx*sx;
-    if(deter >= 0.) {
-      m_dBack0 = (sxx*sy - sx*syx)/deter;
-      m_dBack1 = (-sx*sy + s1*syx)/deter;
-      m_dBack0Err = sxx/deter;
-      m_dBack1Err =  s1 /deter;
-//      double er01 = -sx /deter;
-    }
-  }
-  m_bFlat  = m_dBack0 != 0;
-  m_bSlope = m_dBack1 != 0;
-  m_bBckgr = m_bFlat || m_bSlope;
-  m_bLine  = true;
-
-  double  dMV0, dMV1;
-  double  dKV2, dKV3, dKV4;
-
-  // Area e Posizione calcolati sottraendo il fondo (senza propagazione dell'errore)
-  // Posizioni riferite all'inizio di m_nChanA, con riferimento al centro del canale
-  // tenere la zona di lavoro sufficientemente stretta per evitare che le deviazioni
-  // dal fondo in zone lontano dal picco pesino troppo
-  // (sarebbe meglio fare due passaggi escludendo i canali piu' lontani di ~3 FWHM)
-
-  dMV0 = dMV1 = 0.;
-  double xii, xyy, back;
-  for(int ii = m_nChanA+nChanBack; ii <= m_nChanB-nChanBack; ii++) {
-     xii  = ii + 0.5 - m_nChanA;
-     back = m_dBack0 + xii*m_dBack1;
-     xyy  = pSpek[ii];
-     xyy -= back;        // sottrae il fondo
-     dMV0 += xyy;        // M0  ===> Area
-     dMV1 += xyy * xii;  // M1  ===> Posizione
-  }
-  if(dMV0 == 0.)
-    return false;
-  dMV1 /= dMV0;
-
-  // i prossimi 3 momenti (calcolati rispetto al baricentro dMV1)
-
-  dKV2 = dKV3 = dKV4 = 0;
-  double xny;
-  for(int ii = m_nChanA+nChanBack; ii <= m_nChanB-nChanBack; ii++) {
-    xii  = ii + 0.5 - m_nChanA;
-    back = m_dBack0 + xii*m_dBack1;
-    xyy  = pSpek[ii];
-    xyy -= back;                  // sottrae il fondo
-    xyy  = max(0., xyy);          // lo sviluppo in momenti vale solo per dati positivi!!!
-    xii -= dMV1;                  // momenti rispetto al baricentro
-    dKV2 += (xny  = xyy*xii*xii); // K2 ==> K2 = Varianza = sigma^2
-    dKV3 += (xny *= xii);         // K3 ==> Skewness = K3 / sigma^3
-    dKV4 += (xny *= xii);         // K4 ==> Kurtosis = K4 / sigma^4 - 3
-  }
-  dKV2 = dKV2 / dMV0;
-  dKV3 = dKV3 / dMV0;
-  dKV4 = dKV4 / dMV0;
-
-  m_nNpeaks = 1;    // risultati riportati come fit gaussiano a 1 picco
-  m_pRes = new CFitRes [m_nNpeaks];
-  m_pErr = new CFitRes [m_nNpeaks];
-
-  m_pRes[0].Area  = dMV0;
-  m_pRes[0].Posi  = dMV1 + m_nChanA;
-  m_pRes[0].Sigma = m_pRes[0].Area ? sqrt(dKV2) : 0.;
-  m_pRes[0].Fwhm  = m_pRes[0].Sigma * s2fwhm;
-  m_pRes[0].Fw05  = m_pRes[0].Sigma * s2fwhm;
-  m_pRes[0].Fw01  = m_pRes[0].Sigma * s2fwtm;
-  m_pRes[0].W01L  = sqrt(log(10.)/log(2.));
-  m_pRes[0].W01R  = sqrt(log(10.)/log(2.));
-  m_pRes[0].Ampli = m_pRes[0].Sigma ? m_pRes[0].Area/(m_pRes[0].Sigma*sqrt2pi) : 0.;
-  m_bStep  = false;
-  m_bTailL = false;
-  m_bTailR = false;
-
-
-  //////////////////////////////////////////
-  // Err(Kn) = sqrt( (K2n - Kn*Kn)/Area ) //
-  //////////////////////////////////////////
-
-  m_pErr[0].Area  = sqrt(dMV0);                     // ??
-  m_pErr[0].Posi  = sqrt((dKV2            )/ dMV0); // K1 = 0 per definizione;
-  m_pErr[0].Sigma = sqrt((dKV4 - dKV2*dKV2)/ dMV0)/(2*sqrt(dKV2));
-  m_pErr[0].Fwhm  = m_pErr[0].Sigma * s2fwhm;
-
-  m_bValid = true;
-  m_bFunct = true;
-  m_bGauss = true;
-
-  // puntatori alle funzioni risultato del calcolo dei momenti
-  // coincidono con quella del fit gaussiano
-  m_pfFitFunc = &CXCFitSpek::GFitFunc;    // background + all peaks
-  m_pfFitPeak = &CXCFitSpek::GFitPeak;    // one particular peak
-  m_pfFitBack = &CXCFitSpek::LineFunc;    // background only
-
-  // ora chalcola un chi2
-  m_dChi2 = 0.;
-  for(int ii = m_nChanA+nChanBack; ii <= m_nChanB-nChanBack; ii++) {
-    double dy = pSpek[ii] - FitFunc(ii+0.5);
-    dy *= dy;
-    dy /= pSpek[ii] ? pSpek[ii] : 1;
-    m_dChi2 += dy;
-  }
-  m_dChi2 /= m_nChanB-nChanBack - (m_nChanA+nChanBack);
-  return m_bValid;
-}
-
 //////////////////////////////////////////////////////////////////////
 // Fit of a gaussian peak with tails over a stright+step background //
 //////////////////////////////////////////////////////////////////////
@@ -488,6 +349,13 @@ int CXCFitSpek::CalcGaussianFit(float *pSpek, int chanA, int chanB, std::vector<
   }
 
   m_nNdat   = m_nChanB - m_nChanA + 1;    // margins included
+
+  if(m_nNdat<=2) {
+    ierr = -1;      // nothing to fit
+    delete [] lPeaks;
+    return ierr;
+  }
+
   m_nNpeaks = nPeaks;
   m_nNpar   = m_nOffB + m_nOffN * m_nNpeaks;
 
@@ -1124,7 +992,6 @@ double CXCFitSpek::GFitFunc(double xx)
   for(int np = 0; np < m_nNpeaks; np++) {
     yy   = (xx - m_pRes[np].Posi) / m_pRes[np].Sigma;
 
-    f1 = 0.;
     if(m_bTailL && yy < m_pRes[np].TailL) {
       double yl = m_pRes[np].TailL;
       f1 = exp(-0.5*yl*(2.*yy-yl));
@@ -1166,7 +1033,6 @@ double CXCFitSpek::GFitPeak(double xx, int np)
 
     yy   = (xx - m_pRes[np].Posi) / m_pRes[np].Sigma;
 
-    f1 = 0.;
     if(m_bTailL && yy < m_pRes[np].TailL) {
       double yl = m_pRes[np].TailL;
       f1 = exp(-0.5*yl*(2.*yy-yl));
@@ -1688,251 +1554,6 @@ double CXCFitSpek::ExpPeak(double xx, int /*nn*/)
   val  = m_dExpAmpli * exp(-xx/m_dExpDecay);
 
   return val;
-}
-
-////////////////////////////////////////////////
-// Fit of sine wave over a stright background //
-////////////////////////////////////////////////
-
-/*
-           X  dove si vuole calcolare (riferito all'inizio dello spettro)
-  chanA    Z  canale di riferimento
-  back0    B0 fondo costante
-  back1    B1 slope del fondo riferito a chanA
-  ampli    A  ampiezza della sinusoide
-  omega    B  pulsazione della sinusoide
-  phase    C  fase della sinusoide
-
-
-  Funct(X) = B0 + B1 * (X-Z) + A * sin(B*X + C)
-
-*/
-
-// adattato da CalcGaussianFit
-int CXCFitSpek::CalcSinusoid(float *pSpek, int chanA, int chanB, double period, bool bFlat, bool bSlope)
-{
-  // nothing valid yet
-  Reset();
-
-  // puntatori alle funzione per Curfit()
-  m_pfFunct = &CXCFitSpek::SFfunF;    // funzione
-  m_pfDeriv = &CXCFitSpek::SFderF;    // derivata
-
-  m_nOffB = 2;
-  m_nOffN = 3;
-
-  int ii, np;
-  int ierr=0;
-  double  chi2, chi2n;
-
-  // Verify fit region
-  if(chanA < chanB) {
-    m_nChanA = chanA;
-    m_nChanB = chanB;
-  }
-  else {
-    m_nChanA = chanB;
-    m_nChanB = chanA;
-  }
-  m_nBgChanA = m_nChanA;
-  m_nBgChanB = m_nChanB;
-
-  // nothing to fit if region empty
-  bool empty = true;
-  for(ii = m_nChanA; ii <=  m_nChanB; ii++) {
-    if(pSpek[ii]) {
-      empty = false;
-      break;
-    }
-  }
-  if(empty) {
-    ierr = -1;
-    return ierr;
-  }
-
-  // nothing to fit if frequency too high
-  if(period < 2) {
-    ierr = -2;
-    return ierr;
-  }
-
-  m_nNdat   = m_nChanB - m_nChanA + 1;    // margins included
-  m_nNpeaks = 1;
-  m_nNpar   = m_nOffB + m_nOffN * m_nNpeaks;
-
-  // create parameters structure
-  m_pPar = new CFitPar [m_nNpar];
-
-  // the data to fit
-  m_pDatErr = new double [m_nNdat];
-  m_pDatVal = new double [m_nNdat];
-
-  // prepare vector of data and 1/(sigma^2)
-  float  *ps = pSpek + m_nChanA;
-  for(ii = 0; ii <  m_nNdat; ii++) {
-    double yy  = *ps++;
-    m_pDatVal[ii] = yy;
-    m_pDatErr[ii] = 1.;
-  }
-
-  ////////////////////////////////////////
-  // estimates for the first fit round  //
-  // limiting number of free parameters //
-  ////////////////////////////////////////
-
-  double vsum = 0.;
-  double vmin = m_pDatVal[0];
-  double vmax = m_pDatVal[0];
-  for(ii = 0; ii <  m_nNdat; ii++) {
-    double dd = m_pDatVal[ii];
-    vsum += dd;
-    vmin  = min(vmin, dd);
-    vmax  = max(vmax, dd);
-  }
-  double bg0 = vsum / m_nNdat;
-//  double bg1 = 0.;
-
-  m_bFlat  = bFlat;
-  m_bSlope = bSlope;
-
-  // background level [0]
-  if(m_bFlat) {
-    m_pPar[0].Value = bg0;
-    m_pPar[0].Status = p_Free;
-  }
-  else {
-    m_pPar[0].Value  = 0;
-    m_pPar[0].Status = p_Fixed;
-  }
-
-  // backgrounr slope [1] --> no slope
-  bSlope = m_bSlope;
-  m_bSlope = false;
-  m_pPar[1].Value  = 0.;
-  m_pPar[1].Status = p_Fixed;
-
-  bg0 = m_pPar[0].Value;
-//  bg1 = m_pPar[1].Value;
-
-  int offs;     // keep this mechanism to add other components
-  for(np = 0, offs = m_nOffB; np < m_nNpeaks; np++, offs += m_nOffN) {
-    // amplitude      --> limited;
-    m_pPar[offs+0].Value  = (vmax - vmin)/ 2;;
-    m_pPar[offs+0].Status = p_Free;
-    // frequency      --> free
-    m_pPar[offs+1].Value  = 2*m_pi/period;
-    m_pPar[offs+1].Status = p_Free;
-    // phase          --> free
-    m_pPar[offs+2].Value  = 0;
-    m_pPar[offs+2].Status = p_Free;
-  }
-
-  // count number of free parameters
-  m_nFpar = 0;
-  for(np = 0; np < m_nNpar; np++) {
-    if(m_pPar[np].Status == p_Free) m_nFpar++;
-  }
-
-  if(m_nFpar < 1) {
-    ierr = -3;      // nothing to fit
-    goto cleanup;
-  }
-
-  if(m_nNdat - m_nFpar < 1) {
-    ierr = -4;      // insufficient degrees of freedom
-    goto cleanup;
-  }
-
-///////////////////////
-//// first fit round //
-///////////////////////
-
-  chi2 = Curfit(m_nNdat, m_nNpar, m_nFpar);
-  if(chi2 < 0) {
-    ierr = -5;
-    goto cleanup;
-  }
-
-///////////////////////
-//// the final fit ////
-///////////////////////
-
-  // background level [0]
-  m_pPar[0].Status = (m_bFlat)  ? p_Free : p_Fixed;
-
-  // backgrounr slope [1]
-  m_bSlope = bSlope;
-  m_pPar[1].Status = (m_bSlope) ? p_Free : p_Fixed;
-
-  for(np = 0, offs = m_nOffB; np < m_nNpeaks; np++, offs += m_nOffN) {
-    // amplitude      --> free;
-    m_pPar[offs+0].Status = p_Free;
-    // frequency      --> free
-    m_pPar[offs+1].Status = p_Free;
-    // phase          --> free
-    m_pPar[offs+2].Status = p_Free;
-  }
-
-  // count number of free parameters
-  m_nFpar = 0;
-  for(np = 0; np < m_nNpar; np++) {
-    if(m_pPar[np].Status == p_Free) m_nFpar++;
-  }
-
-  if(m_nFpar < 1) {
-    ierr = -6;      // nothing to fit
-    goto cleanup;
-  }
-
-  if(m_nNdat - m_nFpar < 1) {
-    ierr = -7;      // insufficient degrees of freedom
-    goto cleanup;
-  }
-
-  chi2n = Curfit(m_nNdat, m_nNpar, m_nFpar);
-  if(chi2n < 0) {
-    if(chi2n != -2) {   // -2 vuol dire che non e' riuscito a fare meglio
-      ierr = -8;
-      goto cleanup;
-    }
-    chi2n = chi2;
-  }
-
-  m_dChi2  = chi2n/(m_nNdat-m_nFpar);
-  m_bValid = true;
-  m_bSin   = true;
-  m_bBckgr = m_bFlat || m_bSlope;
-  m_bLine  = true;
-  m_bFunct = true;
-
-  // save result in data_menbers
-  m_dBack0 = m_pPar[0].Value; m_dBack0Err = m_pPar[0].Error;
-  m_dBack1 = m_pPar[1].Value; m_dBack1Err = m_pPar[1].Error;
-
-  m_pRes = new CFitRes [m_nNpeaks];
-  m_pErr = new CFitRes [m_nNpeaks];
-
-  for(np = 0, offs = m_nOffB; np < m_nNpeaks; np++, offs += m_nOffN) {
-    m_pRes[np].Ampli = m_pPar[offs+0].Value;
-    m_pRes[np].Omega = m_pPar[offs+1].Value;
-    m_pRes[np].Phase = m_pPar[offs+2].Value;
-
-    m_pErr[np].Ampli = m_pPar[offs+0].Error;
-    m_pErr[np].Omega = m_pPar[offs+1].Error;
-    m_pErr[np].Phase = m_pPar[offs+2].Error;
-  }
-
-  // puntatori alle funzioni risultato del fit
-  m_pfFitFunc = &CXCFitSpek::SFitFunc;    // sinusoid + background
-  m_pfFitPeak = &CXCFitSpek::SFitWave;    // the sinusoid
-  m_pfFitBack = &CXCFitSpek::LineFunc;    // background only
-
-cleanup:
-  delete [] m_pPar;    m_pPar    = NULL;
-  delete [] m_pDatVal; m_pDatVal = NULL;
-  delete [] m_pDatErr; m_pDatErr = NULL;
-
-  return (m_bValid) ? (m_nNpeaks) : (ierr);
 }
 
 // the private methods for the sinusoidal fit
