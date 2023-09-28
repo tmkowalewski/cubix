@@ -403,7 +403,7 @@ void CXBgdUtility::GetParams()
         return;
     }
 
-    TH1D *clone = dynamic_cast<TH1D*>(hist->Clone(Form("%s_clone",hist->GetName())));
+    TH1 *clone = dynamic_cast<TH1*>(hist->Clone(Form("%s_clone",hist->GetName())));
     for(int i=0 ; i<clone->GetNbinsX() ; i++)
         clone->SetBinContent(i+1,hist->GetBinContent(i+1));
 
