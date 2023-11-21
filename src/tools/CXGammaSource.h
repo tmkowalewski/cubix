@@ -31,60 +31,48 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
-#ifndef CXRadCubePlayer_H
-#define CXRadCubePlayer_H
+#ifndef CXGammaSource_h
+#define CXGammaSource_h
 
-#include "RQ_OBJECT.h"
-#include "TGFrame.h"
+#include <vector>
+
+#include "TNamed.h"
+
+#include "tkmeasure.h"
 
 using namespace std;
+using namespace tkn;
 
-class CXMainWindow;
-class CXRadReader;
-class CXRadCubeTH1Proj;
-class TGListBox;
-class TGLBEntry;
-class TGCheckButton;
-class TGTextEntry;
-class TGNumberEntry;
+struct CXGammaSourceDecay {
 
-class CXRadCubePlayer : public  TGVerticalFrame
-{
-    RQ_OBJECT("CXRadCubePlayer");
+    TString Daughter;
+    TString DecayMode;
 
-private:
+    tkmeasure energy;
+    tkmeasure intensity;
 
-    CXMainWindow *fMainWindow = nullptr;
-    CXRadCubeTH1Proj *fCurrentProj = nullptr;
-
-    TGCheckButton *fFixRange = nullptr;
-    TGCheckButton *fBckSubtract = nullptr;
-
-    TGNumberEntry *fRebinValue = nullptr;
-
-    TGListBox *fStoredSpectraBox = nullptr;
-    TList *fListOfStoredSpectra = nullptr;
-    TGTextEntry *fDrawOpt = nullptr;
-
-public:
-    CXRadCubePlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h, CXMainWindow *window);
-    ~CXRadCubePlayer();
-
-    void SetMainWindow(CXMainWindow *w);
-
-    void Init(CXRadReader *radreader);
-    void Project();
-    void AddGate1();
-    void AddGate2();
-    void ClearGates();
-    void ApplyLastGates();
-
-    void UpdateDrawOpt();
-
-private:
-    CXRadCubeTH1Proj *GetProj();
-
-    ClassDef(CXRadCubePlayer,0);
+    bool is_ref = false;
 };
 
-#endif
+class CXGammaSource : public TNamed
+{
+
+private:
+
+    bool fis_known = false;  // file exists
+    bool fis_source = false; // means contains intensities
+
+    vector<CXGammaSourceDecay> fdecays;
+
+public:
+    CXGammaSource(const char* name);
+    virtual ~CXGammaSource(){;}
+
+    bool is_known(){return fis_known;}
+    bool is_source(){return fis_source;}
+    const vector<CXGammaSourceDecay> get_decays() {return fdecays;}
+
+    ClassDef(CXGammaSource,0)
+};
+
+#endif // CXSpreadIntensityMatrix_H

@@ -71,14 +71,14 @@ CXHist2DPlayer::CXHist2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fGroupFrame->AddFrame(fSubGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, -10, -10, 0, 0));
 
     TGCompositeFrame *fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Gate on axis: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,10,0,0));
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Gate on axis: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,10,2,2));
     fProjectionAxis = new TGComboBox(fHorizontalFrame);
     fHorizontalFrame->AddFrame(fProjectionAxis,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX | kLHintsExpandY ,1,3,0,0));
     fProjectionAxis->AddEntry("X",0);
     fProjectionAxis->AddEntry("Y",1);
     fProjectionAxis->Select(0);
     fProjectionAxis->Connect("Selected(Int_t)", "CXHist2DPlayer", this, "UpdateProjection()");
-    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,10,10));
 
     fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
     TGTextButton *GateButton = new TGTextButton(fHorizontalFrame, "Gate");

@@ -211,7 +211,7 @@ void CXRadCubeTH1Proj::Project(Bool_t FixRange,Bool_t BGSubtract, Int_t Rebin)
 {
     Float_t SavedRange[2];
     if(!fMainWindow->GetHisto(fProjPad)) FixRange = false;
-    if( FixRange ){
+    if( FixRange ) {
         SavedRange[0] = fProjPad->GetUxmin();
         SavedRange[1] = fProjPad->GetUxmax();
     }
@@ -219,8 +219,7 @@ void CXRadCubeTH1Proj::Project(Bool_t FixRange,Bool_t BGSubtract, Int_t Rebin)
     vector< pair<float, float> > gates1; //{make_pair(205.5,214.5)};
     vector< pair<float, float> > gates2; //{make_pair(345.5,355.5)};
 
-    for(int i=0 ; i<fListOfGates->GetEntries() ; i++)
-    {
+    for(int i=0 ; i<fListOfGates->GetEntries() ; i++) {
         CXGateBox* box =  static_cast<CXGateBox*>(fListOfGates->At(i));
 
         if(box->IsBGD()) {

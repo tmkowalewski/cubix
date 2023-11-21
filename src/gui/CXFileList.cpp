@@ -331,13 +331,8 @@ void CXFileList::DisplayRadSpe(const TString &fname)
 
     TH1 *hist = nullptr;
 
-    cout << endl;
-    cout << fname << " " << filanem << " " << fRadReader << endl;
-
     if(fname.EndsWith(".spe")) hist = fRadReader->GetHistFromSpeFile(filanem);
     else if(fname.EndsWith(".2dp")) hist = fRadReader->GetHistFrom2dpFile(filanem);
-
-    cout << hist << endl;
 
     if(hist) fMainWindow->DoDraw(hist,fBrowser->GetDrawOption());
 }
@@ -551,8 +546,7 @@ Bool_t CXFileList::ReadConfFile()
     string line;
     TString Buffer;
 
-    while(FileConf)
-    {
+    while(FileConf) {
         getline(FileConf,line);
         Buffer = line;
 

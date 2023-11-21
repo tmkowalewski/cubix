@@ -11,5 +11,6 @@
 #pragma link C++ class CXRecalEnergy+;
 #pragma link C++ class CXCFitSpek+;
 #pragma link C++ class CXSpreadIntensityMatrix+;
+#pragma link C++ class CXGammaSource+;
 
 #endif

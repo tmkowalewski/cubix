@@ -40,6 +40,7 @@
 #include "TFitResult.h"
 #include "TMath.h"
 #include "Math/MinimizerOptions.h"
+#include "TVirtualFitter.h"
 
 #include "CXRecalEnergy.h"
 
@@ -62,6 +63,7 @@ CXRecalEnergy::CXRecalEnergy() :
     specPeaks(),
     Energies(),
     Delendae(),
+    Intensities(),
     eBhead(0.0),
     eBstep(0.0),
     eBnumb(0),
@@ -108,6 +110,7 @@ void CXRecalEnergy::Reset()
     specPeaks.clear();
     Energies.clear();
     Delendae.clear();
+    Intensities.clear();
     eBhead=0.0;
     eBstep=0.0;
     eBnumb=0;
@@ -163,8 +166,6 @@ void CXRecalEnergy::StartCalib()
     else
         np = PeakSearch2(specData, specFromDef, specToDef, specFWHMdef, specAMPLdef, specPeaks);
 
-    cout<<"yo :" <<np<<endl;
-
     if(np) {
         int fp = FitPeaks( Verbosity );
         if(fp) {
@@ -193,7 +194,9 @@ void CXRecalEnergy::StartCalib()
         double refPeakPosi=0, refPeakEner=0;
         int iref = -1;;
         if(refEner > 0 && fCalibOrder) {
+            gErrorIgnoreLevel = kFatal;
             refPeakPosi = fCalibFunction->GetX(refEner);                            // position of the reference peak derived from calibration
+            gErrorIgnoreLevel = kPrint;
             for(size_t irp = 0; irp < Peaks.size(); irp++) {
                 if( (abs(Peaks[irp].posi-refPeakPosi) < specFWHMdef)/* && Peaks[irp].good*/ ) { // not restricted to the good peaks
                     iref = irp;
@@ -202,19 +205,20 @@ void CXRecalEnergy::StartCalib()
                 }
             }
         }
+        if(iref==-1) cout << "Reference peak not found !" << endl;
         if(Verbosity >= 0)
             cout << "#" << setw(3) << fId << setw(5) << np << setw(4) << ngood;
 
-//        double chi2 = 0;
-//        int nused = 0;
-//        for(size_t np_ = 0; np_ < Peaks.size(); np_++) {
-//            if(Peaks[np_].good) {
-//                nused++;
-//                double ee = slope*(Peaks[np_].posi);
-//                chi2 += pow(Energies[Peaks[np_].erefindex]-ee, 2);
-//            }
-//        }
-//        chi2 = (nused-1) ? chi2/(nused-1) : 0;
+        //        double chi2 = 0;
+        //        int nused = 0;
+        //        for(size_t np_ = 0; np_ < Peaks.size(); np_++) {
+        //            if(Peaks[np_].good) {
+        //                nused++;
+        //                double ee = slope*(Peaks[np_].posi);
+        //                chi2 += pow(Energies[Peaks[np_].erefindex]-ee, 2);
+        //            }
+        //        }
+        //        chi2 = (nused-1) ? chi2/(nused-1) : 0;
 
         if(Verbosity>=0) {
             cout<<right<<fixed;
@@ -243,6 +247,64 @@ void CXRecalEnergy::StartCalib()
             cout << setw(10) << 0. << setw(8) << 0. << setw(8) << 0. << setw(10) << 0. << setw(12) << 0. << setw(6) << 0. << setw(10) << 0. << setw(8) << 0. << setw(8) << 0.;
     }
     if(Verbosity>=0) cout<<endl;
+
+    stopTime = clock();
+}
+
+
+///******************************************************************************************///
+
+void CXRecalEnergy::FitEfficiency()
+{
+    if(!Intensities.size()) {
+        cout<<"Source for efficiency empty"<<endl;
+        return;
+    }
+
+    Energies.clear();
+    for(auto &eff: Intensities) {
+        Energies.push_back(eff.at(0));
+        Energies_unc.push_back(eff.at(1));
+    }
+
+    initialize();                 // initialize parameters related to digitisers and detectors
+
+    startTime  = clock();
+
+    if(specData == nullptr) {
+        cout<<"Data empty"<<endl;
+        return;
+    }
+
+    int np    = 0;
+    int ngood = 0;
+
+    if(bOneLine)
+        np = LargePeaks1(specData, specFromDef, specToDef, specFWHMdef, specAMPLdef, specPeaks, 1);
+    else if(bTwoLines)
+        np = LargePeaks1(specData, specFromDef, specToDef, specFWHMdef, specAMPLdef, specPeaks, 6);
+    else if(Dmode == 1)
+        np = PeakSearch1(specData, specFromDef, specToDef, specFWHMdef, specAMPLdef, specPeaks);
+    else
+        np = PeakSearch2(specData, specFromDef, specToDef, specFWHMdef, specAMPLdef, specPeaks);
+
+    if(np) {
+        int fp = FitPeaks( Verbosity );
+        if(fp) {
+            if(specOffset) {               // correct peak positions for specOffs
+                for(size_t np_ = 0; np_ < Peaks.size(); np_++) {
+                    Peaks[np_].posi -= specOffset;
+                }
+            }
+            ROOTEffFit();
+        }
+    }
+    else {
+        Peaks.clear();
+        if(Verbosity > 0)
+            cout<<Form("\n");
+        return;
+    }
 
     stopTime = clock();
 }
@@ -1043,6 +1105,7 @@ int CXRecalEnergy::FitPeaks(int verbose)
             //      cout<<"[ "<<res.BgFrom<<" ; "<<res.BgTo<<" ] ==> Bg = "<<res.BgdSlope<<"*x + "<<res.BgdOff<<endl;
 
             res.area   = m_pCFit->Area(jj);
+            res.errarea   = m_pCFit->AreaErr(jj);
             res.ampli  = m_pCFit->Amplitude(jj);
             res.posi   = m_pCFit->Position(jj);
             res.fw05   = m_pCFit->Fw05(jj);
@@ -1230,7 +1293,7 @@ Int_t CXRecalEnergy::EROOTCalibration()
     for(size_t np = 0; np < Peaks.size(); np++) {
         if(Peaks[np].good) {
             fCalibGraph->SetPoint(fCalibGraph->GetN(), Peaks[np].posi, Energies[Peaks[np].erefindex]);
-            //            fCalibGraph->SetPointError(fCalibGraph->GetN()-1, Peaks[np].errposi, 0.);
+            //            if(Energies_unc[Peaks[np].erefindex]>0.) fCalibGraph->SetPointError(fCalibGraph->GetN()-1, Peaks[np].errposi, Energies_unc[Peaks[np].erefindex]);
         }
     }
 
@@ -1265,24 +1328,279 @@ Int_t CXRecalEnergy::EROOTCalibration()
             double fwhm_e = fCalibFunction->Eval(Peaks[np].fwhm)-fCalibFunction->GetParameter(0);
             double res = ecal-Energies[Peaks[np].erefindex];
             fResidueGraph->SetPoint(fResidueGraph->GetN(),Energies[Peaks[np].erefindex],res);
-            //            fResidueGraph->SetPointError(fResidueGraph->GetN()-1,0.,r->GetConfidenceIntervals()[fResidueGraph->GetN()-1]);
+            fResidueGraph->SetPointError(fResidueGraph->GetN()-1,0.,r->GetConfidenceIntervals()[fResidueGraph->GetN()-1]);
             if(Verbosity > 1) cout<<"#2" << setw(12) << setprecision(1) << Peaks[np].area << setw(12) << setprecision(2) << Peaks[np].posi << setw(12) << setprecision(3) << Peaks[np].fwhm << setw(12) << setprecision(3) << fwhm_e << setw(13) << setprecision(3) << ecal << setw(15) << setprecision(3) << res <<endl;
             ngood++;
         }
     }
 
-    if(r->Status()>0) cout<<"Warning: Fit failed"<<endl;
+    if(!r->IsValid()) cout<<"Warning: Fit failed"<<endl;
 
     return ngood;
 }
 
 ///******************************************************************************************///
 
-Double_t CXRecalEnergy::PolynomialFunc(Double_t*xx,Double_t*pp)
+Int_t CXRecalEnergy::ROOTEffFit()
+{
+    vector <Fitted>::iterator Iter;
+
+    double bestSlope = 1.;
+
+    if( Peaks.size() < 2 || Energies.size() < 2){
+        if(Verbosity> 1) cout << "#   Number of peaks (" << Peaks.size() << ") or number of energies (" << Energies.size() << ")  too small" << endl;
+        return 0;
+    }
+
+    // only the peak with largest area used as pivot
+    sort( Peaks.begin( ), Peaks.end( ), largerAmplitude() );
+    int npmax = min( min(Peaks.size(), size_t(4)), Energies.size() );  // limit the number of peaks to min(np,ne,4)
+    for(int np = 0; np < npmax; np++)
+        Peaks[np].good = true;
+    for(size_t np = npmax; np < Peaks.size(); np++)
+        Peaks[np].good = false;
+
+    // (re)order the peaks
+    sort( Peaks.begin( ), Peaks.end( ), smallerPosi() );
+    if(Verbosity> 2) {
+        cout<<Form("#  Sorted Peak Positions = (");
+        for ( Iter = Peaks.begin( ) ; Iter != Peaks.end( ) ; Iter++ ) cout<<Form( " %d", int((*Iter).posi) );
+        cout<<Form(" )\n");
+    }
+
+    // Connect every (large) peak with every energy and check how many other (peak,energy) pairs agree with this slope
+    // The combination with the largest number of agreeing pairs provides the reference gain for the final average
+    // Equal number of matches are ordered by chi2
+    int    np_max = 0;      // number of matches
+    int    np_ind = 0;      // reference peak
+    int    np_ref = 0;      // reference energy
+    double np_chi = 1.e40;  // to distinguish among equal matchers
+    double dpos2max = specFWHMdef*specFWHMdef;
+    for(size_t np = 0; np < Peaks.size(); np++) {
+        if(!Peaks[np].good)
+            continue;
+        int    ec_max = 0;      // number of matches for peak np
+        int    ec_ref = 0;      // reference energy
+        double ec_chi = 1.e30;  // its chi2
+        for(size_t ne = 0; ne < Energies.size(); ne++) {            // connecting peak np with energy ne
+            double lgain = (Peaks[np].posi)/Energies[ne];             // gives this gain
+            int match = 0;
+            double chi2 = 0;
+            for(size_t nee = 0; nee < Energies.size(); nee++) {       // count the number of matches for this combination
+                double epos = Energies[nee]*lgain;                      // expected position
+                for(size_t ip = 0; ip < Peaks.size(); ip++) {
+                    double dpos  = Peaks[ip].posi-epos;
+                    double dpos2 = dpos*dpos;
+                    if(dpos2 < dpos2max) {
+                        match++;
+                        chi2 += dpos2;
+                        break;
+                    }
+                }
+            }
+            if( (match > ec_max)  ||                        // more matches
+                ((match == ec_max) && (chi2 < ec_chi)) ) {  // or better chi2
+                ec_max = match;       // record the best combination so far
+                ec_ref = ne;
+                ec_chi = chi2;
+            }
+        }
+        if( (ec_max > np_max) ||                           // more matches
+            ((ec_max == np_max) && (ec_chi < np_chi)) ) {  // or better chi2
+            np_max = ec_max;       // record the best combination so far
+            np_ind = np;
+            np_ref = ec_ref;
+            np_chi = ec_chi;
+        }
+        //if(np_max == Energies.size())
+        //  break;    // cannot do better than this ?
+    }
+
+    bestSlope = Energies[np_ref]/(Peaks[np_ind].posi);
+    if(Verbosity > 2) cout<<Form("#  Best-match slope %g [p=%d e=%d] with %d values\n", bestSlope, np_ind, np_ref, np_max);
+
+    // find the good peaks
+    for(size_t np = 0; np < Peaks.size(); np++) {
+        Peaks[np].erefindex = -1;
+        Peaks[np].eref = 0.;
+        Peaks[np].good = false;
+    }
+
+    int match = 0;
+    for(size_t ne = 0; ne < Energies.size(); ne++) {
+        double epos = Energies[ne]/bestSlope;
+        for(size_t np = 0; np < Peaks.size(); np++) {
+            if(abs(Peaks[np].posi-epos) < specFWHMdef && !Peaks[np].good) {
+                match++;
+                Peaks[np].erefindex = ne;
+                Peaks[np].eref = Energies[ne];
+                Peaks[np].good = true;
+                break;
+            }
+        }
+    }
+
+    delete fEfficiencyFunction;
+    delete fEfficiencyGraph;
+    delete fEfficiencyConfidenceIntervall;
+    fEfficiencyConfidenceIntervall = nullptr;
+
+    fEfficiencyGraph = new TGraphErrors;
+    fEfficiencyGraph->SetName("EfficiencyGraph");
+    fEfficiencyGraph->SetMarkerColor(kRed);
+    fEfficiencyGraph->SetMarkerStyle(20);
+    fEfficiencyGraph->GetXaxis()->SetTitle("Energy (channels)");
+    fEfficiencyGraph->GetYaxis()->SetTitle("Normalized area (counts)");
+
+    ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2","Migrad");
+    ROOT::Math::MinimizerOptions::SetDefaultMaxIterations(1000000);
+    ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(1000000);
+
+    fEfficiencyFunction = new TF1("EfficiencyFunc", this, &CXRecalEnergy::EfficiencyFunc, specFromDef, specToDef, 8, "CXRecalEnergy", "EfficiencyFunc");
+
+    fEfficiencyFunction->SetLineColor(kBlue);
+    fEfficiencyFunction->SetNpx(5000);
+    fEfficiencyFunction->SetParNames("Scale","A","B","C","D","E","F","G");
+    fEfficiencyFunction->SetParameters(1.,7.04,0.7,0.,5.273,-0.863,0.01,11); //default from radware's web site
+
+    // fit slope using the good peaks, starting without errors
+
+    double scale=1;
+    double scale_err=0;
+
+    if(refEner) {
+        for(size_t np = 0; np < Peaks.size(); np++) {
+            if(Peaks[np].good && (refEner == Energies[Peaks[np].erefindex])) {
+                scale = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.);
+                scale_err = scale*(Peaks[np].errarea/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2));
+                break;
+            }
+        }
+        if(scale!=1)
+            cout << "Efficiency graph normalized for the reference peak: " << refEner << " keV" << endl;
+        else
+            cout << "Reference peak: " << refEner << " keV not found" << endl;
+    }
+    if(scale==1.) {
+        cout << "No reference peak defined, graph will not been normalized" << endl;
+    }
+
+    cout<<dec<<setprecision(5);
+    cout<<setw(15) << "Energy" << setw(15) << "Energy error" << setw(15) << "Intensity (%)" << setw(15) << "Area" << setw(15) << "Area error" << setw(15) << "Corrected area" <<endl;
+    for(size_t np = 0; np < Peaks.size(); np++) {
+        if(Peaks[np].good) {
+            double intensity = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.);
+            //            double intensity_err = intensity*(Peaks[np].errarea/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2));
+
+            double intensity_scaled = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.)/scale;
+            double intensity_scaled_err = intensity_scaled*(Peaks[np].errarea/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2) +scale_err/scale);
+
+            fEfficiencyGraph->AddPoint(Energies[Peaks[np].erefindex],intensity_scaled);
+            fEfficiencyGraph->SetPointError(fEfficiencyGraph->GetN()-1,Peaks[np].errposi,intensity_scaled_err);
+
+            cout<<setw(15) << Energies[Peaks[np].erefindex] << setw(15) << Peaks[np].errposi << setw(15) << Intensities.at(Peaks[np].erefindex).at(2) << setw(15) << Peaks[np].area  << setw(15) << Peaks[np].errarea << setw(15) << intensity <<endl;
+        }
+    }
+
+    if(fEfficiencyGraph->GetN()<=2) {
+        cout << "Not enough peaks to proceed the fit" << endl;
+        return fEfficiencyGraph->GetN();
+    }
+
+    // Scale the default parameters to the max of the graph
+    fEfficiencyFunction->FixParameter(0,0.0011988228*(*max_element(fEfficiencyGraph->GetY(),fEfficiencyGraph->GetY()+fEfficiencyGraph->GetN()))); // 0.0011988228 is to scale the default parameters, to a max at 1
+
+    fEfficiencyFunction->SetParLimits(1,0,100);     // A, def 7.04
+    fEfficiencyFunction->SetParLimits(2,0.3,2);    // B, def 0.7
+    //    fEfficiencyFunction->SetParLimits(3,0.,1.);  // C, def 0.
+    fEfficiencyFunction->SetParLimits(4,1,20);     // D, def 5.273
+    fEfficiencyFunction->SetParLimits(5,-2,0.);    // E, def -0.863
+    fEfficiencyFunction->SetParLimits(6,-1,1);      // F, def 0.01
+    fEfficiencyFunction->SetParLimits(7,1,30);     // G, def 11
+
+    // Fix B to 1
+    fEfficiencyFunction->FixParameter(2,1);
+    // Fix C to 0
+    fEfficiencyFunction->FixParameter(3,0);
+    // Fix G to 10
+    fEfficiencyFunction->FixParameter(7,10);
+    fEfficiencyGraph->Fit(fEfficiencyFunction,"Q0R");
+
+    // Release B
+    fEfficiencyFunction->ReleaseParameter(2);
+    fEfficiencyGraph->Fit(fEfficiencyFunction,"Q0R");
+
+    // Release G
+    fEfficiencyFunction->ReleaseParameter(7);
+
+    TFitResultPtr r = fEfficiencyGraph->Fit(fEfficiencyFunction,"SR");
+
+    if(Verbosity>0) r->Print();
+
+    if(!r->IsValid()) cout<<"Warning: Fit failed"<<endl;
+    else {
+        fEfficiencyConfidenceIntervall= new TH1D("EffConfidence95","Efficiency 0.95 confidence band", 2000, specFromDef, specToDef);
+        (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fEfficiencyConfidenceIntervall);
+        fEfficiencyConfidenceIntervall->SetFillStyle(3002);
+        fEfficiencyConfidenceIntervall->SetFillColor(kBlue);
+        fEfficiencyConfidenceIntervall->SetFillColorAlpha(kBlue,0.5);
+        fEfficiencyConfidenceIntervall->SetStats(false);
+    }
+
+    return fEfficiencyGraph->GetN();
+}
+
+///******************************************************************************************///
+
+Double_t CXRecalEnergy::EfficiencyFunc(Double_t*x,Double_t*p)
+{
+    double EG = x[0];
+    double eff=0;
+
+    double Scale=p[0];
+
+    double A=p[1];
+    double B=p[2];
+    double C=p[3];
+
+    //high energy
+    double D=p[4];
+    double E=p[5];
+    double F=p[6];
+
+    // interaction parameter between the two regions
+    // the larger G is, the sharper will be the turnover at the top, between the two curves.
+    // If the efficiency turns over gently, G will be small.
+    double G=p[7];
+
+    double E1=100.; //100 keV
+    double E2=1000.; //1000 keV
+
+    double x1 = log(EG / E1);
+    double x2 = log(EG / E2);
+
+    double f1 = A + B*x1 + C*x1*x1;
+    double f2 = D + E*x2 + F*x2*x2;
+
+    if (f1 <= 0. || f2 <= 0.)
+        eff = 1.0;
+    else {
+        double x3 = exp(-G * log(f1)) + exp(-G * log(f2));
+
+        if (x3 <= 0.) eff = 1.0;
+        else eff = exp(exp(-log(x3) / G));
+    }
+
+    return Scale*eff;
+}
+
+///******************************************************************************************///
+
+Double_t CXRecalEnergy::PolynomialFunc(Double_t*x,Double_t*p)
 {
     Double_t value=0;
     for(int i=0 ; i<=fCalibOrder ; i++) {
-        value += pp[i]*TMath::Power(xx[0],i);
+        value += p[i]*TMath::Power(x[0],i);
     }
     return value;
 }

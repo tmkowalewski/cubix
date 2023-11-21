@@ -44,15 +44,20 @@ using namespace std;
 CXProgressBar::CXProgressBar(ULong64_t Nevts) :
     fWatch(new TStopwatch()),
     fNEvts(Nevts),
-    fCurrentEntry(0),
-    fLastValidEntry(0),
-    fLastValidTime(0.)
+    fCurrentEntry(0)
 {
     fWatch->Start();
+    print_thread = std::thread(&CXProgressBar::UpdateStatus, this);
 }
 
 CXProgressBar::~CXProgressBar()
 {
+    fdo_stop=true;
+
+    if (print_thread.joinable()) {
+        print_thread.join();
+    }
+
     fWatch->Stop();
 
     Double_t  realt = fWatch->RealTime();
@@ -73,13 +78,15 @@ CXProgressBar::~CXProgressBar()
 
 void CXProgressBar::UpdateStatus()
 {
-    Int_t Step = (Int_t)(((Double_t)fCurrentEntry)/(((Double_t)fNEvts)/20.));
+    while(true) {
+        if(fdo_stop)break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(frefreshtime_in_msec));
 
-    Int_t RefreshRate = (Int_t)(((Float_t)fNEvts)/1e5); // Pour 1 affichage par seconde a un rate de 50evts/s
-    if(RefreshRate == 0) RefreshRate = 1;
+        if(fCurrentEntry==0) continue;
+        if(fCurrentEntry>=fNEvts) continue;
 
-    if(((Int_t)(fNEvts/RefreshRate)) == 0  || ((Int_t)fCurrentEntry)%((Int_t)(fNEvts/RefreshRate))==0)
-    {
+        Int_t Step = (Int_t)(((Double_t)fCurrentEntry)/(((Double_t)fNEvts)/20.));
+
         Float_t Frac = ((Double_t)fCurrentEntry)/((Double_t)fNEvts);
 
         clog<<"\rTotal "<<fNEvts<<" events |";
@@ -89,25 +96,20 @@ void CXProgressBar::UpdateStatus()
         for(int it=Step+1 ; it<20 ; it++)
             clog<<".";
         clog<<"| "<<setw(6)<<Form("%.2f%%",Frac*100.);
-        fWatch->Stop();
 
         Float_t Time = fWatch->CpuTime();
+        fWatch->Start(false);
+
         Float_t TimeLeftTotSec = ((1-Frac)*Time)/Frac;
         UInt_t TimeLeftInHour = (UInt_t)(TimeLeftTotSec/3600.);
         UInt_t TimeLeftInMin = (UInt_t)((TimeLeftTotSec - TimeLeftInHour*3600.)/60.);
         UInt_t TimeLeftInSec = (UInt_t)(TimeLeftTotSec - TimeLeftInHour*3600. - TimeLeftInMin*60.);
 
-        Float_t Rate = ((Float_t)(fCurrentEntry-fLastValidEntry))/((Float_t)(Time-fLastValidTime));
+        Float_t Rate = ((Float_t)(fCurrentEntry))/((Float_t)(Time));
 
-        //Float_t Rate = ((Float_t)(fCurrentEntry))/((Float_t)(Time));
-        if(isnan(Rate)) Rate=0.;
-        if(isinf(Rate)) Rate=0.;
+        if(isnan(Rate) || isinf(Rate)) Rate=0.;
 
-        fLastValidEntry = fCurrentEntry;
-        fLastValidTime = Time;
-
-        clog<<" [ "<<setw(5)<<Form("%.1f",Rate)<<" evts/s, time left: "<<Form("%3dh%.2dmin%.2ds ]",TimeLeftInHour,TimeLeftInMin,TimeLeftInSec);
-        fWatch->Start(false);
+        clog<<" [ "<<setw(5)<<Form("%3.03g",Rate)<<" evts/s, time left: "<<Form("%3dh%.2dmin%.2ds ]",TimeLeftInHour,TimeLeftInMin,TimeLeftInSec);
         clog<<flush;
     }
 }

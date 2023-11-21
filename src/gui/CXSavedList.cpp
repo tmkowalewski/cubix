@@ -128,9 +128,12 @@ void CXSavedList::UpdateStoredList(){
 }
 
 void CXSavedList::RemoveSelectedEntry(){
-    if(fStoredSpectraBox->GetSelectedEntry()){
-        fListOfStoredSpectra->Remove(fListOfStoredSpectra->FindObject(fStoredSpectraBox->GetSelectedEntry()->GetTitle()));
+    if(fLastSelected){
+        auto *obj = fListOfStoredSpectra->FindObject(fLastSelected->GetTitle());
+        fListOfStoredSpectra->Remove(fListOfStoredSpectra->FindObject(fLastSelected->GetTitle()));
+        delete obj;
         UpdateStoredList();
+        fLastSelected = nullptr;
     }
     else
         cout<<"No selected entry"<<endl;
@@ -174,33 +177,31 @@ void CXSavedList::ClearStoredList(){
     UpdateStoredList();
 }
 
-void CXSavedList::ProcessedButtonEvent(Event_t */*event*/)
+void CXSavedList::ProcessedButtonEvent(Event_t *event)
 {
-    //    char input[10];
-    //    UInt_t keysym;
+    char input[10];
+    UInt_t keysym;
 
-    //    gVirtualX->LookupString(event, input, sizeof(input), keysym);
+    //        gVirtualX->LookupString(event, input, sizeof(input), keysym);
 
-    //    //        std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << std::endl;
+//            std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << std::endl;
 
-    //    //    if(event->fType == kGKeyPress && keysym == kKey_Control)
-    //    //        fCtrl_On = true;
+    //    if(event->fType == kGKeyPress && keysym == kKey_Control)
+    //        fCtrl_On = true;
 
-    //    if(event->fType == kButtonPress){
-
-    //        if(fLastSelected){
-    //            fLastSelected->SetBackgroundColor((Pixel_t)0x90f269);
-    //            fLastSelected = nullptr;
-    //            fStoredSpectraBox->Layout();
-    //        }
-
-    //        if(fStoredSpectraBox->GetSelectedEntry()){
-    //            fStoredSpectraBox->GetSelectedEntry()->SetBackgroundColor((Pixel_t) 0x87a7d2);
-    //            fLastSelected = fStoredSpectraBox->GetSelectedEntry();
-    //            fStoredSpectraBox->Select(fStoredSpectraBox->GetSelected(),false);
-    //            fStoredSpectraBox->Layout();
-    //        }
-    //    }
+    if(event->fType == kButtonPress){
+        if(fLastSelected){
+            fLastSelected->SetBackgroundColor((Pixel_t)0x90f269);
+            fLastSelected = nullptr;
+            fStoredSpectraBox->Layout();
+        }
+        if(fStoredSpectraBox->GetSelectedEntry()){
+            fStoredSpectraBox->GetSelectedEntry()->SetBackgroundColor((Pixel_t) 0x87a7d2);
+            fLastSelected = fStoredSpectraBox->GetSelectedEntry();
+            fStoredSpectraBox->Select(fStoredSpectraBox->GetSelected(),false);
+            fStoredSpectraBox->Layout();
+        }
+    }
 }
 
 void CXSavedList::DoubleClicked(Int_t id)

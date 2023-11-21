@@ -20,7 +20,7 @@ list(REMOVE_ITEM headers ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
 
 if(ROOT_FOUND)
     include(GenerateROOTLibrary)
-    GENERATE_ROOT_DICTIONARY(${PROJECT_NAME} LINKDEF LinkDef.h HEADERS ${headers} SOURCES ${sources} DEPENDENCIES ROOT::Hist ROOT::Gui)
+    GENERATE_ROOT_DICTIONARY(${PROJECT_NAME} LINKDEF LinkDef.h HEADERS ${headers} SOURCES ${sources} DEPENDENCIES cubix::CubixCore ROOT::Hist ROOT::Gui tkn::tkphysics)
 else ()
     add_library(${PROJECT_NAME} SHARED ${sources})
 endif()

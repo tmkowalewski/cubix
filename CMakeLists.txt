@@ -221,6 +221,7 @@ add_subdirectory (src/gui)
 include_directories (src/gui)
 
 file(GLOB icons ${CMAKE_CURRENT_SOURCE_DIR}/icons/*)
+file(GLOB confs ${CMAKE_CURRENT_SOURCE_DIR}/conf/*)
 file(GLOB databases ${CMAKE_CURRENT_SOURCE_DIR}/databases)
 
 ### ==================================================================
@@ -252,4 +253,5 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/cubix-autocompletion.
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cubix_config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(FILES ${icons} DESTINATION icons COMPONENT icons)
+install(FILES ${confs} DESTINATION conf COMPONENT conf)
 install(DIRECTORY ${databases} DESTINATION ${CMAKE_INSTALL_PREFIX})

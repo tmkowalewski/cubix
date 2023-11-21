@@ -40,7 +40,6 @@
 #include <fstream>
 
 #include "TGListBox.h"
-#include "KeySymbols.h"
 #include "TGLabel.h"
 #include "TGStatusBar.h"
 #include "TRootEmbeddedCanvas.h"
@@ -58,7 +57,6 @@
 #include "TGTextEntry.h"
 #include "TExec.h"
 #include "TPaletteAxis.h"
-#include "TVirtualX.h"
 #include "TSystem.h"
 
 #if (OS_TYPE == OS_LINUX)
@@ -68,6 +66,7 @@
 #include "CXMainWindow.h"
 #include "CXCanvas.h"
 #include "CXNucleusBox.h"
+#include "CXBashColor.h"
 
 #include "tkmanager.h"
 
@@ -291,8 +290,9 @@ void CXNucChart::PlotBoxes()
                 if(withLT) {
                     nb = new CXNucleusBox(gmanager->get_nucleus(zz,nn+zz),0.5,kBlack,kGray+1,charheight*0.25,true, fViewMode->GetSelected());
                 }
-                else
+                else {
                     nb = new CXNucleusBox(gmanager->get_nucleus(zz,nn+zz),0.5,kBlack,kGray+1,charheight*0.5);
+                }
 
                 fListOfBoxes->Add(nb);
             }
@@ -389,6 +389,13 @@ void CXNucChart::SetPalette(Int_t Mode)
 
 void CXNucChart::UpdateNucChart()
 {
+    bool only_GS = (fViewMode->GetSelected() == M_LifeTime || fViewMode->GetSelected() == M_DecayMode);
+
+    if(!only_GS && !fMainWindow->is_db_loaded()) {
+        gbash_color->WarningMessage("Wait until the full db loading for accessing to nuclear excited state properties");
+        return;
+    }
+
     fCanvas->cd();
     fNucChartHist->Reset();
     fNucChartHist->GetListOfFunctions()->Clear();
@@ -438,32 +445,12 @@ void CXNucChart::UpdateNucChart()
         gPad->Update();
         gSystem->ProcessEvents();
     }
-
     for(const auto &nuc : gmanager->get_nuclei()) {
-        auto level_scheme = nuc->get_level_scheme();
-        auto ground_state = nuc->get_ground_state();
-        if(!ground_state) continue;
-
-        vector<shared_ptr<tkn::tklevel>> isomers;
-        if(fViewMode->GetSelected() == M_1stIsomer || fViewMode->GetSelected() == M_2ndIsomer) {
-            isomers = nuc->get_level_scheme()->get_levels( [](auto lvl) {
-                return lvl->is_isomer();
-            });
-        }
-
-        if(fViewMode->GetSelected() == M_LifeTime && !isnan(ground_state->get_lifetime())) {
+        // parts only requiring the ground states properties
+        if(fViewMode->GetSelected() == M_LifeTime && !isnan(nuc->get_lifetime())) {
             if(nuc->is_stable()) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),1e30);
-            else fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),ground_state->get_lifetime());
+            else fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),nuc->get_lifetime());
         }
-        if(fViewMode->GetSelected() == M_1stIsomer && isomers.size()>=1 && !isnan(isomers.at(0)->get_lifetime())) {
-            if(isomers.at(0)->is_stable()) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),1e30);
-            else fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),isomers.at(0)->get_lifetime());
-        }
-        if(fViewMode->GetSelected() == M_2ndIsomer && isomers.size() >=2 && !isnan(isomers.at(1)->get_lifetime())) {
-            if(isomers.at(1)->is_stable()) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),1e30);
-            else fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),isomers.at(1)->get_lifetime());
-        }
-
         if(fViewMode->GetSelected() == M_DecayMode) {
             Int_t value;
 
@@ -489,24 +476,41 @@ void CXNucChart::UpdateNucChart()
 
             fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),value);
         }
-        if(fViewMode->GetSelected() == M_1rstExcitedState) {
-            if(level_scheme->get_levels().size()>1) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),level_scheme->get_levels().at(1)->get_energy());
-        }
-        if(fViewMode->GetSelected() == M_BE2E2B2 && (nuc->get_z()%2==0 && nuc->get_n()%2==0)) {
-            auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
-            if(!gamma) continue;
-            // here we ask, if known, the BE2 value (1: electric, 2:L, 1: Weisskopf units)
-            auto BE2 = gamma->get_trans_prob(true,2,false);
-            if(BE2<=0||std::isnan(BE2)) continue;
-            fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),BE2);
-        }
-        if(fViewMode->GetSelected() == M_BE2WU) {
-            auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
-            if(!gamma) continue;
-            // here we ask, if known, the BE2 value (1: electric, 2:L, 1: Weisskopf units)
-            auto BE2W = gamma->get_trans_prob(true,2,true);
-            if(BE2W<=0||std::isnan(BE2W)) continue;
-            fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),BE2W/((double)nuc->get_a()));
+        if(!only_GS) {
+            auto level_scheme = nuc->get_level_scheme();
+            vector<shared_ptr<tkn::tklevel>> isomers;
+            if(fViewMode->GetSelected() == M_1stIsomer || fViewMode->GetSelected() == M_2ndIsomer) {
+                isomers = nuc->get_level_scheme()->get_levels( [](auto lvl) {
+                    return lvl->is_isomer();
+                });
+            }
+            if(fViewMode->GetSelected() == M_1stIsomer && isomers.size()>=1 && !isnan(isomers.at(0)->get_lifetime())) {
+                if(isomers.at(0)->is_stable()) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),1e30);
+                else fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),isomers.at(0)->get_lifetime());
+            }
+            if(fViewMode->GetSelected() == M_2ndIsomer && isomers.size() >=2 && !isnan(isomers.at(1)->get_lifetime())) {
+                if(isomers.at(1)->is_stable()) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),1e30);
+                else fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),isomers.at(1)->get_lifetime());
+            }
+            if(fViewMode->GetSelected() == M_1rstExcitedState) {
+                if(level_scheme->get_levels().size()>1) fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),level_scheme->get_levels().at(1)->get_energy());
+            }
+            if(fViewMode->GetSelected() == M_BE2E2B2 && (nuc->get_z()%2==0 && nuc->get_n()%2==0)) {
+                auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
+                if(!gamma) continue;
+                // here we ask, if known, the BE2 value (1: electric, 2:L, 1: Weisskopf units)
+                auto BE2 = gamma->get_trans_prob(true,2,false);
+                if(BE2<=0||std::isnan(BE2)) continue;
+                fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),BE2);
+            }
+            if(fViewMode->GetSelected() == M_BE2WU) {
+                auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
+                if(!gamma) continue;
+                // here we ask, if known, the BE2 value (1: electric, 2:L, 1: Weisskopf units)
+                auto BE2W = gamma->get_trans_prob(true,2,true);
+                if(BE2W<=0||std::isnan(BE2W)) continue;
+                fNucChartHist->Fill(nuc->get_n(),nuc->get_z(),BE2W/((double)nuc->get_a()));
+            }
         }
     }
 
@@ -605,15 +609,23 @@ void CXNucChart::SelectNucleus(Int_t Z, Int_t N)
 
     if(fSelectedNucleus == nullptr) {
         PrintInListBox(Form("Nucleus: Z=%d, N=%d unknown",Z,N),kError);
+        fCanvas->Modified();
+        fCanvas->Update();
         return;
     }
 
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     fSelectedLevelScheme = fSelectedNucleus->get_level_scheme();
     int i=0;
     for(auto &dataset: fSelectedLevelScheme->get_datasets()) {
         fDataSetMode->AddEntry(dataset.second->get_name().data(),i);
         i++;
     }
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
+
     fDataSetMode->Select(0);
 
     if(fDataSetMode->GetNumberOfEntries() == 0) PrintInfos(true);
@@ -695,6 +707,11 @@ void CXNucChart::PrintInfos(bool inprompt)
         return;
     }
     fInfoBox->RemoveAll();
+
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
 
     if(fPrintMode->GetSelected() == M_NucInfo) {
         if(inprompt) {
@@ -799,6 +816,7 @@ void CXNucChart::PrintInfos(bool inprompt)
         }
         delete arr;
     }
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
 }
 
 void CXNucChart::NucNotValidated()
@@ -859,14 +877,8 @@ void CXNucChart::ProcessedKeyEvent(Event_t *event)
     char input[10];
     UInt_t keysym;
 
-    gVirtualX->LookupString(event, input, sizeof(input), keysym);
-
+    //    gVirtualX->LookupString(event, input, sizeof(input), keysym);
     //    std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << std::endl;
-
-    if(event->fType == kGKeyPress && keysym == kKey_Control)
-        fCTRL = true;
-    if(event->fType == kKeyRelease && keysym == kKey_Control)
-        fCTRL = false;
 }
 
 void CXNucChart::UpdateRange()
@@ -912,11 +924,18 @@ void CXNucChart::UpdateRange()
 
 void CXNucChart::UpdateDataSet()
 {
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
     TString dataset = fDataSetMode->GetSelectedEntry()->GetTitle();
     fSelectedLevelScheme = nullptr;
     if(fSelectedNucleus) fSelectedLevelScheme = fSelectedNucleus->get_level_scheme();
     fSelectedLevelScheme->select_dataset(dataset.Data());
     PrintInfos(true);
+
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
 }
 
 TString CXNucChart::PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> lev, TString NucName, bool print)
@@ -965,6 +984,11 @@ TString CXNucChart::PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> lev, TStr
 
     TString Text="";
 
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
     if(print) {
         TString text = Form("** Levels info for nucleus %s **",NucName.Data());
         TString stars; for (int i=0 ; i<text.Length() ; i++) stars.Append("*");
@@ -982,6 +1006,9 @@ TString CXNucChart::PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> lev, TStr
         if(print) cout<<left<<setw(15)<<ELev<<setw(6)<<spin<<setw(8)<<LifeTime<<endl;
         Text += Form("!%-7g %-7s %-10s",ELev,spin.Data(),LifeTime.Data());
     }
+
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
+
     return Text;
 }
 

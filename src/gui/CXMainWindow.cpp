@@ -622,21 +622,20 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
 //    fRootCanvas->GetContainer()->Connect("ProcessedEvent(Event_t*)", "CXMainWindow", this, "ProcessedKeyEvent(Event_t*)");
     fRootCanvas->GetClient()->Connect("ProcessedEvent(Event_t *, Window_t)", "CXMainWindow",this, "ProcessedKeyEvent(Event_t*)");
 
-    fCanvas->SetRightMargin(0.01);
+    fCanvas->SetRightMargin(0.03);
     fCanvas->SetBottomMargin(0.09);
-    fCanvas->SetLeftMargin(0.083);
+    fCanvas->SetLeftMargin(0.09);
     fCanvas->SetTopMargin(0.04);
 
     fCanvas->Connect("ProcessedEvent(Int_t, Int_t, Int_t, TObject*)", "CXMainWindow", this, "HandleMovement(Int_t,Int_t,Int_t, TObject*)");
 
-    if(px*py>1)
-    {
+    if(px*py>1) {
         fCanvas->SetUniqueID(666);
         fCanvas->cd();
         fCanvas->Divide(px,py,0.001,0.001);
         fCanvas->Update();
 
-        for(int i=0 ;i<px*py ; i++){
+        for(int i=0 ;i<px*py ; i++) {
             TVirtualPad *pad = fCanvas->GetPad(i+1);
             pad->cd();
             pad->SetLeftMargin(0.05);
@@ -652,8 +651,7 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
         fCanvas->SetClickSelectedPad((TPad*) fCanvas->GetPad(1));
         fSelectedPad = (TPad*) fCanvas->GetPad(1);
     }
-    else
-    {
+    else {
         fCanvas->DrawFrame(0,0,1,1);
         fCanvas->SetClickSelectedPad((TPad*)fCanvas);
         fSelectedPad = (TPad*) fCanvas;
@@ -747,7 +745,7 @@ void CXMainWindow::HandleMenu(Int_t id)
         break;
     case M_GammaSearch:
         if(fGammaSearchWindow == nullptr) {
-            wait();
+//            wait();
             fGammaSearchWindow = new CXGammaSearch(gClient->GetRoot(),gClient->GetRoot(),1200,500, this);
         }
         else
@@ -755,7 +753,7 @@ void CXMainWindow::HandleMenu(Int_t id)
         break;
     case M_NucChart:
         if(fNucChartWindow == nullptr) {
-            wait();
+//            wait();
             fNucChartWindow = new CXNucChart(gClient->GetRoot(),gClient->GetRoot(),1200,550, this);
         }
         else
@@ -772,8 +770,7 @@ void CXMainWindow::HandleMenu(Int_t id)
 
 void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char * name)
 {
-    if(!Enable)
-    {
+    if(!Enable) {
         fMainTab->AddTab(name,tab);
 
         fMainTab->SetTab(name);
@@ -1243,8 +1240,7 @@ void CXMainWindow::PopUpFindPeaks(TObject *c)
 {
     auto *hist = dynamic_cast<TH1*>(c);
 
-    if(GetHisto()->GetName() != hist->GetName())
-    {
+    if(GetHisto()->GetName() != hist->GetName()) {
         fCanvas->cd();
         hist->Draw("hist");
         RefreshPads();
@@ -1281,7 +1277,7 @@ void CXMainWindow::ProcessedKeyEvent(Event_t *event)
     char input[10];
     UInt_t keysym;
 
-    SetPalette();
+    if(gPad && ((TString)gPad->GetCanvas()->GetCanvas()->GetName()) != "NuclearChartCanvas") SetPalette();
 
 //    gVirtualX->LookupString(event, input, sizeof(input), keysym);
 //    std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << " " << input << std::endl;
@@ -1452,6 +1448,10 @@ void CXMainWindow::load_tkn_db() {
     int inuc=0;
     for(auto nuc : gmanager->get_nuclei()) {
         for(auto &lvl : nuc->get_level_scheme()->get_levels()){
+            while(fdb_loading_paused) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                continue;
+            }
             glog.progress_bar(gmanager->get_nuclei().size(),inuc,"Loading tkn db...");
         }
         inuc++;
@@ -1459,6 +1459,7 @@ void CXMainWindow::load_tkn_db() {
     cout << endl;
 
     gbash_color->InfoMessage("TkN database loaded !");
+    fdb_loaded = true;
     return;
 }
 

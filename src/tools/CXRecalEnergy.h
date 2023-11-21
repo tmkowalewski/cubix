@@ -59,13 +59,14 @@ using namespace std;
 
 struct Fitted
 {
-    Fitted() : NSubPeaks(0), BgdOff(0), BgdSlope(0), BgFrom(0), BgTo(0), area(0), ampli(0), posi(0), errposi(0), fw05(0), fw01(0), fwhm(0), tailL(0), tailR(0), Lambda(0), Rho(0), S(0), erefindex(-1), eref(0), good(false) {;}
+    Fitted() : NSubPeaks(0), BgdOff(0), BgdSlope(0), BgFrom(0), BgTo(0), area(0), errarea(0), ampli(0), posi(0), errposi(0), fw05(0), fw01(0), fwhm(0), tailL(0), tailR(0), Lambda(0), Rho(0), S(0), erefindex(-1), eref(0), good(false) {;}
     int NSubPeaks;
     double BgdOff;
     double BgdSlope;
     double BgFrom;
     double BgTo;
     double area;
+    double errarea;
     double ampli;
     double posi;
     double errposi;
@@ -128,6 +129,7 @@ public:
     virtual ~CXRecalEnergy(){}
 
     void StartCalib();
+    void FitEfficiency();
 
     TString fSpectraFolderName;
     TString fSourceName;
@@ -141,6 +143,10 @@ public:
     TGraphErrors *fCalibGraph = nullptr;
     TGraphErrors *fResidueGraph = nullptr;
 
+    TF1          *fEfficiencyFunction = nullptr;
+    TH1          *fEfficiencyConfidenceIntervall = nullptr;
+    TGraphErrors *fEfficiencyGraph = nullptr;
+
 public:
 
     void SetDataFromHistTH1(TH1 *hist, Int_t Id=0);
@@ -151,7 +157,8 @@ public:
 
     void SetSource(TString SourceName){fSourceName = SourceName; AnalyseSources();}
     void AnalyseSources();
-    void AddPeak(double EPeak){Energies.push_back(EPeak);} //add this energy to the list of lines (can be given more than once)
+    void AddPeak(double EPeak, double error=0.){Energies.push_back(EPeak),Energies_unc.push_back(error);} //add this energy to the list of lines (can be given more than once)
+    void AddEfficiencyPeak(array<double,4> _effarray) {Intensities.push_back(_effarray);}
     Int_t GetNEnergies(){return Energies.size();}
     vector< double > GetEnergies(){return Energies;}
     void RemoveClosestPeakTo(double EPeak){Delendae.push_back(EPeak);} //remove the line closest to this energy from the list of lines
@@ -180,7 +187,8 @@ public:
     Float_t GetOffset(){return offset1;}
     Float_t GetSlope(){return slope1*hGain;}
 
-    Double_t PolynomialFunc(Double_t*xx,Double_t*pp);
+    Double_t PolynomialFunc(Double_t*x, Double_t*p);
+    Double_t EfficiencyFunc(Double_t*x,Double_t*p);
 
 public:
 
@@ -199,7 +207,10 @@ public:
 
     vector<double> specPeaks;
     vector<double> Energies;
+    vector<double> Energies_unc;
     vector<double> Delendae;
+
+    vector<array<double,4>> Intensities;
 
     double eBhead;      // band head
     double eBstep;      // delta
@@ -254,6 +265,7 @@ public:
     int     xP_Next2(float *yVal, int yLen);
     int     FitPeaks(int verbose);
     Int_t   EROOTCalibration();
+    Int_t   ROOTEffFit();
     double  TCalibration();   // shift of the largest peak from its reference position (to be done)
     bool    InvertMatrix3(const double m[9], double invOut[9]);
     double  Calibrated(double x);

@@ -35,6 +35,8 @@
 #define CXProgressBar_H
 
 #include <iostream>
+#include <thread>
+
 #include "TStopwatch.h"
 
 class CXProgressBar
@@ -47,16 +49,30 @@ private:
     TStopwatch *fWatch;
     ULong64_t fNEvts;
     ULong64_t fCurrentEntry;
-    ULong64_t fLastValidEntry;
-    Float_t fLastValidTime;
-    Int_t fRefreshRate;
+
+    int frefreshtime_in_msec = 200;
+    std::thread print_thread;
+
+    bool fdo_stop=false;
 
 public:
-    CXProgressBar(ULong64_t Nevts);
+    CXProgressBar(ULong64_t Nevts=0);
     virtual ~CXProgressBar();
+    void SetN(ULong64_t _nevts){fNEvts = _nevts;}
 
-    virtual void operator++()
-    { fCurrentEntry++; UpdateStatus();}
+    CXProgressBar &operator++(){
+        fCurrentEntry++;
+        return *this;
+    }
+    CXProgressBar& operator+=(ULong64_t n) {
+        fCurrentEntry += n;
+        return *this;
+    }
+    CXProgressBar &operator++(int) {
+        (*this)+=1;
+        return *this;
+    }
+
 
 protected:
 

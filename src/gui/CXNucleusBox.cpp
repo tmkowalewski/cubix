@@ -36,6 +36,7 @@
 #include "TLatex.h"
 
 #include "CXNucChart.h"
+#include "tkmanager.h"
 
 using namespace std;
 
@@ -65,9 +66,6 @@ CXNucleusBox::CXNucleusBox(shared_ptr<tkn::tknucleus> nuc, Double_t size, Int_t 
     //    fText->SetX(fText->GetX()-width*0.75);
     //    fText->SetY(fText->GetY()-height*0.5);
 
-    auto level_scheme = nuc->get_level_scheme();
-    auto ground_state = nuc->get_ground_state();
-
     vector<shared_ptr<tkn::tklevel>> isomers;
     if(mode == CXNucChart::M_1stIsomer || mode == CXNucChart::M_2ndIsomer) {
         isomers = nuc->get_level_scheme()->get_levels( [](auto lvl) {
@@ -82,11 +80,11 @@ CXNucleusBox::CXNucleusBox(shared_ptr<tkn::tknucleus> nuc, Double_t size, Int_t 
     Float_t E1rst;
 
     if(mode == CXNucChart::M_LifeTime ) {
-        if(!ground_state || !ground_state->get_lifetime_measure())
+        if(!nuc->get_lifetime_measure())
             withlt = false;
         else {
-            LifeTime = ground_state->get_lifetime();
-            LifeTimeStr = ground_state->get_lifetime_str();
+            LifeTime = nuc->get_lifetime();
+            LifeTimeStr = nuc->get_lifetime_str();
         }
     }
     else if(mode == CXNucChart::M_1stIsomer ) {
@@ -106,10 +104,12 @@ CXNucleusBox::CXNucleusBox(shared_ptr<tkn::tknucleus> nuc, Double_t size, Int_t 
         }
     }
     if(mode == CXNucChart::M_1rstExcitedState) {
+        auto level_scheme = nuc->get_level_scheme();
         if(level_scheme->get_levels().size()>1) E1rst = level_scheme->get_levels().at(1)->get_energy();
         else withlt = false;
     }
     if(mode == CXNucChart::M_BE2E2B2) {
+        auto level_scheme = nuc->get_level_scheme();
         auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
         if(gamma) {
             BE2 = gamma->get_trans_prob(true,2,false);
@@ -118,6 +118,7 @@ CXNucleusBox::CXNucleusBox(shared_ptr<tkn::tknucleus> nuc, Double_t size, Int_t 
         else withlt = false;
     }
     if(mode == CXNucChart::M_BE2WU) {
+        auto level_scheme = nuc->get_level_scheme();
         auto gamma = level_scheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
         if(gamma) {
             BE2 = gamma->get_trans_prob(true,2,true);

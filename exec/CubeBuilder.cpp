@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <signal.h>
+#include <chrono>
 
 #include "TTree.h"
 #include "TString.h"
@@ -68,10 +69,11 @@ int scrptr[RW_LB2];      /* last record # written to scr file  for each row of b
 FILE *open_3cube (const TString &name, int length, FILE *mesg);
 FILE *open_scr (const TString &name, int length, FILE *mesg);
 
-TString fCubeFileName;
-TString fTabFile;
-Int_t fScratchSize;
+TString fCubeFileName="";
+TString fTabFile="";
+Int_t fScratchSize = 512;
 Float_t fCompressionFactor=1;
+Int_t fCubeSize=4096;
 
 TString fTreeFileName="";
 TString fTreeName="";
@@ -162,7 +164,7 @@ int setup_replay(void)
     /* read in lookup table */
     // if not tab given, assuming a 1keV/channel binning
     if(lnam=="") {
-        gen_binning(&nclook,&lmin,&lmax,luch,16384,1024,1);
+        gen_binning(&nclook,&lmin,&lmax,luch,16384,fCubeSize*fCompressionFactor,1);
     }
     else if (read_tab_file(lnam,&nclook,&lmin,&lmax,luch,16384)) {
         fclose(gd.LogFile);
@@ -405,6 +407,8 @@ void dscr(void)
     printf( " ...Updating cube from scratch file:  %s\n", datim());
     printf("There are %d chunks to increment...\n",numchunks);
 
+    CXProgressBar progress(numchunks);
+
     /* read in first record */
     recnumIn = 0;
     fseek(gd.CubeFile, 1024, SEEK_SET);
@@ -422,6 +426,7 @@ void dscr(void)
 
     /* loop through all the chunks in the file */
     for (chunknum=0; chunknum<numchunks; chunknum++) {
+
         minmc = chunknum*nmcperc;
         maxmc = minmc+nmcperc-1;
         if (maxmc>gd.nummc-1)
@@ -432,9 +437,9 @@ void dscr(void)
 
         if(gd.gotsignal) exit(-1);
 
-        printf("\r  ...chunk %d, recs %d %d   ",chunknum,recnumIn,recnumOut);
-        fflush(stdout);
-
+//        printf("\r  ...chunk %d, recs %d %d   ",chunknum,recnumIn,recnumOut);
+//        fflush(stdout);
+        ++progress;
         /* loop through all the minicubes in the chunk */
         for (mc=minmc; mc<=maxmc; mc++) {
             dbinfo[2]=mc;
@@ -747,6 +752,12 @@ int ReadConfFile(TString ConfFileName){
             delete loa;
             cout<<"\e[1;92mRaw Compression factor: "<<fCompressionFactor<<"\e[0m"<<endl;
         }
+        else if(Buffer.BeginsWith("CubeSize")){
+            TObjArray *loa=Buffer.Tokenize(" ");
+            fCubeSize = ((TString)loa->At(1)->GetName()).Atoi();
+            delete loa;
+            cout<<"\e[1;92mRaw Cube size: "<<fCubeSize<<"\e[0m"<<endl;
+        }
         else if(Buffer.BeginsWith("TreeFile")){
             TObjArray *loa=Buffer.Tokenize(" ");
             fTreeFileName = ((TString)loa->At(1)->GetName());
@@ -860,7 +871,6 @@ int main (int argc, char **argv)
     int i,j,k,l,tmp;
     int elist[RW_MAXMULT], gemult;
     unsigned long numincr = 0;
-    int spec[16384];
     FILE *file;
 
     if(argc !=2){
@@ -874,16 +884,13 @@ int main (int argc, char **argv)
     err = InitTree();
     if(err) exit(EXIT_FAILURE);
 
-    memset(spec,0,4096*4*4);
-
     Int_t ErrVal = setup_replay();
     if(ErrVal>0){
         cout<<"Error in the setup (err val: "<<ErrVal<<") ==> EXIT"<<endl;
         exit(EXIT_FAILURE);
     }
 
-//    cout<<"Press a key to start the Cube processing..... "<<endl;
-//    cin.get();
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     sighandler();   /* set up signal handling */
 
@@ -893,6 +900,8 @@ int main (int argc, char **argv)
     fprintf(gd.LogFile,"%s",cbuf);
     fflush(gd.LogFile);
 
+    gbash_color->InfoMessage("Input Tree reading to build the database...");
+    cout<<flush;
     CXProgressBar progress(fNEvents);
 
     dbinfo[0]=1;
@@ -909,15 +918,9 @@ int main (int argc, char **argv)
 
         dbinfo[0]=2;
         dbinfo[1]=gemult;
-        spec[8192+gemult]++;
         fCurrentEntry++;
         dbinfo[8]=fCurrentEntry;
         if (gemult < 3) continue;
-
-        for (i=0; i<gemult; i++) {
-            if (elist[i]<16384 && elist[i]>=0)
-                spec[elist[i]]++;
-        }
 
         /* convert from ADC to cube channel numbers */
         dbinfo[0]=3;
@@ -928,7 +931,6 @@ int main (int argc, char **argv)
         }
         gemult = j;
         if (gemult < 3) continue;
-        spec[12288+gemult]++;
 
         dbinfo[0]=4;
         dbinfo[1]=gemult;
@@ -1001,11 +1003,7 @@ int main (int argc, char **argv)
 
     cout << endl;
 
-    if ((file=fopen(Form("%s.spn",fCubeFileName.Data()),"w+"))) {
-        fwrite(spec,4096*4,4,file);
-        fclose(file);
-    }
-
+    gbash_color->InfoMessage("Building the cube...");
     dscr();
 
     snprintf(cbuf,sizeof(cbuf)-1,"Scan completed:  %s\n"
@@ -1023,7 +1021,20 @@ int main (int argc, char **argv)
 
     CXRadReader *radreader = new CXRadReader;
     radreader->ReadCube(fCubeFileName.Copy().Append(".cub"));
-    radreader->AutoBuildProj(fCubeFileName.Copy().Append(".cub"),1);
+    radreader->AutoBuildProj(fCubeFileName.Copy().Append(".cub"),3);
 
-    exit(0);
+    gbash_color->InfoMessage("Writting cube info in: " + fCubeFileName.Copy().Append(".conf"));
+    ofstream conffile(fCubeFileName.Copy().Append(".conf"));
+    conffile << "TotalProj " << fCubeFileName.Copy().Append(".spe")<<endl;
+    conffile << "2DProj " << fCubeFileName.Copy().Append(".2dp")<<endl;
+    if(fTabFile.Length()) conffile << "LUT " << fTabFile << endl;
+    if(fCompressionFactor!=1) conffile << "CompressFact " << fCompressionFactor<<endl;
+    conffile.close();
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+
+    gbash_color->InfoMessage("Cube: " + fCubeFileName.Copy().Append(".cub") + " created in " +  duration.count() + " seconds");
+
+    exit(EXIT_SUCCESS);
 }

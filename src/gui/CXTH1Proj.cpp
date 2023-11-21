@@ -98,20 +98,21 @@ void CXTH1Proj::UpdateProjection(Int_t Axis)
         gbash_color->WarningMessage("X and Y axis needs to have the same number of bins for GG projections");
 //        return;
     }
-
     if(Axis == 0) {
+        Reset();
         GetXaxis()->SetTitle("Energy (keV) [X axis]");
         TH1 *projtmp = fGGHist->ProjectionX();
-        SetBins(fGGHist->GetXaxis()->GetNbins(),fGGHist->GetXaxis()->GetXmin(),fGGHist->GetXaxis()->GetXmax());
-        for(int i=0 ; i<projtmp->GetNbinsX()+2 ; i++)
+        SetBins(projtmp->GetXaxis()->GetNbins(),projtmp->GetXaxis()->GetXmin(),projtmp->GetXaxis()->GetXmax());
+        for(int i=0 ; i<projtmp->GetNbinsX() ; i++)
             SetBinContent(i,projtmp->GetBinContent(i));
         delete projtmp;
     }
     else if(Axis == 1) {
+        Reset();
         GetXaxis()->SetTitle("Energy (keV) [Y axis]");
-        SetBins(fGGHist->GetYaxis()->GetNbins(),fGGHist->GetYaxis()->GetXmin(),fGGHist->GetYaxis()->GetXmax());
         TH1 *projtmp = fGGHist->ProjectionY();
-        for(int i=0 ; i<projtmp->GetNbinsX()+2 ; i++)
+        SetBins(projtmp->GetXaxis()->GetNbins(),projtmp->GetXaxis()->GetXmin(),projtmp->GetXaxis()->GetXmax());
+        for(int i=0 ; i<projtmp->GetNbinsX() ; i++)
             SetBinContent(i,projtmp->GetBinContent(i));
         delete projtmp;
     }

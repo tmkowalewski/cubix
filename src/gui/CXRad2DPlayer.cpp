@@ -44,11 +44,11 @@
 #include "TROOT.h"
 #include "TFrame.h"
 #include "TGListBox.h"
+#include "TGNumberEntry.h"
 
 #include "CXMainWindow.h"
 #include "CXRadCubeTH1Proj.h"
 #include "CXGateBox.h"
-#include "TGNumberEntry.h"
 #include "CXSavedList.h"
 
 using namespace std;

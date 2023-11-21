@@ -86,8 +86,6 @@ private:
     Double_t fLastXPosition;
     Double_t fLastYPosition;
 
-    Bool_t fCTRL = false;
-
     TH2D *fNucChartHist;
 
     TList *fMagicList;

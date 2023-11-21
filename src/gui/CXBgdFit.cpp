@@ -165,6 +165,7 @@ void CXBgdFit::Clear(TVirtualPad *pad)
 void CXBgdFit::Fit()
 {
     if(fListOfArrows->GetEntries()<4 || (fListOfArrows->GetEntries()%2) !=0) {
+        gbash_color->WarningMessage("At least two pairs of arrows are needed to define the background to fit (two before and two after the peak)");
         return;
     }
 
@@ -256,7 +257,7 @@ void CXBgdFit::Fit()
     text.str("");
 
     Float_t Area = fHistogram->Integral(fHistogram->GetXaxis()->FindBin(fBackgd.front()),fHistogram->GetXaxis()->FindBin(fBackgd.back()));
-    Float_t BgdArea = fBackFunction->Integral(fBackgd.front(),fBackgd.back(),1e-6);
+    Float_t BgdArea = fBackFunction->Integral(fBackgd.front(),fBackgd.back(),1e-6)/fHistogram->GetBinWidth(1);
     Float_t CorrArea = Area-BgdArea;
 
     text<<left<<setw(11)<<"Integral"<<": "<<setprecision(7)<<setw(10)<<Area<<" ("<<setprecision(7)<<setw(10)<<sqrt(Area)<<")";

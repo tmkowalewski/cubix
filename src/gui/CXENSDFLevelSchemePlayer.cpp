@@ -210,9 +210,16 @@ shared_ptr<tklevel_scheme> CXENSDFLevelSchemePlayer::DrawArrowsForNuc(TString Nu
     if(!gmanager->known_nucleus(NucName.Data())) return nullptr;
     tknucleus nuc(NucName);
 
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     auto levscheme = nuc.get_level_scheme();
+
     if(!levscheme) return nullptr;
     levscheme->select_dataset(DataSet.Data());
+
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
 
     auto decays = levscheme->get_decays<tkgammadecay>();
     for(const auto &dec: decays) {

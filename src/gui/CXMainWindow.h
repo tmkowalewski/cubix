@@ -254,6 +254,9 @@ public:
 
     static void SetPalette();
 
+    bool is_db_loaded(){return fdb_loaded;}
+    void pause_db_loading(bool _on){fdb_loading_paused = _on;}
+
 protected:
 
 private:
@@ -262,6 +265,8 @@ private:
     void SaveToAscii(){fCanvas->SaveHistToAsciiFile();}
 
     std::future<void> loadingFuture;
+    bool fdb_loaded=false;
+    bool fdb_loading_paused=false;
 
     void load_tkn_db();
     void wait();

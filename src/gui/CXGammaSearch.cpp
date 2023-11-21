@@ -185,6 +185,11 @@ CXGammaSearch::~CXGammaSearch()
 
 void CXGammaSearch::SetCalMode()
 {
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
     switch (fCurrentMode) {
     case M_With_Cascade: {
         if(fNGammas<=1)
@@ -207,6 +212,8 @@ void CXGammaSearch::SetCalMode()
         break;
     }
     }
+
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
 }
 
 void CXGammaSearch::FindGammaRays(Bool_t Bash)
@@ -242,6 +249,7 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
             tkn::tknucleus Nuc(iz,ia);
             fLevelScheme = Nuc.get_level_scheme();
             if(fLevelScheme->get_decays().size()==0) continue;
+            AnalysedGammaRays+=fLevelScheme->get_decays().size();
 
             vector<shared_ptr<tkn::tkdecay>> GoodGammas;
 

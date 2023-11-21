@@ -44,6 +44,7 @@
 #include "TROOT.h"
 #include "TFrame.h"
 #include "TGListBox.h"
+#include "TGNumberEntry.h"
 
 #include "CXMainWindow.h"
 #include "CXRadCubeTH1Proj.h"
@@ -102,6 +103,13 @@ CXRadCubePlayer::CXRadCubePlayer(const TGCompositeFrame *MotherFrame, UInt_t w, 
     fBckSubtract = new TGCheckButton(fHorizontalFrame, "BG sub", 0);
     fBckSubtract->SetState(kButtonDown);
     fHorizontalFrame->AddFrame(fBckSubtract,new TGLayoutHints(kLHintsLeft | kLHintsCenterY ,5,10,0,0));
+
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Rebin projection: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,20,0,0));
+    fRebinValue = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fHorizontalFrame->AddFrame(fRebinValue,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX ,1,3,5,5));
 
     fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
@@ -167,7 +175,7 @@ void CXRadCubePlayer::Project()
     fCurrentProj = GetProj();
 
     if(fCurrentProj) {
-        fCurrentProj->Project(fFixRange->GetState(),fBckSubtract->GetState());
+        fCurrentProj->Project(fFixRange->GetState(),fBckSubtract->GetState(),fRebinValue->GetIntNumber());
 
         TList *gates = fCurrentProj->GetGatesList();
         fMainWindow->GetSavedGatesList()->Clear();

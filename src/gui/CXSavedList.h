@@ -43,6 +43,7 @@ using namespace std;
 class CXMainWindow;
 class TGListBox;
 class TGTextEntry;
+class TGLBEntry;
 
 class CXSavedList : public  TGVerticalFrame
 {
@@ -58,6 +59,8 @@ private:
 
     TList *fListOfBoxesToUpdate = nullptr;
 
+    TGLBEntry *fLastSelected = nullptr;
+
 public:
     CXSavedList(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
     ~CXSavedList();
@@ -69,7 +72,7 @@ public:
     void ClearStoredList();
     void RemoveSelectedEntry();
     void SaveStoredList();
-    void ProcessedButtonEvent(Event_t *);
+    void ProcessedButtonEvent(Event_t *event);
     void DoubleClicked(Int_t id);
     TList *GetListOfStoredSpectra(){return fListOfStoredSpectra;}
     void AddListBox(TGListBox *box);

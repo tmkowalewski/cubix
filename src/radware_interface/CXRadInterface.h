@@ -138,7 +138,7 @@ typedef struct {
     int   numchs;
     float spec[6][MAXCHS], old_spec[6][MAXCHS], bspec[6][MAXCHS], background[MAXCHS], tmpspec[MAXCHS];
     float v_depth[MAXCHS], v_width;
-    TString  name_gat, old_name_gat;  /* changed from 20 or 30 */
+    TString  name_gat, old_name_gat;
 
     int   lo_ch[MAXGAM], hi_ch[MAXGAM];
     int   npks_ch[MAXCHS];                     /* no. of gammas for each ch. */

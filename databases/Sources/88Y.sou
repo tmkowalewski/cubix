@@ -1,0 +1,17 @@
+#Generated from http://www.nndc.bnl.gov/nudat3/indx_dec.jsp with conditions:
+#
+#Nucleus             = 88Y
+#T1/2                > 1d && < 1e10y
+#DecayMode           = Disabled
+#Radiation Type      = Gamma
+#Radiation energy    > 10keV && < 10000keV
+#Radiation intensity > 0.1% && < 100%
+#Ordering            = Z, A, T1/2, E
+#Output              = Formated File
+#Uncertainties	     = Standard style
+#
+Dec Mode	Daughter	Rad Ene.  	Unc       	Rad Int.  	Unc
+B+      	88SR    	511.0     	0          	0.42      	0.04
+B+      	88SR    	898.042   	0.003     	93.7      	0.3
+B+      	88SR    	1836.063*  	0.012     	99.2      	0.3
+B+      	88SR    	2734.0    	0.5       	0.71      	0.07

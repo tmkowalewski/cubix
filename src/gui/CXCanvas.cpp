@@ -909,7 +909,8 @@ void CXCanvas::DynamicZoom(Int_t Sign, Int_t px, Int_t py)
     //    Info("DynamicZoom","px=%d py=%d",px,py);
 
     if (!fSelected) return;
-    TH2* TheHisto = dynamic_cast<TH2*>(FindHisto());//fSelected;
+    TH2* TheHisto = (TH2*)fSelected;
+    if(!TheHisto) return;
 
     Double_t percent = 0.15 - Sign * 0.05;
 
@@ -1647,9 +1648,9 @@ TH1* CXCanvas::FindHisto(TVirtualPad *pad)
 
     TVirtualPad *apad = pad;
     if(apad == nullptr) apad = gROOT->GetSelectedPad();
+    if(apad == nullptr) apad = gPad;
 
-    if(apad == nullptr)
-        return nullptr;
+    if(apad == nullptr) return nullptr;
 
     TIter it(apad->GetListOfPrimitives());
     while ((hh = (TObject*)it())) {
