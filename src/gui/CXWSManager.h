@@ -31,100 +31,119 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
-#ifndef CXHist1DCalib_H
-#define CXHist1DCalib_H
+#ifndef CXWSManager_H
+#define CXWSManager_H
 
 #include "RQ_OBJECT.h"
 #include "TGFrame.h"
-#include "TObject.h"
-
-#include "CXRecalEnergy.h"
+#include "TNamed.h"
 
 using namespace std;
 
-class TGTextEntry;
 class CXMainWindow;
-class TGNumberEntry;
+class TGListBox;
+class TGTextEntry;
+class TGLBEntry;
 class TF1;
-class TGComboBox;
-class TGCheckButton;
-class CXCanvas;
-class TCanvas;
+class TH1;
+class TList;
+class TGLabel;
+class TGraphErrors;
+class TGraph;
+class TGFileContainer;
+class TGListView;
+class TGLVEntry;
 
-class CXHist1DCalib : public  TGVerticalFrame
+class CXWorkspace : public TNamed
 {
-    RQ_OBJECT("CXHist1DCalib");
+public:
+    TString fname="";
+    TString fdirectory="";
+
+    TString fCalibFileName="None";
+    TF1 *fCalibFunction = nullptr;
+    TGraph *fCalibrationGraph = nullptr;
+
+    TString fFWHMFileName="None";
+    TF1 *fFWHMFunction = nullptr;
+    TGraph *fFWHMGraph = nullptr;
+    TH1 *fFWHMErrors = nullptr;
+
+    TString fEfficiencyFileName="None";
+    TF1 *fEfficiencyFunction = nullptr;
+    TH1 *fEfficiencyErrors = nullptr;
+    TGraph *fEfficiencyGraph = nullptr;
 
 public:
+    CXWorkspace(const char *_name, const char *_dir);
+    ~CXWorkspace();
+
+
+    void SetEfficiency(TGraph *_graph, TF1 *_func, TH1 *_error);
+    void SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error);
+    void SetFWHM(TGraph *_graph, TF1 *_func, TH1 *_error);
+
+    void ReadWS();
+    void UpdateWSFile();
+
+private:
+    ClassDef(CXWorkspace,0);
+};
+
+class CXWSManager : public  TGVerticalFrame
+{
+    RQ_OBJECT("CXWSManager");
 
 private:
 
-    TGTextEntry *fSources = nullptr;
+    TGListView *fListView = nullptr;
+
     CXMainWindow *fMainWindow = nullptr;
 
-    TGNumberEntry *fSourceEnergyRangeMin = nullptr;
-    TGNumberEntry *fSourceEnergyRangeMax = nullptr;
-    TGNumberEntry *fSourceIntensityRangeMin = nullptr;
-    TGNumberEntry *fSourceIntensityRangeMax = nullptr;
+    TGGroupFrame *fContentGroupFrame = nullptr;
 
-    TGNumberEntry *fRangeMin = nullptr;
-    TGNumberEntry *fRangeMax = nullptr;
-    TGNumberEntry *fFWHMSPEntry = nullptr;
-    TGNumberEntry *fThresholdSPEntry = nullptr;
-    TGNumberEntry *fVerboseLevel = nullptr;
+    TGListBox *fWSListBox = nullptr;
+    TGFileContainer *fWSContentBox = nullptr;
+    TGTextEntry *fDrawOptions = nullptr;
 
-    TGNumberEntry *fCalibOrder = nullptr;
-    TGCheckButton *fNoOffset = nullptr;
+    TString fWorkspaceDirectory = "";
 
-    TGCheckButton *fLeftTail = nullptr;
-    TGCheckButton *fRightTail = nullptr;
-    TGCheckButton *f2DSearch = nullptr;
+    TGLabel *fActiveWSLabel = nullptr;
+    TString fCurrentWorkspaceName = "None";
+    CXWorkspace *fCurrentWorkspace = nullptr;
+    CXWorkspace *fActiveWorkspace = nullptr;
 
-    TList *fListOfObjects = nullptr;
+    TList *fWSList = nullptr;
 
-    vector< pair<double,double> > fEnergies;
-    vector<array<double, 4>> fIntensities;
-    Double_t fERef=0.;
+    Int_t fSelectedEntry = -1;
+    Int_t fLastSelectedEntry = -1;
 
-    CXRecalEnergy *fRecalEnergy = nullptr;
-    TCanvas *fCalibCanvas = nullptr;
-    TF1 *fCalibFunction = nullptr;
-
-    TCanvas *fFWHMCanvas = nullptr;
-    TGraph *fFWHMGraph = nullptr;
-    TF1 *fFWHMFunction = nullptr;
-    TH1 *fFWHMConfidenceIntervall = nullptr;
+    TGLBEntry *fLastSelected = nullptr;
 
 public:
+    CXWSManager(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
+    ~CXWSManager();
 
-    CXHist1DCalib(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
-    ~CXHist1DCalib();
-
-    CXMainWindow *GetMainWindow(){return fMainWindow;}
     void SetMainWindow(CXMainWindow *w);
 
-    void ShowSources();
-    void UpdateSources();
-    void UpdateText();
-    void CleanCalib();
-    void GetCurrentRange();
+    void RefreshWS();
+    void NewWS();
 
-    void CloseCanvas();
+    void SetWSDirectory(TString _ws_dir) {fWorkspaceDirectory = _ws_dir;}
+    void LoadWS(TString _ws_dir="");
+    void SelectionChanged();
 
-    TH1 *CheckFitProperties();
-    void Calibrate();
-    void ApplyCalibration(TH1 *_hist=nullptr, TF1 *_func=nullptr);
+    void DoubleClicked(Int_t id);
+    void ProcessedButtonEvent(Event_t *event);
 
-    void FWHMCalib();
-    void BuildFWHMGraph();
+    CXWorkspace *GetActiveWorkspace() {return fActiveWorkspace;}
+    CXWorkspace *GetWorkspace(const char* _name) {return dynamic_cast<CXWorkspace*>(fWSList->FindObject(_name));}
 
-    double DinoFct(double*xx,double*pp);
-    TF1 *GetDinoFct(TString Name, double min, double max, int Npar);
+    void OnDoubleClick(TGLVEntry *f, Int_t btn);
 
-    void SaveECal();
-    void SaveFWHM();
+private:
 
-    ClassDef(CXHist1DCalib,0);
+    ClassDef(CXWSManager,0);
 };
 
 #endif

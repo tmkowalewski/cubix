@@ -247,9 +247,14 @@ void CXENSDFLevelSchemePlayer::DrawArrow(TH1 *hist, const std::shared_ptr<tkn::t
         if((Strengh<fMinStrenght || Strengh>fMaxStrenght)) return;
     }
 
-    double ELevI = level_from->get_energy();
-    double ELevF = level_to->get_energy();
+    double ELevI = level_from->get_energy(tkn::tkunit_manager::keV,true);
+    TString offsetI="";
+    if(level_from->is_energy_offset()) offsetI += level_from->get_offset_bandhead() + "+";
+    double ELevF = level_to->get_energy(tkn::tkunit_manager::keV,true);
+    TString offsetF="";
+    if(level_from->is_energy_offset()) offsetF += level_from->get_offset_bandhead() + "+";
 
+    if(fGuiLSPlayer->UseELevels() && level_from->is_energy_offset()) return;
     if(fGuiLSPlayer->UseELevels() && (ELevI<fMinELevel || ELevI>fMaxELevel)) return;
 
     double spinI = level_from->get_spin_parity()->get_spin().get_value();
@@ -328,7 +333,7 @@ void CXENSDFLevelSchemePlayer::DrawArrow(TH1 *hist, const std::shared_ptr<tkn::t
     Bool_t AdvancedTitle = fGuiLSPlayer->IsFullTitleMode();
 
     TString SIL = level_from->get_spin_parity_str();
-    TString ILE = Form("%.1f",ELevI);
+    TString ILE = Form("%s%.1f",offsetI.Data(),ELevI);
 
     ToolTip.Append(Form("%s (%s keV)",SIL.Data(),ILE.Data()));
     if(AdvancedTitle) GammaTitle.Append(Form(" : %s",SIL.Data()));
@@ -337,7 +342,7 @@ void CXENSDFLevelSchemePlayer::DrawArrow(TH1 *hist, const std::shared_ptr<tkn::t
     if(AdvancedTitle) GammaTitle.Append("#rightarrow ");
 
     TString SFL = level_to->get_spin_parity_str();
-    TString FLE = Form("%.1f",ELevF);
+    TString FLE = Form("%s%.1f",offsetF.Data(),ELevF);
 
     ToolTip.Append(Form("%s (%s keV)",SFL.Data(),FLE.Data()));
     if(AdvancedTitle) GammaTitle.Append(Form("%s",SFL.Data()));

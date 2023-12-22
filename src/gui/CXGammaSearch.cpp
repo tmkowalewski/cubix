@@ -287,9 +287,12 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
 
                     double Energy = Link->get_energy();
 
-                    double ELevI = NucLevI->get_energy();
+                    double ELevI = NucLevI->get_energy(tkn::tkunit_manager::keV,true);
                     TString spinI = NucLevI->get_spin_parity_str();
-                    double ELevF = NucLevF->get_energy();
+                    TString offsetI="";
+                    if(NucLevI->is_energy_offset()) offsetI += NucLevI->get_offset_bandhead() + "+";
+
+                    double ELevF = NucLevF->get_energy(tkn::tkunit_manager::keV,true);
                     TString spinF = NucLevF->get_spin_parity_str();
 
                     agammatrans.NucName = Nuc.get_symbol();
@@ -299,10 +302,11 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
                     agammatrans.SpinI = spinI;
                     agammatrans.SpinF = spinF;
                     agammatrans.LifeTime = NucLevI->get_lifetime_str().data();
+                    agammatrans.Offset =offsetI ;
 
                     avect.push_back(agammatrans);
 
-                    TString GammaTitle = Form(" => %6.1f keV : %5s (%6.1f keV) --> %5s (%6.1f keV)%s",Energy,spinI.Data(),ELevI,spinF.Data(),ELevF, agammatrans.LifeTime.Data());
+                    TString GammaTitle = Form(" => %6.1f keV : %5s (%s%6.1f keV) --> %5s (%s%6.1f keV)%s",Energy,spinI.Data(),offsetI.Data(),ELevI,spinF.Data(),offsetI.Data(),ELevF, agammatrans.LifeTime.Data());
                     if(!Bash) PrintInListBox(GammaTitle.Data(),kPrint);
                 }
 
@@ -373,7 +377,7 @@ void CXGammaSearch::FindInDoubleCoincidence(Bool_t Bash)
                 GammaTransition GT = avec[j];
                 if(GT.EGamma == Mat_E[ig][0]) {
                     Flag[ig] = Mat_E[ig][0];
-                    TransitionName[ig] = Form(" %6.1f keV : %5s (%6.1f keV) --> %5s (%6.1f keV)%s ",GT.EGamma,GT.SpinI.Data(),GT.EI,GT.SpinF.Data(),GT.EF,GT.LifeTime.Data());
+                    TransitionName[ig] = Form(" %6.1f keV : %5s (%s%6.1f keV) --> %5s (%s%6.1f keV)%s ",GT.EGamma,GT.SpinI.Data(),GT.Offset.Data(),GT.EI,GT.SpinF.Data(),GT.Offset.Data(),GT.EF,GT.LifeTime.Data());
                     ETrans[ig] = GT.EGamma;
                     EI[ig] = GT.EI;
                     EF[ig] = GT.EF;

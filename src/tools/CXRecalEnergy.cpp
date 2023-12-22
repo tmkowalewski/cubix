@@ -35,14 +35,15 @@
 //
 // adapted by J.Dudouet
 
+#include <iomanip>
+
 #include "TH1.h"
 #include "TAxis.h"
 #include "TFitResult.h"
-#include "TMath.h"
 #include "Math/MinimizerOptions.h"
-#include "TVirtualFitter.h"
 
 #include "CXRecalEnergy.h"
+#include "CXFitFunctions.h"
 
 ///******************************************************************************************///
 ///************************************ CXRecalEnergy Class ***************************************///
@@ -198,9 +199,9 @@ void CXRecalEnergy::StartCalib()
             refPeakPosi = fCalibFunction->GetX(refEner);                            // position of the reference peak derived from calibration
             gErrorIgnoreLevel = kPrint;
             for(size_t irp = 0; irp < Peaks.size(); irp++) {
-                if( (abs(Peaks[irp].posi-refPeakPosi) < specFWHMdef)/* && Peaks[irp].good*/ ) { // not restricted to the good peaks
+                if( (abs(Peaks[irp].posi/hGain-refPeakPosi) < specFWHMdef)/* && Peaks[irp].good*/ ) { // not restricted to the good peaks
                     iref = irp;
-                    refPeakPosi = Peaks[irp].posi;                      // actual peak position
+                    refPeakPosi = Peaks[irp].posi/hGain;                      // actual peak position
                     refPeakEner = fCalibFunction->Eval(refPeakPosi);
                 }
             }
@@ -223,13 +224,16 @@ void CXRecalEnergy::StartCalib()
         if(Verbosity>=0) {
             cout<<right<<fixed;
             if(iref>=0) {
-                double fw05_e = fCalibFunction->Eval(Peaks[iref].fw05)-fCalibFunction->GetParameter(0);
-                double fw01_e = fCalibFunction->Eval(Peaks[iref].fw01)-fCalibFunction->GetParameter(0);
+                int prec = cout.precision();
+                double fw05_e = fCalibFunction->Eval(Peaks[iref].fw05)-fCalibFunction->GetParameter(1)/hGain;
+                double fw01_e = fCalibFunction->Eval(Peaks[iref].fw01)-fCalibFunction->GetParameter(1)/hGain;
 
-                cout << setw(10) << setprecision(2) << refPeakEner  << setw(8) << fw05_e << setw(8) << fw01_e << setw(12) << setprecision(1) << Peaks[iref].area << setw(12) << setprecision(2) << Peaks[iref].posi << setw(8) << Peaks[iref].fwhm << setw(10) << Peaks[iref].ampli << setw(8) << Peaks[iref].tailL << setw(8) << Peaks[iref].tailR;
-                cout << scientific<<setprecision(6) << setw(14) << fCalibFunction->GetParameter(0);
-                for(int i=1 ; i<=fCalibOrder ; i++) cout << setw(14) << fCalibFunction->GetParameter(i)*TMath::Power(hGain,i);
+                cout << setw(10) << setprecision(2) << refPeakEner  << setw(8) << fw05_e << setw(8) << fw01_e << setw(12) << setprecision(1) << Peaks[iref].area << setw(12) << setprecision(2) << Peaks[iref].posi/hGain << setw(8) << Peaks[iref].fwhm/hGain << setw(10) << Peaks[iref].ampli << setw(8) << Peaks[iref].tailL << setw(8) << Peaks[iref].tailR;
+                cout << scientific<<setprecision(6) << setw(14) << fCalibFunction->GetParameter(1)/hGain;
+                for(int i=1 ; i<=fCalibOrder ; i++) cout << setw(14) << fCalibFunction->GetParameter(i+1);
                 cout << setw(8) << fixed<< setprecision(2) << min(999.99, fCalibFunction->GetChisquare()/fCalibFunction->GetNDF()*100.);
+                cout.precision(prec);
+                cout << fixed;
             }
             else {
                 cout << setw(10) << 0.  << setw(8) << 0. << setw(8) << 0. << setw(10) << 0. << setw(12) << 0. << setw(6) << 0. << setw(10) << 0. << setw(8) << 0. << setw(8) << 0.;
@@ -242,7 +246,7 @@ void CXRecalEnergy::StartCalib()
     else if(Verbosity>=0) {
         cout << "#" << setw(3) << np << setw(4) << ngood;
         if(Peaks.size())
-            cout << setw(10) << Peaks[0].posi << setw(8) << Peaks[0].fw05 << setw(8) << Peaks[0].fw01 << setw(12) << Peaks[0].area << setw(12) << Peaks[0].posi << setw(8) << Peaks[0].fwhm << setw(10) << Peaks[0].tailL << setw(8) << Peaks[0].tailR << setw(8) << tshift*hGain;
+            cout << setw(10) << Peaks[0].posi/hGain << setw(8) << Peaks[0].fw05/hGain << setw(8) << Peaks[0].fw01/hGain << setw(12) << Peaks[0].area << setw(12) << Peaks[0].posi/hGain << setw(8) << Peaks[0].fwhm/hGain << setw(10) << Peaks[0].tailL << setw(8) << Peaks[0].tailR << setw(8) << tshift*hGain;
         else
             cout << setw(10) << 0. << setw(8) << 0. << setw(8) << 0. << setw(10) << 0. << setw(12) << 0. << setw(6) << 0. << setw(10) << 0. << setw(8) << 0. << setw(8) << 0.;
     }
@@ -1111,16 +1115,17 @@ int CXRecalEnergy::FitPeaks(int verbose)
             res.fw05   = m_pCFit->Fw05(jj);
             res.fw01   = m_pCFit->Fw01(jj);
             res.fwhm   = m_pCFit->Fwhm(jj);
+            res.errfwhm= m_pCFit->FwhmErr(jj);
             res.tailL  = m_pCFit->W01L(jj);
             res.tailR  = m_pCFit->W01R(jj);
             res.Lambda = m_pCFit->TailLeft(jj);
             res.Rho    = m_pCFit->TailRight(jj);
             res.S      = m_pCFit->Step(jj);
-            res.errposi = m_pCFit->PositionErr(jj);
+            res.errposi= m_pCFit->PositionErr(jj);
 
             bool bad = (res.area < 10) || (res.fwhm >= 5*specFWHMdef) || (res.tailR > 5.f*res.tailL);
             if(verbose > 0) {
-                cout<<Form("#1   %4d %3d %9s %8.3f %8.3f %9.0f %9.2f %6.1f %7.0f %7.3f %7.3f", nn+jj, !bad, "", res.fw05, res.fw01, res.area, res.posi, res.fwhm, res.ampli, res.tailL, res.tailR)<<endl;
+                cout<<Form("#1   %4d %3d %9s %8.3f %8.3f %9.0f %9.2f %6.1f %7.0f %7.3f %7.3f", nn+jj, !bad, "", res.fw05/hGain, res.fw01/hGain, res.area, res.posi/hGain, res.fwhm/hGain, res.ampli, res.tailL, res.tailR)<<endl;
             }
             if(!bad) {
                 Peaks.push_back(res);
@@ -1266,14 +1271,16 @@ Int_t CXRecalEnergy::EROOTCalibration()
 
     ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2","Migrad");
 
-    fCalibFunction = new TF1("ECalibration", this, &CXRecalEnergy::PolynomialFunc, Xmin, Xmax, fCalibOrder+1, "CXRecalEnergy", "PolynomialFunc");
+    fCalibFunction = new TF1("ECalibration", &CXFitFunctions::PolynomialFunc, Xmin/hGain, Xmax/hGain, fCalibOrder+2);
     fCalibFunction->SetLineColor(kBlue);
     fCalibFunction->SetNpx(1000);
-    for(int i=0 ; i<=fCalibOrder ; i++) fCalibFunction->SetParName(i,Form("a%d",i));
-    fCalibFunction->SetParameter(0,0.);
+    fCalibFunction->SetParName(0,"Order");
+    fCalibFunction->FixParameter(0,fCalibOrder);
+    for(int i=0 ; i<=fCalibOrder ; i++) fCalibFunction->SetParName(i+1,Form("a%d",i));
+    fCalibFunction->SetParameter(1,0.);
     if(fNoOffset) fCalibFunction->FixParameter(0,0);
-    fCalibFunction->SetParameter(1,bestSlope);
-    for(int i=2 ; i<=fCalibOrder ; i++) fCalibFunction->SetParameter(i,0);
+    fCalibFunction->SetParameter(2,bestSlope);
+    for(int i=2 ; i<=fCalibOrder ; i++) fCalibFunction->SetParameter(i+1,0);
 
     fCalibGraph = new TGraphErrors;
     fCalibGraph->SetName("CalibrationGraph");
@@ -1281,6 +1288,13 @@ Int_t CXRecalEnergy::EROOTCalibration()
     fCalibGraph->SetMarkerStyle(20);
     fCalibGraph->GetXaxis()->SetTitle("Energy (channels)");
     fCalibGraph->GetYaxis()->SetTitle("Energy (keV)");
+
+    fFWHMGraph = new TGraphErrors;
+    fFWHMGraph->SetName("FWHMGraph");
+    fFWHMGraph->SetMarkerColor(kRed);
+    fFWHMGraph->SetMarkerStyle(20);
+    fFWHMGraph->GetXaxis()->SetTitle("Energy (keV)");
+    fFWHMGraph->GetYaxis()->SetTitle("FWHM (keV)");
 
     fResidueGraph = new TGraphErrors;
     fResidueGraph->SetName("Residue");
@@ -1292,21 +1306,24 @@ Int_t CXRecalEnergy::EROOTCalibration()
     // fit slope using the good peaks, starting without errors
     for(size_t np = 0; np < Peaks.size(); np++) {
         if(Peaks[np].good) {
-            fCalibGraph->SetPoint(fCalibGraph->GetN(), Peaks[np].posi, Energies[Peaks[np].erefindex]);
+            fCalibGraph->SetPoint(fCalibGraph->GetN(), Peaks[np].posi/hGain, Energies[Peaks[np].erefindex]);
             //            if(Energies_unc[Peaks[np].erefindex]>0.) fCalibGraph->SetPointError(fCalibGraph->GetN()-1, Peaks[np].errposi, Energies_unc[Peaks[np].erefindex]);
+            fFWHMGraph->SetPoint(fFWHMGraph->GetN(), Energies[Peaks[np].erefindex], Peaks[np].fwhm/hGain);
+            if(Energies_unc[Peaks[np].erefindex]>0.) fFWHMGraph->SetPointError(fFWHMGraph->GetN()-1, Energies_unc[Peaks[np].erefindex],Peaks[np].errfwhm/hGain);
         }
     }
 
+    int prec = cout.precision();
     cout<<scientific<<setprecision(5);
 
     for(int i=1; i<=fCalibOrder ; i++) {
         for(int j=1; j<i ; j++) {
-            if(fCalibFunction->GetParameter(j)>0) fCalibFunction->SetParLimits(j,fCalibFunction->GetParameter(j)*0.2,fCalibFunction->GetParameter(j)*5);
-            else fCalibFunction->SetParLimits(j,fCalibFunction->GetParameter(j)*5,fCalibFunction->GetParameter(j)*0.2);
+            if(fCalibFunction->GetParameter(j+1)>0) fCalibFunction->SetParLimits(j+1,fCalibFunction->GetParameter(j+1)*0.2,fCalibFunction->GetParameter(j+1)*5);
+            else fCalibFunction->SetParLimits(j+1,fCalibFunction->GetParameter(j+1)*5,fCalibFunction->GetParameter(j+1)*0.2);
         }
-        fCalibFunction->SetParLimits(i,-TMath::Abs(fCalibFunction->GetParameter(i-1)),TMath::Abs(fCalibFunction->GetParameter(i-1)));
+        fCalibFunction->SetParLimits(i+1,-TMath::Abs(fCalibFunction->GetParameter(i)),TMath::Abs(fCalibFunction->GetParameter(i)));
         for(int j=i+1; j<=fCalibOrder ; j++) {
-            fCalibFunction->FixParameter(j,0.);
+            fCalibFunction->FixParameter(j+1,0.);
         }
         fCalibGraph->Fit(fCalibFunction,"Q0R");
     }
@@ -1324,15 +1341,18 @@ Int_t CXRecalEnergy::EROOTCalibration()
     int ngood=0;
     for(size_t np = 0; np < Peaks.size(); np++) {
         if(Peaks[np].good) {
-            double ecal = fCalibFunction->Eval(Peaks[np].posi);
-            double fwhm_e = fCalibFunction->Eval(Peaks[np].fwhm)-fCalibFunction->GetParameter(0);
+            double ecal = fCalibFunction->Eval(Peaks[np].posi/hGain);
+            double fwhm_e = fCalibFunction->Eval(Peaks[np].fwhm/hGain)-fCalibFunction->GetParameter(1);
             double res = ecal-Energies[Peaks[np].erefindex];
             fResidueGraph->SetPoint(fResidueGraph->GetN(),Energies[Peaks[np].erefindex],res);
             fResidueGraph->SetPointError(fResidueGraph->GetN()-1,0.,r->GetConfidenceIntervals()[fResidueGraph->GetN()-1]);
-            if(Verbosity > 1) cout<<"#2" << setw(12) << setprecision(1) << Peaks[np].area << setw(12) << setprecision(2) << Peaks[np].posi << setw(12) << setprecision(3) << Peaks[np].fwhm << setw(12) << setprecision(3) << fwhm_e << setw(13) << setprecision(3) << ecal << setw(15) << setprecision(3) << res <<endl;
+            if(Verbosity > 1) cout<<"#2" << setw(12) << setprecision(1) << Peaks[np].area << setw(12) << setprecision(2) << Peaks[np].posi/hGain << setw(12) << setprecision(3) << Peaks[np].fwhm/hGain << setw(12) << setprecision(3) << fwhm_e << setw(13) << setprecision(3) << ecal << setw(15) << setprecision(3) << res <<endl;
             ngood++;
         }
     }
+
+    cout.precision(prec);
+    cout << fixed;
 
     if(!r->IsValid()) cout<<"Warning: Fit failed"<<endl;
 
@@ -1440,49 +1460,34 @@ Int_t CXRecalEnergy::ROOTEffFit()
         }
     }
 
-    delete fEfficiencyFunction;
     delete fEfficiencyGraph;
-    delete fEfficiencyConfidenceIntervall;
-    fEfficiencyConfidenceIntervall = nullptr;
-
     fEfficiencyGraph = new TGraphErrors;
     fEfficiencyGraph->SetName("EfficiencyGraph");
     fEfficiencyGraph->SetMarkerColor(kRed);
     fEfficiencyGraph->SetMarkerStyle(20);
-    fEfficiencyGraph->GetXaxis()->SetTitle("Energy (channels)");
+    fEfficiencyGraph->GetXaxis()->SetTitle("Energy (keV)");
     fEfficiencyGraph->GetYaxis()->SetTitle("Normalized area (counts)");
-
-    ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2","Migrad");
-    ROOT::Math::MinimizerOptions::SetDefaultMaxIterations(1000000);
-    ROOT::Math::MinimizerOptions::SetDefaultMaxFunctionCalls(1000000);
-
-    fEfficiencyFunction = new TF1("EfficiencyFunc", this, &CXRecalEnergy::EfficiencyFunc, specFromDef, specToDef, 8, "CXRecalEnergy", "EfficiencyFunc");
-
-    fEfficiencyFunction->SetLineColor(kBlue);
-    fEfficiencyFunction->SetNpx(5000);
-    fEfficiencyFunction->SetParNames("Scale","A","B","C","D","E","F","G");
-    fEfficiencyFunction->SetParameters(1.,7.04,0.7,0.,5.273,-0.863,0.01,11); //default from radware's web site
-
-    // fit slope using the good peaks, starting without errors
 
     double scale=1;
     double scale_err=0;
 
-    if(refEner) {
-        for(size_t np = 0; np < Peaks.size(); np++) {
-            if(Peaks[np].good && (refEner == Energies[Peaks[np].erefindex])) {
-                scale = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.);
-                scale_err = scale*(Peaks[np].errarea/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2));
-                break;
+    if(fDoEffScale) {
+        if(refEner) {
+            for(size_t np = 0; np < Peaks.size(); np++) {
+                if(Peaks[np].good && (refEner == Energies[Peaks[np].erefindex])) {
+                    scale = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.);
+                    scale_err = scale*(2*sqrt(Peaks[np].area)/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2));
+                    break;
+                }
             }
+            if(scale!=1)
+                cout << "Efficiency graph normalized for the reference peak: " << refEner << " keV" << endl;
+            else
+                cout << "Reference peak: " << refEner << " keV not found" << endl;
         }
-        if(scale!=1)
-            cout << "Efficiency graph normalized for the reference peak: " << refEner << " keV" << endl;
-        else
-            cout << "Reference peak: " << refEner << " keV not found" << endl;
-    }
-    if(scale==1.) {
-        cout << "No reference peak defined, graph will not been normalized" << endl;
+        if(scale==1.) {
+            cout << "No reference peak defined, graph will not been normalized" << endl;
+        }
     }
 
     cout<<dec<<setprecision(5);
@@ -1493,116 +1498,16 @@ Int_t CXRecalEnergy::ROOTEffFit()
             //            double intensity_err = intensity*(Peaks[np].errarea/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2));
 
             double intensity_scaled = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.)/scale;
-            double intensity_scaled_err = intensity_scaled*(Peaks[np].errarea/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2) +scale_err/scale);
+            double intensity_scaled_err = intensity_scaled*(2*sqrt(Peaks[np].area)/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2) +scale_err/scale);
 
             fEfficiencyGraph->AddPoint(Energies[Peaks[np].erefindex],intensity_scaled);
-            fEfficiencyGraph->SetPointError(fEfficiencyGraph->GetN()-1,Peaks[np].errposi,intensity_scaled_err);
+            fEfficiencyGraph->SetPointError(fEfficiencyGraph->GetN()-1,Peaks[np].errposi/hGain,intensity_scaled_err);
 
-            cout<<setw(15) << Energies[Peaks[np].erefindex] << setw(15) << Peaks[np].errposi << setw(15) << Intensities.at(Peaks[np].erefindex).at(2) << setw(15) << Peaks[np].area  << setw(15) << Peaks[np].errarea << setw(15) << intensity <<endl;
+            cout<<setw(15) << Energies[Peaks[np].erefindex] << setw(15) << Peaks[np].errposi << setw(15) << Intensities.at(Peaks[np].erefindex).at(2) << setw(15) << Peaks[np].area  << setw(15) << 2*sqrt(Peaks[np].area) << setw(15) << intensity <<endl;
         }
     }
 
-    if(fEfficiencyGraph->GetN()<=2) {
-        cout << "Not enough peaks to proceed the fit" << endl;
-        return fEfficiencyGraph->GetN();
-    }
-
-    // Scale the default parameters to the max of the graph
-    fEfficiencyFunction->FixParameter(0,0.0011988228*(*max_element(fEfficiencyGraph->GetY(),fEfficiencyGraph->GetY()+fEfficiencyGraph->GetN()))); // 0.0011988228 is to scale the default parameters, to a max at 1
-
-    fEfficiencyFunction->SetParLimits(1,0,100);     // A, def 7.04
-    fEfficiencyFunction->SetParLimits(2,0.3,2);    // B, def 0.7
-    //    fEfficiencyFunction->SetParLimits(3,0.,1.);  // C, def 0.
-    fEfficiencyFunction->SetParLimits(4,1,20);     // D, def 5.273
-    fEfficiencyFunction->SetParLimits(5,-2,0.);    // E, def -0.863
-    fEfficiencyFunction->SetParLimits(6,-1,1);      // F, def 0.01
-    fEfficiencyFunction->SetParLimits(7,1,30);     // G, def 11
-
-    // Fix B to 1
-    fEfficiencyFunction->FixParameter(2,1);
-    // Fix C to 0
-    fEfficiencyFunction->FixParameter(3,0);
-    // Fix G to 10
-    fEfficiencyFunction->FixParameter(7,10);
-    fEfficiencyGraph->Fit(fEfficiencyFunction,"Q0R");
-
-    // Release B
-    fEfficiencyFunction->ReleaseParameter(2);
-    fEfficiencyGraph->Fit(fEfficiencyFunction,"Q0R");
-
-    // Release G
-    fEfficiencyFunction->ReleaseParameter(7);
-
-    TFitResultPtr r = fEfficiencyGraph->Fit(fEfficiencyFunction,"SR");
-
-    if(Verbosity>0) r->Print();
-
-    if(!r->IsValid()) cout<<"Warning: Fit failed"<<endl;
-    else {
-        fEfficiencyConfidenceIntervall= new TH1D("EffConfidence95","Efficiency 0.95 confidence band", 2000, specFromDef, specToDef);
-        (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fEfficiencyConfidenceIntervall);
-        fEfficiencyConfidenceIntervall->SetFillStyle(3002);
-        fEfficiencyConfidenceIntervall->SetFillColor(kBlue);
-        fEfficiencyConfidenceIntervall->SetFillColorAlpha(kBlue,0.5);
-        fEfficiencyConfidenceIntervall->SetStats(false);
-    }
-
     return fEfficiencyGraph->GetN();
-}
-
-///******************************************************************************************///
-
-Double_t CXRecalEnergy::EfficiencyFunc(Double_t*x,Double_t*p)
-{
-    double EG = x[0];
-    double eff=0;
-
-    double Scale=p[0];
-
-    double A=p[1];
-    double B=p[2];
-    double C=p[3];
-
-    //high energy
-    double D=p[4];
-    double E=p[5];
-    double F=p[6];
-
-    // interaction parameter between the two regions
-    // the larger G is, the sharper will be the turnover at the top, between the two curves.
-    // If the efficiency turns over gently, G will be small.
-    double G=p[7];
-
-    double E1=100.; //100 keV
-    double E2=1000.; //1000 keV
-
-    double x1 = log(EG / E1);
-    double x2 = log(EG / E2);
-
-    double f1 = A + B*x1 + C*x1*x1;
-    double f2 = D + E*x2 + F*x2*x2;
-
-    if (f1 <= 0. || f2 <= 0.)
-        eff = 1.0;
-    else {
-        double x3 = exp(-G * log(f1)) + exp(-G * log(f2));
-
-        if (x3 <= 0.) eff = 1.0;
-        else eff = exp(exp(-log(x3) / G));
-    }
-
-    return Scale*eff;
-}
-
-///******************************************************************************************///
-
-Double_t CXRecalEnergy::PolynomialFunc(Double_t*x,Double_t*p)
-{
-    Double_t value=0;
-    for(int i=0 ; i<=fCalibOrder ; i++) {
-        value += p[i]*TMath::Power(x[0],i);
-    }
-    return value;
 }
 
 ///******************************************************************************************///
@@ -1663,12 +1568,21 @@ double CXRecalEnergy::Calibrated(double x)
 void CXRecalEnergy::SetDataFromHistTH1(TH1 *hist, Int_t Id)
 {
     if(specData) delete [] specData;
-    specLength = (Int_t) hist->GetXaxis()->GetXmax();
+    //    specLength = (Int_t) hist->GetXaxis()->GetXmax();
+    //    specData = new float[specLength];
+    //    for(int i=0 ; i<specLength ; i++) {
+    //        if(i<hist->GetXaxis()->GetXmin()) specData[i] = 0.;
+    //        else specData[i] = hist->GetBinContent(hist->FindBin(i));
+    //    }
+    //    specName = hist->GetName();
+
+    specLength = (Int_t) hist->GetNbinsX();
     specData = new float[specLength];
     for(int i=0 ; i<specLength ; i++) {
         if(i<hist->GetXaxis()->GetXmin()) specData[i] = 0.;
-        else specData[i] = hist->GetBinContent(hist->FindBin(i));
+        else specData[i] = hist->GetBinContent(i+1);
     }
+    SetGain(1./hist->GetBinWidth(1));
     specName = hist->GetName();
 
     fId =Id;

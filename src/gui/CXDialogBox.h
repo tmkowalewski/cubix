@@ -31,100 +31,42 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
-#ifndef CXHist1DCalib_H
-#define CXHist1DCalib_H
+#ifndef CXDialogBox_H
+#define CXDialogBox_H
 
-#include "RQ_OBJECT.h"
 #include "TGFrame.h"
-#include "TObject.h"
 
-#include "CXRecalEnergy.h"
+#include <map>
 
 using namespace std;
 
-class TGTextEntry;
-class CXMainWindow;
-class TGNumberEntry;
-class TF1;
-class TGComboBox;
-class TGCheckButton;
-class CXCanvas;
-class TCanvas;
-
-class CXHist1DCalib : public  TGVerticalFrame
+class CXDialogBox : public  TGTransientFrame
 {
-    RQ_OBJECT("CXHist1DCalib");
-
-public:
-
 private:
 
-    TGTextEntry *fSources = nullptr;
-    CXMainWindow *fMainWindow = nullptr;
+    enum EButtonsValues { kOK, kCancel };
 
-    TGNumberEntry *fSourceEnergyRangeMin = nullptr;
-    TGNumberEntry *fSourceEnergyRangeMax = nullptr;
-    TGNumberEntry *fSourceIntensityRangeMin = nullptr;
-    TGNumberEntry *fSourceIntensityRangeMax = nullptr;
+    TGLayoutHints    *fL1;      ///< label layout
+    TGLayoutHints    *fL2;      ///< text entry layout
 
-    TGNumberEntry *fRangeMin = nullptr;
-    TGNumberEntry *fRangeMax = nullptr;
-    TGNumberEntry *fFWHMSPEntry = nullptr;
-    TGNumberEntry *fThresholdSPEntry = nullptr;
-    TGNumberEntry *fVerboseLevel = nullptr;
+    TList            *fWidgets; ///< label and text field widgets created in
 
-    TGNumberEntry *fCalibOrder = nullptr;
-    TGCheckButton *fNoOffset = nullptr;
-
-    TGCheckButton *fLeftTail = nullptr;
-    TGCheckButton *fRightTail = nullptr;
-    TGCheckButton *f2DSearch = nullptr;
-
-    TList *fListOfObjects = nullptr;
-
-    vector< pair<double,double> > fEnergies;
-    vector<array<double, 4>> fIntensities;
-    Double_t fERef=0.;
-
-    CXRecalEnergy *fRecalEnergy = nullptr;
-    TCanvas *fCalibCanvas = nullptr;
-    TF1 *fCalibFunction = nullptr;
-
-    TCanvas *fFWHMCanvas = nullptr;
-    TGraph *fFWHMGraph = nullptr;
-    TF1 *fFWHMFunction = nullptr;
-    TH1 *fFWHMConfidenceIntervall = nullptr;
+    map<TString, TString* > fMappingOfReturnValues;
 
 public:
+    CXDialogBox(const TGWindow *main = nullptr, const char *title = "ROOT Dialog");
+    ~CXDialogBox() override;
 
-    CXHist1DCalib(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
-    ~CXHist1DCalib();
+    virtual void Add(const TString &argname, TString &value);
 
-    CXMainWindow *GetMainWindow(){return fMainWindow;}
-    void SetMainWindow(CXMainWindow *w);
+    virtual void Popup();
 
-    void ShowSources();
-    void UpdateSources();
-    void UpdateText();
-    void CleanCalib();
-    void GetCurrentRange();
+    void HandleButtons(int id=-1);
 
-    void CloseCanvas();
+    void TabPressed();
+    void ReturnPressed(){HandleButtons(kOK);}
 
-    TH1 *CheckFitProperties();
-    void Calibrate();
-    void ApplyCalibration(TH1 *_hist=nullptr, TF1 *_func=nullptr);
-
-    void FWHMCalib();
-    void BuildFWHMGraph();
-
-    double DinoFct(double*xx,double*pp);
-    TF1 *GetDinoFct(TString Name, double min, double max, int Npar);
-
-    void SaveECal();
-    void SaveFWHM();
-
-    ClassDef(CXHist1DCalib,0);
+    ClassDefOverride(CXDialogBox,0);
 };
 
 #endif

@@ -43,6 +43,7 @@ class TVirtualPad;
 class TH1;
 class TF1;
 class CXArrow;
+class CXWorkspace;
 
 class CXFit : public TObject
 {
@@ -61,8 +62,10 @@ private:
     std::vector<Double_t> fEnergies;
     std::vector<Double_t> fBackgd;
 
+    CXWorkspace *fWorkspace = nullptr;
+
 public:
-    CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player);
+    CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
     ~CXFit();
 
     void AddArrow(Double_t Energy);

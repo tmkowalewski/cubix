@@ -31,8 +31,8 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
-#ifndef CXHist1DCalib_H
-#define CXHist1DCalib_H
+#ifndef CXFitEfficiency_H
+#define CXFitEfficiency_H
 
 #include "RQ_OBJECT.h"
 #include "TGFrame.h"
@@ -51,9 +51,9 @@ class TGCheckButton;
 class CXCanvas;
 class TCanvas;
 
-class CXHist1DCalib : public  TGVerticalFrame
+class CXFitEfficiency : public  TGVerticalFrame
 {
-    RQ_OBJECT("CXHist1DCalib");
+    RQ_OBJECT("CXFitEfficiency");
 
 public:
 
@@ -73,12 +73,13 @@ private:
     TGNumberEntry *fThresholdSPEntry = nullptr;
     TGNumberEntry *fVerboseLevel = nullptr;
 
-    TGNumberEntry *fCalibOrder = nullptr;
-    TGCheckButton *fNoOffset = nullptr;
-
     TGCheckButton *fLeftTail = nullptr;
     TGCheckButton *fRightTail = nullptr;
     TGCheckButton *f2DSearch = nullptr;
+
+    TGCheckButton *fNormalized;
+    TGCheckButton *fFixFitPar[7];
+    TGNumberEntry *fNE_FitPars[7][3];
 
     TList *fListOfObjects = nullptr;
 
@@ -87,18 +88,15 @@ private:
     Double_t fERef=0.;
 
     CXRecalEnergy *fRecalEnergy = nullptr;
-    TCanvas *fCalibCanvas = nullptr;
-    TF1 *fCalibFunction = nullptr;
-
-    TCanvas *fFWHMCanvas = nullptr;
-    TGraph *fFWHMGraph = nullptr;
-    TF1 *fFWHMFunction = nullptr;
-    TH1 *fFWHMConfidenceIntervall = nullptr;
+    TCanvas *fEfficiencyCanvas = nullptr;
+    TF1 *fEfficiencyFunction = nullptr;
+    TH1 *fEfficiencyConfidenceIntervall = nullptr;
+    TGraph *fEfficiencyGraph = nullptr;
 
 public:
 
-    CXHist1DCalib(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
-    ~CXHist1DCalib();
+    CXFitEfficiency(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
+    ~CXFitEfficiency();
 
     CXMainWindow *GetMainWindow(){return fMainWindow;}
     void SetMainWindow(CXMainWindow *w);
@@ -106,25 +104,30 @@ public:
     void ShowSources();
     void UpdateSources();
     void UpdateText();
-    void CleanCalib();
+    void CleanEfficiency();
     void GetCurrentRange();
+
+    void HandleMyButton();
 
     void CloseCanvas();
 
     TH1 *CheckFitProperties();
-    void Calibrate();
-    void ApplyCalibration(TH1 *_hist=nullptr, TF1 *_func=nullptr);
 
-    void FWHMCalib();
-    void BuildFWHMGraph();
+    void BuildEfficiencyCurve();
+
+    void InitFit();
+    void FitEfficiencyCurve();
+    void DoFit();
+    void ResetParams();
+    void AutoFit();
+
+    void Save();
 
     double DinoFct(double*xx,double*pp);
     TF1 *GetDinoFct(TString Name, double min, double max, int Npar);
+    Double_t EfficiencyFunc(Double_t*x,Double_t*p);
 
-    void SaveECal();
-    void SaveFWHM();
-
-    ClassDef(CXHist1DCalib,0);
+    ClassDef(CXFitEfficiency,0);
 };
 
 #endif

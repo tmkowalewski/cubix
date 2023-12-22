@@ -58,6 +58,7 @@
 #include "CXGuiENSDFPlayer.h"
 #include "CXHist1DPlayer.h"
 #include "CXHist1DCalib.h"
+#include "CXFitEfficiency.h"
 #include "CXHist2DPlayer.h"
 #include "CXRad2DPlayer.h"
 #include "CXGammaSearch.h"
@@ -123,6 +124,10 @@ void CXMainWindow::Init()
     //    fMenuView->CheckEntry(M_SavedList);
     IsSavedListEnabled = true;
 
+    fMenuView->AddEntry("Workspace manager", M_WSManager, nullptr, gClient->GetPicture("folders.png"));
+    //    fMenuView->CheckEntry(M_SavedList);
+    IsWSManagerEnabled = true;
+
     fMenuView->AddSeparator();
 
     fMenuView->AddEntry("Show editor", M_Editor,nullptr,gClient->GetPicture("bld_edit.png"));
@@ -148,6 +153,10 @@ void CXMainWindow::Init()
     fMenuTools->AddEntry("Energy calibration", M_Hist1DCalib,nullptr,gClient->GetPicture("calib.png"));
     //    fMenuTools->CheckEntry(M_Hist1DPlayer);
     IsHist1DCalibPlayerEnabled= true;
+
+    fMenuTools->AddEntry("Efficiency fit", M_HistEffFit,nullptr,gClient->GetPicture("efficiency.png"));
+    //    fMenuTools->CheckEntry(M_Hist1DPlayer);
+    IsHistEffFitPlayerEnabled= true;
 
     fMenuTools->AddEntry("Background player", M_BkdUtility,nullptr,gClient->GetPicture("h1_t.xpm"));
     //    fMenuTools->CheckEntry(M_BkdUtility);
@@ -219,7 +228,6 @@ void CXMainWindow::Init()
 
     TString Name;
 
-    // ------- Background subtract Tool -----------
     Name = "Saved List";
     fSavedListTab = fMainTab->AddTab(Name);
     fSavedList = new CXSavedList(fSavedListTab,10,10);
@@ -228,7 +236,14 @@ void CXMainWindow::Init()
     fSavedListTab->AddFrame(fSavedList, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsSavedListEnabled,fSavedListTab,Name);
 
-    // ------- Background subtract Tool -----------
+    Name = "WS Manager";
+    fWSManagerTab = fMainTab->AddTab(Name);
+    fWSManager = new CXWSManager(fWSManagerTab,10,10);
+    fWSManager->SetMainWindow(this);
+    fWSManager->SetName(Name);
+    fWSManagerTab->AddFrame(fWSManager, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
+    ToggleTab(IsWSManagerEnabled,fWSManagerTab,Name);
+
     Name = "Bkgd Player";
     fBkdToolTab = fMainTab->AddTab(Name);
     fBkdSubtract = new CXBgdUtility(fBkdToolTab,10,10);
@@ -237,7 +252,6 @@ void CXMainWindow::Init()
     fBkdToolTab->AddFrame(fBkdSubtract, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsBkdUtilityEnabled,fBkdToolTab,Name);
 
-    // ------- Hist1D Player -----------
     Name = "1D Player";
     fHist1DPlayerTab = fMainTab->AddTab(Name);
     fHist1DPlayer = new CXHist1DPlayer(fHist1DPlayerTab,10,10);
@@ -246,7 +260,6 @@ void CXMainWindow::Init()
     fHist1DPlayerTab->AddFrame(fHist1DPlayer, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,Name);
 
-    // ------- Hist1D Calib -----------
     Name = "1D Calib";
     fHist1DCalibTab = fMainTab->AddTab(Name);
     fHist1DCalib = new CXHist1DCalib(fHist1DCalibTab,10,10);
@@ -255,7 +268,14 @@ void CXMainWindow::Init()
     fHist1DCalibTab->AddFrame(fHist1DCalib, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsHist1DCalibPlayerEnabled,fHist1DCalibTab,Name);
 
-    // ------- Hist2D Player -----------
+    Name = "Efficiency fit";
+    fHistEffFitTab = fMainTab->AddTab(Name);
+    fHistEffFit = new CXFitEfficiency(fHistEffFitTab,10,10);
+    fHistEffFit->SetMainWindow(this);
+    fHistEffFit->SetName(Name);
+    fHistEffFitTab->AddFrame(fHistEffFit, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
+    ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,Name);
+
     Name = "2D Player";
     fHist2DPlayerTab = fMainTab->AddTab(Name);
     fHist2DPlayer = new CXHist2DPlayer(fHist2DPlayerTab,10,10,this);
@@ -263,7 +283,6 @@ void CXMainWindow::Init()
     fHist2DPlayerTab->AddFrame(fHist2DPlayer, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsHist2DPlayerEnabled,fHist2DPlayerTab,Name);
 
-    // ------- Rad2D Player -----------
     Name = "Rad2D Player";
     fRad2DPlayerTab = fMainTab->AddTab(Name);
     fRad2DPlayer = new CXRad2DPlayer(fRad2DPlayerTab,10,10,this);
@@ -271,7 +290,6 @@ void CXMainWindow::Init()
     fRad2DPlayerTab->AddFrame(fRad2DPlayer, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsRad2DPlayerEnabled,fRad2DPlayerTab,Name);
 
-    // ------- RadCube Player -----------
     Name = "RadCube Player";
     fRadCubePlayerTab = fMainTab->AddTab(Name);
     fRadCubePlayer = new CXRadCubePlayer(fRadCubePlayerTab,10,10,this);
@@ -280,7 +298,6 @@ void CXMainWindow::Init()
     fRadCubePlayerTab->AddFrame(fRadCubePlayer, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsRadCubePlayerEnabled,fRadCubePlayerTab,Name);
 
-    // ------- LS Player Tool -----------
     Name = "LS Player";
     fLSPlayerToolTab = fMainTab->AddTab(Name);
     fLSPlayerTool = new CXGuiENSDFPlayer(fLSPlayerToolTab,10,10);
@@ -289,7 +306,6 @@ void CXMainWindow::Init()
     fLSPlayerToolTab->AddFrame(fLSPlayerTool, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsLSPlayerToolEnabled,fLSPlayerToolTab,Name);
 
-    //    // ------- Brows File Tool -----------
     Name = "Files";
     fFileListTab = fMainTab->AddTab(Name);
     fFileList = new CXFileList(fFileListTab,GetWidth(), GetHeight());
@@ -359,7 +375,7 @@ void CXMainWindow::Init()
     fListOfSavedGates->SetOwner();
     fListOfSavedGates->SetName("ListOfGates");
 
-    //    HandleMenu(M_NucChart);
+    HandleMenu(M_Hist1DCalib);
 }
 
 CXMainWindow::~CXMainWindow() = default;
@@ -487,6 +503,8 @@ void CXMainWindow::CloseToolsTab(Int_t tabnr)
         ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,Name);
     else if(Name==fHist1DCalib->GetName())
         ToggleTab(IsHist1DCalibPlayerEnabled,fHist1DCalibTab,Name);
+    else if(Name==fHistEffFit->GetName())
+        ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,Name);
     else if(Name==fHist2DPlayer->GetName())
         ToggleTab(IsHist2DPlayerEnabled,fHist2DPlayerTab,Name);
     else if(Name==fRad2DPlayer->GetName())
@@ -499,6 +517,8 @@ void CXMainWindow::CloseToolsTab(Int_t tabnr)
         ToggleTab(IsBkdUtilityEnabled,fBkdToolTab,Name);
     else if(Name==fSavedList->GetName())
         ToggleTab(IsSavedListEnabled,fSavedListTab,Name);
+    else if(Name==fWSManager->GetName())
+        ToggleTab(IsWSManagerEnabled,fWSManagerTab,Name);
 }
 
 void CXMainWindow::CloseTab(TGTab *tab, Int_t tabnr)
@@ -698,11 +718,17 @@ void CXMainWindow::HandleMenu(Int_t id)
     case M_SavedList:
         ToggleTab(IsSavedListEnabled,fSavedListTab,fSavedList->GetName());
         break;
+    case M_WSManager:
+        ToggleTab(IsWSManagerEnabled,fWSManagerTab,fWSManager->GetName());
+        break;
     case M_Hist1DPlayer:
         ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());
         break;
     case M_Hist1DCalib:
         ToggleTab(IsHist1DCalibPlayerEnabled,fHist1DCalibTab,fHist1DCalib->GetName());
+        break;
+    case M_HistEffFit:
+        ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,fHistEffFit->GetName());
         break;
     case M_Hist2DPlayer:
         ToggleTab(IsHist2DPlayerEnabled,fHist2DPlayerTab,fHist2DPlayer->GetName());
@@ -789,6 +815,8 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
                 ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,Name);
             else if(Name==fHist1DCalib->GetName())
                 ToggleTab(IsHist1DCalibPlayerEnabled,fHist1DCalibTab,Name);
+            else if(Name==fHistEffFit->GetName())
+                ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,Name);
             else if(Name==fHist2DPlayer->GetName())
                 ToggleTab(IsHist2DPlayerEnabled,fHist2DPlayerTab,Name);
             else if(Name==fRad2DPlayer->GetName())
@@ -801,6 +829,8 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
                 ToggleTab(IsBkdUtilityEnabled,fBkdToolTab,Name);
             else if(Name==fSavedList->GetName())
                 ToggleTab(IsSavedListEnabled,fSavedListTab,Name);
+            else if(Name==fWSManager->GetName())
+                ToggleTab(IsWSManagerEnabled,fWSManagerTab,Name);
         }
 
         fMainTab->SetTab(name);
@@ -896,11 +926,31 @@ void CXMainWindow::CloseWindow()
     if(fNucChartWindow)
         fNucChartWindow->CloseWindow();
 
+    for(int i=0 ; i<gROOT->GetListOfCanvases()->GetEntries() ; i++) {
+        if(((TString)gROOT->GetListOfCanvases()->At(i)->GetTitle()).EqualTo("Calibration Results")) {
+            gROOT->GetListOfCanvases()->RemoveAt(i);
+            i--;
+        }
+    }
+    for(int i=0 ; i<gROOT->GetListOfCanvases()->GetEntries() ; i++) {
+        if(((TString)gROOT->GetListOfCanvases()->At(i)->GetTitle()).EqualTo("FWHM fit")) {
+            gROOT->GetListOfCanvases()->RemoveAt(i);
+            i--;
+        }
+    }
+    for(int i=0 ; i<gROOT->GetListOfCanvases()->GetEntries() ; i++) {
+        if(((TString)gROOT->GetListOfCanvases()->At(i)->GetTitle()).EqualTo("Efficiency fit")) {
+            gROOT->GetListOfCanvases()->RemoveAt(i);
+            i--;
+        }
+    }
+
     UnmapWindow();
     DeleteWindow();//  launch a delete but after a short time like a thread.
 
     cout << " Bye Bye Cubix!" <<endl;
 
+    gApplication->Disconnect("Terminate(Int_t)", this, "CloseWindow()");
     gApplication->SetReturnFromRun(false);
     gApplication->Terminate(false);
 }
@@ -933,6 +983,34 @@ TH1 *CXMainWindow::GetHisto(TVirtualPad *pad, bool GetFirst)
     return hist;
 }
 
+TGraph *CXMainWindow::GetGraph(TVirtualPad *pad, bool GetFirst)
+{
+    TGraph *graph = nullptr;
+
+    if(pad == nullptr && fSelectedPad == nullptr) {
+        fCanvas->cd();
+        fSelectedPad = fCanvas->cd();
+    }
+    if(pad == nullptr)
+        pad = fSelectedPad;
+
+    TObjOptLink *lnk = nullptr;
+    TObject *obj = nullptr;
+
+    TList *pList = pad->GetListOfPrimitives();
+    if (pList) lnk = (TObjOptLink*)pList->FirstLink();
+
+    while (lnk) {
+        obj = lnk->GetObject();
+        if (obj->InheritsFrom(TGraph::Class()) && strcmp(obj->GetName() ,"hframe") != 0) {
+            graph = dynamic_cast<TGraph*>(obj);
+            if(GetFirst) return graph;
+        }
+        lnk = (TObjOptLink*)lnk->Next();
+    }
+    return graph;
+}
+
 void CXMainWindow::UpdateContextMenus()
 {
     /// TH1F ///
@@ -947,7 +1025,7 @@ void CXMainWindow::UpdateContextMenus()
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl, "Undraw","UndrawObject",fCanvas,"TObject *",0); ml->AddFirst(n);
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl,"Normalize","HistNorm",this,"TObject*", 0); ml->AddFirst(n);
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl,"Scale","HistScale",this,"Float_t,TObject*", 1); ml->AddFirst(n);
-
+    n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl,"Apply calibration","HistCalib",this,"TObject*", 1); ml->AddFirst(n);
     n = new TClassMenuItem(TClassMenuItem::kPopupSeparator,cl); ml->AddFirst(n);
 
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl, "Add to Stored spectra","AddToStoredSpectra",this,"TObject *",0); ml->AddFirst(n);
@@ -972,6 +1050,7 @@ void CXMainWindow::UpdateContextMenus()
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl, "Undraw","UndrawObject",fCanvas,"TObject *",0); ml->AddFirst(n);
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl,"Normalize","HistNorm",this,"TObject*", 0); ml->AddFirst(n);
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl,"Scale","HistScale",this,"Float_t,TObject*", 1); ml->AddFirst(n);
+    n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl,"Apply calibration","HistCalib",this,"TObject*", 1); ml->AddFirst(n);
     n = new TClassMenuItem(TClassMenuItem::kPopupSeparator,cl); ml->AddFirst(n);
 
     n = new TClassMenuItem(TClassMenuItem::kPopupUserFunction,cl, "Add to Stored spectra","AddToStoredSpectra",this,"TObject *",0); ml->AddFirst(n);
@@ -1175,7 +1254,26 @@ void CXMainWindow::HistScale(Float_t scaleFact, TObject *c)
 {
     TH1 *hist = dynamic_cast<TH1*>(c);
 
+
     hist->Scale(scaleFact);
+
+    RefreshPads();
+}
+
+void CXMainWindow::HistCalib(TObject *c)
+{
+    TH1 *hist = dynamic_cast<TH1*>(c);
+
+    if(!GetWSManager()->GetActiveWorkspace()) {
+        glog << tkn::error << "No active workspace -> No energy calibration function available" << tkn::do_endl;
+        return;
+    }
+    TF1 *func = GetWSManager()->GetActiveWorkspace()->fCalibFunction;
+    if(!func) {
+        glog << tkn::error << "No energy calibration function in the active workspace: " << GetWSManager()->GetActiveWorkspace()->GetName() << tkn::do_endl;
+        return;
+    }
+    fHist1DCalib->ApplyCalibration(hist,func);
 
     RefreshPads();
 }
@@ -1445,6 +1543,7 @@ void CXMainWindow::OpenFile(TString filename)
 }
 
 void CXMainWindow::load_tkn_db() {
+    glog.set_warnings(false);
     int inuc=0;
     for(auto nuc : gmanager->get_nuclei()) {
         for(auto &lvl : nuc->get_level_scheme()->get_levels()){

@@ -217,6 +217,11 @@ void CXFileList::DisplayFile(const TString &fname)
         }
         fCurrentFile = file;
         fFolders.push_back(file);
+
+        if(file->GetListOfKeys()->GetEntries()==1) {
+            TObject *o = ((TKey*)file->GetListOfKeys()->First())->ReadObj();
+            fMainWindow->DoDraw(o,fBrowser->GetDrawOption());
+        }
     }
     if(fname.EndsWith(".spe") || fname.EndsWith(".2dp")) {
         DisplayRadSpe(fname);
@@ -398,7 +403,7 @@ void CXFileList::DisplayObject(const TString& /*fname*/,const TString& name)
 
     TObject *CurrentFolder = fFolders.back();
 
-    if(name==".."){
+    if(name=="..") {
         fFolders.pop_back();
         obj=fFolders.back();
         fFolders.pop_back();
@@ -413,9 +418,8 @@ void CXFileList::DisplayObject(const TString& /*fname*/,const TString& name)
         return;
     }
 
-    if (obj)
-    {
-        if (!obj->IsFolder()){
+    if (obj) {
+        if (!obj->IsFolder()) {
 
             TString CanvasName = fMainWindow->GetCanvas()->GetName();
 

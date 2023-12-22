@@ -31,100 +31,84 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
-#ifndef CXHist1DCalib_H
-#define CXHist1DCalib_H
+#ifndef CXFitFunctions_h
+#define CXFitFunctions_h
 
-#include "RQ_OBJECT.h"
-#include "TGFrame.h"
-#include "TObject.h"
+#include <cmath>
 
-#include "CXRecalEnergy.h"
+#include "TMath.h"
 
 using namespace std;
 
-class TGTextEntry;
-class CXMainWindow;
-class TGNumberEntry;
-class TF1;
-class TGComboBox;
-class TGCheckButton;
-class CXCanvas;
-class TCanvas;
-
-class CXHist1DCalib : public  TGVerticalFrame
+class CXFitFunctions
 {
-    RQ_OBJECT("CXHist1DCalib");
-
 public:
+    CXFitFunctions() = default;
+    virtual ~CXFitFunctions() = default;
 
-private:
+    static double EfficiencyFunc(double*x,double*p) {
+        double EG = x[0];
+        double eff=0;
 
-    TGTextEntry *fSources = nullptr;
-    CXMainWindow *fMainWindow = nullptr;
+        double Scale=p[0];
 
-    TGNumberEntry *fSourceEnergyRangeMin = nullptr;
-    TGNumberEntry *fSourceEnergyRangeMax = nullptr;
-    TGNumberEntry *fSourceIntensityRangeMin = nullptr;
-    TGNumberEntry *fSourceIntensityRangeMax = nullptr;
+        double A=p[1];
+        double B=p[2];
+        double C=p[3];
 
-    TGNumberEntry *fRangeMin = nullptr;
-    TGNumberEntry *fRangeMax = nullptr;
-    TGNumberEntry *fFWHMSPEntry = nullptr;
-    TGNumberEntry *fThresholdSPEntry = nullptr;
-    TGNumberEntry *fVerboseLevel = nullptr;
+        //high energy
+        double D=p[4];
+        double E=p[5];
+        double F=p[6];
 
-    TGNumberEntry *fCalibOrder = nullptr;
-    TGCheckButton *fNoOffset = nullptr;
+        // interaction parameter between the two regions
+        // the larger G is, the sharper will be the turnover at the top, between the two curves.
+        // If the efficiency turns over gently, G will be small.
+        double G=p[7];
 
-    TGCheckButton *fLeftTail = nullptr;
-    TGCheckButton *fRightTail = nullptr;
-    TGCheckButton *f2DSearch = nullptr;
+        double E1=100.; //100 keV
+        double E2=1000.; //1000 keV
 
-    TList *fListOfObjects = nullptr;
+        double x1 = log(EG / E1);
+        double x2 = log(EG / E2);
 
-    vector< pair<double,double> > fEnergies;
-    vector<array<double, 4>> fIntensities;
-    Double_t fERef=0.;
+        double f1 = A + B*x1 + C*x1*x1;
+        double f2 = D + E*x2 + F*x2*x2;
 
-    CXRecalEnergy *fRecalEnergy = nullptr;
-    TCanvas *fCalibCanvas = nullptr;
-    TF1 *fCalibFunction = nullptr;
+        if (f1 < 0. || f2 < 0.)
+            eff = 0.0;
+        else {
+            double x3 = exp(-G * log(f1)) + exp(-G * log(f2));
 
-    TCanvas *fFWHMCanvas = nullptr;
-    TGraph *fFWHMGraph = nullptr;
-    TF1 *fFWHMFunction = nullptr;
-    TH1 *fFWHMConfidenceIntervall = nullptr;
+            if (x3 <= 0.) eff = 0.0;
+            else eff = exp(exp(-log(x3) / G));
+        }
+        if(eff<0. || isnan(eff)) eff=0.;
 
-public:
+        return Scale*eff;
+    }
 
-    CXHist1DCalib(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
-    ~CXHist1DCalib();
+    static double PolynomialFunc(double*x,double*p) {
+        Double_t value=0;
+        int caliborder = p[0];
 
-    CXMainWindow *GetMainWindow(){return fMainWindow;}
-    void SetMainWindow(CXMainWindow *w);
+        for(int i=0 ; i<=caliborder ; i++) {
+            value += p[i+1]*TMath::Power(x[0],i);
+        }
+        return value;
+    }
 
-    void ShowSources();
-    void UpdateSources();
-    void UpdateText();
-    void CleanCalib();
-    void GetCurrentRange();
+    static double FWHMFunction(double*x,double*p) {
 
-    void CloseCanvas();
+        double E = x[0];
+        double F = p[0];
+        double G = p[1];
+        double H = p[2];
 
-    TH1 *CheckFitProperties();
-    void Calibrate();
-    void ApplyCalibration(TH1 *_hist=nullptr, TF1 *_func=nullptr);
+        return sqrt(F*F + G*G*E + H*H*E*E);
+    }
 
-    void FWHMCalib();
-    void BuildFWHMGraph();
-
-    double DinoFct(double*xx,double*pp);
-    TF1 *GetDinoFct(TString Name, double min, double max, int Npar);
-
-    void SaveECal();
-    void SaveFWHM();
-
-    ClassDef(CXHist1DCalib,0);
+    ClassDef(CXFitFunctions,0)
 };
 
-#endif
+#endif // CXSpreadIntensityMatrix_H

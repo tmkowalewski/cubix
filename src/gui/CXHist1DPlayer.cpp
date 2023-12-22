@@ -445,7 +445,7 @@ void CXHist1DPlayer::NewFit()
 
     fMainWindow->GetCanvas()->Connect("ProcessedEvent(Int_t, Int_t, Int_t, TObject*)", "CXHist1DPlayer", this, "HandleMouse(Int_t,Int_t,Int_t, TObject*)");
 
-    fCurrentFit = new CXFit(fCurrentHist,fMainWindow->GetSelectedPad(),this);
+    fCurrentFit = new CXFit(fCurrentHist,fMainWindow->GetSelectedPad(),this, fMainWindow->GetWSManager()->GetActiveWorkspace());
     fListOfFitObjects->Add(fCurrentFit);
 }
 

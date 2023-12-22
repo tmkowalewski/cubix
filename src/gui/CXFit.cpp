@@ -35,7 +35,6 @@
 
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <sstream>
 
 #include "TMath.h"
@@ -50,16 +49,19 @@
 #include "CXHist1DPlayer.h"
 #include "CXArrow.h"
 #include "CXMainWindow.h"
+#include "CXWSManager.h"
 
 #include "CXBashColor.h"
 
 using namespace std;
 
-CXFit::CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player) : TObject()
+CXFit::CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace) : TObject()
 {
     fHistogram = hist;
     fPad = pad;
     fPlayer = player;
+
+    fWorkspace = _workspace;
 
     fListOfArrows = new TList;
     fListOfArrows->SetOwner();
@@ -412,6 +414,16 @@ void CXFit::Fit()
 //        Double_t Right    = peak->GetParameter(4+i*6+4);
 //        Double_t RightErr = peak->GetParError(4+i*6+4);
 
+        Double_t Area_eff = 0.;
+        Double_t Area_eff_err = 0.;
+        if(fWorkspace && fWorkspace->fEfficiencyFunction) {
+            double eff = fWorkspace->fEfficiencyFunction->Eval(Mean);
+            Area_eff = Area * eff;
+            double error = 0.;
+            if(fWorkspace->fEfficiencyErrors) error = fWorkspace->fEfficiencyErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(Mean));
+            Area_eff_err = Area_eff * sqrt(AreaErr*AreaErr/(Area*Area) + error*error/(eff*eff));
+        }
+
         peak->SetParameter(1,0);//without backgroud
         Double_t Max      = peak->GetParameter(4+i*6+0);
         Double_t MaxErr   = peak->GetParError(4+i*6+0);
@@ -467,6 +479,13 @@ void CXFit::Fit()
         cout<<text.str()<<endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
+
+        if(Area_eff>0.) {
+            text<<left<<setw(11)<<Form("%s area",fWorkspace->GetName())<<": "<<setprecision(7)<<setw(10)<<Area_eff<<" ("<<setprecision(7)<<setw(10)<<Area_eff_err<<")";
+            cout<<text.str()<<endl;
+            fPlayer->PrintInListBox(text.str(),kInfo);
+            text.str("");
+        }
     }
 
     fFitFunction->Draw("same");

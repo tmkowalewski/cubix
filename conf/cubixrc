@@ -1,0 +1,13 @@
+**********************************
+***  Cubix configuration file  ***
+**********************************
+
+# This file can be copied in the ${HOME}/.cubixrc to be automatically read by cubix
+
+# Cubix Workspace define the folder in which the experiment workpaces are stored
+
+CXWorkspace ${HOME}/Cubix_Workspaces
+
+# Default_WS design the workspace to be loaded by default when launching cubix
+
+Default_WS None

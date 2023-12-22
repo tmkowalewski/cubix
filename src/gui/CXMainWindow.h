@@ -34,14 +34,13 @@
 #ifndef CXMainWindow_H
 #define CXMainWindow_H
 
-#include <thread>
-#include <future>
-
 #include "TGFrame.h"
+#include <future>
 
 #include "RQ_OBJECT.h"
 
 #include "CXCanvas.h"
+#include "CXWSManager.h"
 
 class TGMenuBar;
 class TGVSplitter;
@@ -57,6 +56,7 @@ class CXFileList;
 class CXGuiENSDFPlayer;
 class CXHist1DPlayer;
 class CXHist1DCalib;
+class CXFitEfficiency;
 class CXHist2DPlayer;
 class CXRad2DPlayer;
 class CXRadCubePlayer;
@@ -89,12 +89,14 @@ public:
         M_LSPlayerUtility,
         M_Hist1DPlayer,
         M_Hist1DCalib,
+        M_HistEffFit,
         M_Hist2DPlayer,
         M_Rad2DPlayer,
         M_RadCubePlayer,
         M_FileListUtility,
         M_Eff,
-        M_SavedList
+        M_SavedList,
+        M_WSManager
     };
 
 protected:
@@ -121,6 +123,7 @@ protected:
     TGCompositeFrame *fBkdToolTab = nullptr;
     TGCompositeFrame *fHist1DPlayerTab = nullptr;
     TGCompositeFrame *fHist1DCalibTab = nullptr;
+    TGCompositeFrame *fHistEffFitTab = nullptr;
     TGCompositeFrame *fHist2DPlayerTab = nullptr;
     TGCompositeFrame *fRad2DPlayerTab = nullptr;
     TGCompositeFrame *fRadCubePlayerTab = nullptr;
@@ -129,6 +132,7 @@ protected:
     TGCompositeFrame *fEditorTab = nullptr;
     TGCompositeFrame *fEIntensity = nullptr;
     TGCompositeFrame *fSavedListTab = nullptr;
+    TGCompositeFrame *fWSManagerTab = nullptr;
 
     TGCanvas *fTGCanvas = nullptr;
 
@@ -142,10 +146,12 @@ protected:
     CXGuiENSDFPlayer   *fLSPlayerTool = nullptr;
     CXHist1DPlayer  *fHist1DPlayer = nullptr;
     CXHist1DCalib  *fHist1DCalib = nullptr;
+    CXFitEfficiency *fHistEffFit = nullptr;
     CXHist2DPlayer  *fHist2DPlayer = nullptr;
     CXRad2DPlayer   *fRad2DPlayer = nullptr;
     CXRadCubePlayer *fRadCubePlayer = nullptr;
     CXSavedList *fSavedList = nullptr;
+    CXWSManager *fWSManager = nullptr;
 
     TGStatusBar *fStatusBar = nullptr;
     TVirtualPadEditor *fEditor = nullptr;
@@ -155,11 +161,13 @@ protected:
     Bool_t IsLSPlayerToolEnabled{};
     Bool_t IsHist1DPlayerEnabled{};
     Bool_t IsHist1DCalibPlayerEnabled{};
+    Bool_t IsHistEffFitPlayerEnabled{};
     Bool_t IsHist2DPlayerEnabled{};
     Bool_t IsRad2DPlayerEnabled{};
     Bool_t IsRadCubePlayerEnabled{};
     Bool_t IsFileListUtilityEnabled{};
     Bool_t IsSavedListEnabled{};
+    Bool_t IsWSManagerEnabled{};
 
     Bool_t IsStatsShown = false;
     Bool_t IsTitleShown = false;
@@ -222,6 +230,8 @@ public:
     void OpenLS(){Emit("OpenLS()");} //*SIGNAL*
 
     TH1 *GetHisto(TVirtualPad *pad = nullptr, bool GetFirst = true);
+    TGraph *GetGraph(TVirtualPad *pad = nullptr, bool GetFirst = true);
+
     void UpdateContextMenus();
     void PopUpFindPeaks(TObject *c);
     void PopUpFitPeaks(TObject *c);
@@ -233,6 +243,7 @@ public:
     void InitRadCubePlayer(CXRadReader *radreader);
 
     void HistScale(Float_t scaleFact=1, TObject *c=nullptr);
+    void HistCalib(TObject *c);
     void GraphScale(Float_t scaleFact=1, TObject *c=nullptr);
     void HistNorm(TObject *c);
     void Rebin2D(Int_t RebinX=2, Int_t RebinY=2, TObject *c=nullptr);
@@ -256,6 +267,10 @@ public:
 
     bool is_db_loaded(){return fdb_loaded;}
     void pause_db_loading(bool _on){fdb_loading_paused = _on;}
+
+    CXWSManager *GetWSManager() {return fWSManager;}
+    void SetWorkSpaceDirectory(TString _ws_dir) {fWSManager->SetWSDirectory(_ws_dir);fWSManager->RefreshWS();}
+    void LoadWorkSpace(TString _ws) {fWSManager->LoadWS(_ws);}
 
 protected:
 

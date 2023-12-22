@@ -34,9 +34,6 @@
 #include "CXSavedList.h"
 
 #include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
 
 #include "TGButton.h"
 #include "TGTextEntry.h"
@@ -179,8 +176,8 @@ void CXSavedList::ClearStoredList(){
 
 void CXSavedList::ProcessedButtonEvent(Event_t *event)
 {
-    char input[10];
-    UInt_t keysym;
+    // char input[10];
+    // UInt_t keysym;
 
     //        gVirtualX->LookupString(event, input, sizeof(input), keysym);
 
@@ -189,19 +186,19 @@ void CXSavedList::ProcessedButtonEvent(Event_t *event)
     //    if(event->fType == kGKeyPress && keysym == kKey_Control)
     //        fCtrl_On = true;
 
-    if(event->fType == kButtonPress){
-        if(fLastSelected){
-            fLastSelected->SetBackgroundColor((Pixel_t)0x90f269);
-            fLastSelected = nullptr;
-            fStoredSpectraBox->Layout();
-        }
-        if(fStoredSpectraBox->GetSelectedEntry()){
-            fStoredSpectraBox->GetSelectedEntry()->SetBackgroundColor((Pixel_t) 0x87a7d2);
-            fLastSelected = fStoredSpectraBox->GetSelectedEntry();
-            fStoredSpectraBox->Select(fStoredSpectraBox->GetSelected(),false);
-            fStoredSpectraBox->Layout();
-        }
-    }
+    // if(event->fType == kButtonPress){
+    //     if(fLastSelected){
+    //         fLastSelected->SetBackgroundColor((Pixel_t)0x90f269);
+    //         fLastSelected = nullptr;
+    //         fStoredSpectraBox->Layout();
+    //     }
+    //     if(fStoredSpectraBox->GetSelectedEntry()){
+    //         fStoredSpectraBox->GetSelectedEntry()->SetBackgroundColor((Pixel_t) 0x87a7d2);
+    //         fLastSelected = fStoredSpectraBox->GetSelectedEntry();
+    //         fStoredSpectraBox->Select(fStoredSpectraBox->GetSelected(),false);
+    //         fStoredSpectraBox->Layout();
+    //     }
+    // }
 }
 
 void CXSavedList::DoubleClicked(Int_t id)

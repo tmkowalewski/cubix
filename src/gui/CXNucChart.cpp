@@ -945,35 +945,26 @@ TString CXNucChart::PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> lev, TStr
     TString Text="";
 
     if(print) {
-        TString text = Form("** Gamma-rays transitions for nucleus %s **",NucName.Data());
+        TString text = Form("** Levels and Gammas for nucleus %s **",NucName.Data());
         TString stars; for (int i=0 ; i<text.Length() ; i++) stars.Append("*");
         cout<<endl<<endl<<stars<<endl<<text<<endl<<stars<<endl<<endl;
-
-        cout<<Form("    E Gamma :      Ji (    Ei    ) -->      Jf (     Ef   ) ( I %% )")<<endl;
-        cout<<     "-------------------------------------------------------------------"<<endl;
-
-        cout<<endl;
     }
 
-    for(auto &dec: lev->get_decays<tkn::tkgammadecay>()) {
-        Float_t Energy = dec->get_energy();
+    for(auto &lev: lev->get_levels()) {
+        if(print) {
+            lev->print();
+            for(auto &dec: lev->get_decays_down()) {
+                cout << "              -> "; dec->print("quiet,levto");
 
-        auto NucLevI = dec->get_level_from();
-        auto NucLevF = dec->get_level_to();
+                Float_t Energy = dec-> get_energy();
+                auto NucLevI = dec->get_level_from();
+                auto NucLevF = dec->get_level_to();
 
-        auto Strengh = dec->get_relative_intensity_measure();
-
-        double ELevI   = NucLevI->get_energy();
-        TString spinI_s = NucLevI->get_spin_parity_str();
-
-        double ELevF   = NucLevF->get_energy();
-        TString spinF_s = NucLevF->get_spin_parity_str();
-
-        TString TransitionName;
-        if(Strengh) TransitionName = Form(" %6.1f keV : %7s (%6.1f keV) --> %7s (%6.1f keV) (%3.f %%) ",Energy,spinI_s.Data(),ELevI,spinF_s.Data(),ELevF,Strengh->get_value());
-        else  TransitionName = Form(" %6.1f keV : %7s (%6.1f keV) --> %7s (%6.1f keV) (?) ",Energy,spinI_s.Data(),ELevI,spinF_s.Data(),ELevF);
-        if(print) cout<<TransitionName<<endl;
-        Text += Form("!%-7g %-7s->%-7s",Energy,spinI_s.Data(),spinF_s.Data());
+                TString spinI_s = NucLevI->get_spin_parity_str();
+                TString spinF_s = NucLevF->get_spin_parity_str();
+                Text += Form("!%-7g %-7s->%-7s",Energy,spinI_s.Data(),spinF_s.Data());
+            }
+        }
     }
     return Text;
 }
@@ -983,28 +974,26 @@ TString CXNucChart::PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> lev, TStr
     if(lev == nullptr) return "";
 
     TString Text="";
-
     if(!fMainWindow->is_db_loaded()) {
         fMainWindow->pause_db_loading(true);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
-
     if(print) {
-        TString text = Form("** Levels info for nucleus %s **",NucName.Data());
+        TString text = Form("** Levels for nucleus %s **",NucName.Data());
         TString stars; for (int i=0 ; i<text.Length() ; i++) stars.Append("*");
         cout<<endl<<endl<<stars<<endl<<text<<endl<<stars<<endl<<endl;
-
-        cout<<left<<setw(15)<<"Energy"<<setw(6)<<"Spin"<<setw(8)<<"T 1/2"<<endl;
-        cout<<"--------------------------"<<endl<<endl;
     }
 
     for(auto &lev: lev->get_levels()) {
-        Float_t ELev   = lev->get_energy();
+        Float_t ELev   = lev->get_energy(tkn::tkunit_manager::keV,true);
+        TString offset="";
+        if(lev->is_energy_offset()) offset += lev->get_offset_bandhead() + "+";
         TString spin = lev->get_spin_parity_str();
         TString LifeTime = lev->get_lifetime_str();
 
-        if(print) cout<<left<<setw(15)<<ELev<<setw(6)<<spin<<setw(8)<<LifeTime<<endl;
-        Text += Form("!%-7g %-7s %-10s",ELev,spin.Data(),LifeTime.Data());
+        if(print) lev->print();
+
+        Text += Form("!%s%-7g %-7s %-10s",offset.Data(),ELev,spin.Data(),LifeTime.Data());
     }
 
     if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
