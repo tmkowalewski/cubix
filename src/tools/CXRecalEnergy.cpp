@@ -41,9 +41,12 @@
 #include "TAxis.h"
 #include "TFitResult.h"
 #include "Math/MinimizerOptions.h"
+#include "TVirtualFitter.h"
 
 #include "CXRecalEnergy.h"
 #include "CXFitFunctions.h"
+
+#include "tklog.h"
 
 ///******************************************************************************************///
 ///************************************ CXRecalEnergy Class ***************************************///
@@ -1265,9 +1268,9 @@ Int_t CXRecalEnergy::EROOTCalibration()
         Xmax+=100;
     }
 
-    if(fCalibFunction) delete fCalibFunction;
-    if(fCalibGraph) delete fCalibGraph;
-    if(fResidueGraph) delete fResidueGraph;
+    delete fCalibFunction;
+    delete fCalibGraph;
+    delete fResidueGraph;
 
     ROOT::Math::MinimizerOptions::SetDefaultMinimizer("Minuit2","Migrad");
 
@@ -1307,7 +1310,8 @@ Int_t CXRecalEnergy::EROOTCalibration()
     for(size_t np = 0; np < Peaks.size(); np++) {
         if(Peaks[np].good) {
             fCalibGraph->SetPoint(fCalibGraph->GetN(), Peaks[np].posi/hGain, Energies[Peaks[np].erefindex]);
-            //            if(Energies_unc[Peaks[np].erefindex]>0.) fCalibGraph->SetPointError(fCalibGraph->GetN()-1, Peaks[np].errposi, Energies_unc[Peaks[np].erefindex]);
+            // if(Energies_unc[Peaks[np].erefindex]>0.) fCalibGraph->SetPointError(fCalibGraph->GetN()-1, Peaks[np].errposi/hGain, Energies_unc[Peaks[np].erefindex]);
+
             fFWHMGraph->SetPoint(fFWHMGraph->GetN(), Energies[Peaks[np].erefindex], Peaks[np].fwhm/hGain);
             if(Energies_unc[Peaks[np].erefindex]>0.) fFWHMGraph->SetPointError(fFWHMGraph->GetN()-1, Energies_unc[Peaks[np].erefindex],Peaks[np].errfwhm/hGain);
         }
@@ -1332,7 +1336,22 @@ Int_t CXRecalEnergy::EROOTCalibration()
 
     if(Verbosity>1) r->Print();
 
-    r->GetConfidenceIntervals();
+    delete fCalibConfidenceIntervall;
+    fCalibConfidenceIntervall = nullptr;
+
+    if(!r->IsValid()) {
+        glog << tkn::comment << "Fit failed" << tkn::do_endl;
+    }
+    else {
+        fCalibConfidenceIntervall = new TH1D("CalibConfidence95","Calib 0.95 confidence band", 5000, 0, 10000);
+        (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fCalibConfidenceIntervall);
+        fCalibConfidenceIntervall->SetLineWidth(0);
+        fCalibConfidenceIntervall->SetFillColor(kBlue);
+        fCalibConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
+        fCalibConfidenceIntervall->SetFillStyle(1001);
+        fCalibConfidenceIntervall->SetStats(false);
+        fCalibConfidenceIntervall->SetDirectory(nullptr);
+    }
 
     cout<<right<<fixed;
 
@@ -1344,8 +1363,12 @@ Int_t CXRecalEnergy::EROOTCalibration()
             double ecal = fCalibFunction->Eval(Peaks[np].posi/hGain);
             double fwhm_e = fCalibFunction->Eval(Peaks[np].fwhm/hGain)-fCalibFunction->GetParameter(1);
             double res = ecal-Energies[Peaks[np].erefindex];
+            double err = Energies_unc[Peaks[np].erefindex];
+            if(fCalibConfidenceIntervall) err = sqrt(Energies_unc[Peaks[np].erefindex]*Energies_unc[Peaks[np].erefindex] + fCalibConfidenceIntervall->GetBinError(fCalibConfidenceIntervall->FindBin(Peaks[np].posi/hGain))*fCalibConfidenceIntervall->GetBinError(fCalibConfidenceIntervall->FindBin(Peaks[np].posi/hGain)));
+
             fResidueGraph->SetPoint(fResidueGraph->GetN(),Energies[Peaks[np].erefindex],res);
-            fResidueGraph->SetPointError(fResidueGraph->GetN()-1,0.,r->GetConfidenceIntervals()[fResidueGraph->GetN()-1]);
+            fResidueGraph->SetPointError(fResidueGraph->GetN()-1,Energies_unc[Peaks[np].erefindex],err);
+
             if(Verbosity > 1) cout<<"#2" << setw(12) << setprecision(1) << Peaks[np].area << setw(12) << setprecision(2) << Peaks[np].posi/hGain << setw(12) << setprecision(3) << Peaks[np].fwhm/hGain << setw(12) << setprecision(3) << fwhm_e << setw(13) << setprecision(3) << ecal << setw(15) << setprecision(3) << res <<endl;
             ngood++;
         }
@@ -1353,8 +1376,6 @@ Int_t CXRecalEnergy::EROOTCalibration()
 
     cout.precision(prec);
     cout << fixed;
-
-    if(!r->IsValid()) cout<<"Warning: Fit failed"<<endl;
 
     return ngood;
 }

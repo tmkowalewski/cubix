@@ -36,6 +36,7 @@
 
 #include "RQ_OBJECT.h"
 #include "TGFrame.h"
+#include "TGNumberEntry.h"
 
 using namespace std;
 
@@ -44,9 +45,7 @@ class CXRadReader;
 class CXRadCubeTH1Proj;
 class TGListBox;
 class TGLBEntry;
-class TGCheckButton;
 class TGTextEntry;
-class TGNumberEntry;
 
 class CXRadCubePlayer : public  TGVerticalFrame
 {
@@ -60,7 +59,14 @@ private:
     TGCheckButton *fFixRange = nullptr;
     TGCheckButton *fBckSubtract = nullptr;
 
+    TGCheckButton *fUseFWHM = nullptr;
+    TGNumberEntry *fFWHMGateFraction = nullptr;
+
     TGNumberEntry *fRebinValue = nullptr;
+    TGCheckButton *fDynamicProj = nullptr;
+
+    TGNumberEntry *fNProjections = nullptr;
+    int fNProjs=1;
 
     TGListBox *fStoredSpectraBox = nullptr;
     TList *fListOfStoredSpectra = nullptr;
@@ -72,6 +78,7 @@ public:
 
     void SetMainWindow(CXMainWindow *w);
 
+    void ChangeNProjections();
     void Init(CXRadReader *radreader);
     void Project();
     void AddGate1();
@@ -80,6 +87,12 @@ public:
     void ApplyLastGates();
 
     void UpdateDrawOpt();
+    void ToggleFWHM();
+
+    bool UseFWHM();
+    double GetFWHMGateFraction() {return fFWHMGateFraction->GetNumber();}
+
+    bool UseDynamicProjection() {return (fDynamicProj->GetState()==kButtonDown);}
 
 private:
     CXRadCubeTH1Proj *GetProj();

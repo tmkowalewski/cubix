@@ -134,6 +134,7 @@ public:
     TGraphErrors *fCalibGraph = nullptr;
     TGraphErrors *fResidueGraph = nullptr;
     TGraphErrors *fFWHMGraph = nullptr;
+    TH1          *fCalibConfidenceIntervall = nullptr;
 
     TGraphErrors *fEfficiencyGraph = nullptr;
 

@@ -36,6 +36,8 @@
 
 #include "RQ_OBJECT.h"
 #include "TGFrame.h"
+#include "TGNumberEntry.h"
+#include "TGButton.h"
 
 using namespace std;
 
@@ -44,10 +46,8 @@ class TH2;
 class CXTH1Proj;
 class TGListBox;
 class TGLBEntry;
-class TGCheckButton;
 class TGTextEntry;
 class TGComboBox;
-class TGNumberEntry;
 
 class CXHist2DPlayer : public  TGVerticalFrame
 {
@@ -64,18 +64,29 @@ private:
     TGListBox *fStoredSpectraBox = nullptr;
     TList *fListOfStoredSpectra = nullptr;
     TGTextEntry *fDrawOpt = nullptr;
+
+    TGCheckButton *fUseFWHM = nullptr;
+    TGNumberEntry *fFWHMGateFraction = nullptr;
+    TGNumberEntry *fFWHMBackFraction = nullptr;
+
     TGCheckButton *fFixRange = nullptr;
 
     TGNumberEntry *fRebinValue = nullptr;
+
+    TGCheckButton *fDynamicProj = nullptr;
+
+    TGNumberEntry *fNProjections = nullptr;
+    int fNProjs=1;
 
     TGComboBox *fProjectionAxis = nullptr;
 
 public:
     CXHist2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h, CXMainWindow *window);
-    ~CXHist2DPlayer();
+    ~CXHist2DPlayer() = default;
 
     void SetMainWindow(CXMainWindow *w);
 
+    void ChangeNProjections();
     void InitGG(TH2 *hist_in =nullptr);
     void UpdateProjection();
 
@@ -86,6 +97,13 @@ public:
     void ApplyLastGate();
 
     void UpdateDrawOpt();
+    void ToggleFWHM();
+
+    bool UseFWHM();
+    double GetFWHMGateFraction() {return fFWHMGateFraction->GetNumber();}
+    double GetFWHMBckFraction() {return fFWHMBackFraction->GetNumber();}
+
+    bool UseDynamicProjection() {return (fDynamicProj->GetState()==kButtonDown);}
 
 private:
     CXTH1Proj *GetProj();

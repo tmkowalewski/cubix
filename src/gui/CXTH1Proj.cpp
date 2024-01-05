@@ -33,10 +33,6 @@
 
 #include "CXTH1Proj.h"
 
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
 #include <array>
 
 #include "TH2.h"
@@ -45,10 +41,11 @@
 #include "TPadPainter.h"
 #include "TColor.h"
 #include "TROOT.h"
-#include "TFrame.h"
 #include "TError.h"
 #include "TContextMenu.h"
 #include "TVirtualX.h"
+#include "TF1.h"
+#include "TFrame.h"
 
 #include "CXMainWindow.h"
 #include "CXHist2DPlayer.h"
@@ -57,7 +54,7 @@
 
 using namespace std;
 
-CXTH1Proj::CXTH1Proj(const TH1D &hist): TH1D::TH1D(hist)
+CXTH1Proj::CXTH1Proj(const TH1D &hist, int _nprojs): TH1D::TH1D(hist)
 {
     GetXaxis()->SetTitle("Energy (keV) [X axis]");
     GetXaxis()->SetTitleSize(0.05);
@@ -74,6 +71,12 @@ CXTH1Proj::CXTH1Proj(const TH1D &hist): TH1D::TH1D(hist)
     fListOfGates = new TList;
     fListOfGates->SetOwner();
     fListOfGates->SetName("ListOfGates");
+
+    fNProjs = _nprojs;
+    for(int i=0 ; i<fNProjs ; i++) {
+        fProjection.push_back(nullptr);
+        fProjPad.push_back(nullptr);
+    }
 
     SetStats();
 }
@@ -96,7 +99,7 @@ void CXTH1Proj::UpdateProjection(Int_t Axis)
 {
     if(fGGHist->GetXaxis()->GetNbins() != fGGHist->GetYaxis()->GetNbins()) {
         gbash_color->WarningMessage("X and Y axis needs to have the same number of bins for GG projections");
-//        return;
+        //        return;
     }
     if(Axis == 0) {
         Reset();
@@ -139,9 +142,9 @@ void CXTH1Proj::SetTH2(TH2 *hist)
     fGGHist = dynamic_cast<TH2*>(hist->Clone());
 }
 
-void CXTH1Proj::SetProjPad(TPad *pad)
+void CXTH1Proj::SetProjPad(int _ipad, TPad *_pad)
 {
-    fProjPad = pad;
+    fProjPad.at(_ipad) = _pad;
 }
 
 void CXTH1Proj::SetCurrentPad(TPad *pad)
@@ -155,43 +158,80 @@ void CXTH1Proj::SetCurrentPad(TPad *pad)
 }
 
 
-void CXTH1Proj::AddBackgd(Float_t Mean, Float_t Width)
+void CXTH1Proj::AddBackgd1(double Mean, double Width)
 {
-    if(Mean==0 && Width==0 && ((CXGateBox*)fListOfGates->Last()) && ((CXGateBox*)fListOfGates->Last())->IsGate1()) {
+    if(Mean==0 && ((CXGateBox*)fListOfGates->Last()) && ((CXGateBox*)fListOfGates->Last())->IsGate1()) {
         Mean = ((CXGateBox*)fListOfGates->Last())->GetCentroid() + 4*((CXGateBox*)fListOfGates->Last())->GetWidth();
-        Width = ((CXGateBox*)fListOfGates->Last())->GetWidth();
     }
+    if(Width==0.) {
+        if(f2DPlayer->UseFWHM()) {
+            Mean = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            Width = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction->Eval(Mean);
+            Width *= f2DPlayer->GetFWHMBckFraction();
+        }
+        else if(((CXGateBox*)fListOfGates->Last())) {
+            Width = ((CXGateBox*)fListOfGates->Last())->GetWidth();
+        }
+    }
+
+    fAddNewBacground = false;
+
+    if(Mean==0. || Width == 0.) return;
+
     auto *box = new CXGateBox(Mean,Width,fCurrentPad);
     box->SetBGD();
     fListOfGates->Add(box);
 
     fCurrentPad->cd();
     box->Draw();
-
-    fAddNewBacground = false;
 }
 
-void CXTH1Proj::AddGate1(Float_t Mean, Float_t Width)
+void CXTH1Proj::AddGate1(double Mean, double Width)
 {
+    if(Width==0.) {
+        if(f2DPlayer->UseFWHM()) {
+            Mean = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            Width = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction->Eval(Mean);
+            Width *= f2DPlayer->GetFWHMGateFraction();
+        }
+        else {
+            for(int i=(fListOfGates->GetEntries()-1) ; i>=0 ; i--) {
+                CXGateBox *box = dynamic_cast<CXGateBox*>(fListOfGates->At(i));
+                if(box->IsGate1()) {
+                    Width = box->GetWidth();
+                    break;
+                }
+            }
+        }
+    }
+
+    fAddNewGate = false;
+
+    if(Mean==0. || Width == 0.) return;
+
     auto *box = new CXGateBox(Mean,Width,fCurrentPad);
     box->SetGate1();
     fListOfGates->Add(box);
 
     fCurrentPad->cd();
     box->Draw();
-
-    fAddNewGate = false;
 }
 
-void CXTH1Proj::Project(Bool_t FixRange, int _rebin_value) {
+void CXTH1Proj::Project(Bool_t FixRange, int _rebin_value)
+{
+    if(!fprojok) return;
+    fprojok = false;
 
     array<Float_t,2> SavedRange{};
     if( FixRange ){
-        if(fMainWindow->GetHisto(fProjPad)){
-            SavedRange.at(0) = fProjPad->GetUxmin();
-            SavedRange.at(1) = fProjPad->GetUxmax();
+        if(fMainWindow->GetHisto(fProjPad.at(fCurrentProjPad))){
+            SavedRange.at(0) = fProjPad.at(fCurrentProjPad)->GetUxmin();
+            SavedRange.at(1) = fProjPad.at(fCurrentProjPad)->GetUxmax();
         }
     }
+
+    delete fProjection.at(fCurrentProjPad);
+    fProjection.at(fCurrentProjPad) = nullptr;
 
     Float_t TotalGateWidth = 0;
     Float_t TotalBGDWidth = 0;
@@ -221,23 +261,20 @@ void CXTH1Proj::Project(Bool_t FixRange, int _rebin_value) {
 
     ProjName += NameGates + NameBGD;
 
-    if(gROOT->FindObject(ProjName.Data()))
-        delete gROOT->FindObject(ProjName.Data());
-
     gErrorIgnoreLevel = kError;
-    TH1D *FinalProj = nullptr;
-    if(fProjectionAxis==0) FinalProj = fGGHist->ProjectionY("tempproj");
-    else FinalProj = fGGHist->ProjectionX("tempproj");
 
-    FinalProj->SetStats();
-    FinalProj->Reset();
-    if(_rebin_value>1) FinalProj->Rebin(_rebin_value);
-    GetYaxis()->SetTitle(Form("Counts/%g keV",FinalProj->GetBinWidth(1)));
+    if(fProjectionAxis==0) fProjection.at(fCurrentProjPad) = fGGHist->ProjectionY("tempproj");
+    else fProjection.at(fCurrentProjPad) = fGGHist->ProjectionX("tempproj");
 
-    FinalProj->SetName(ProjName.Data());
-    FinalProj->SetTitle(ProjName.Data());
+    fProjection.at(fCurrentProjPad)->SetStats();
+    fProjection.at(fCurrentProjPad)->Reset();
+    if(_rebin_value>1) fProjection.at(fCurrentProjPad)->Rebin(_rebin_value);
+    GetYaxis()->SetTitle(Form("Counts/%g keV",fProjection.at(fCurrentProjPad)->GetBinWidth(1)));
 
-    Float_t WidthRef = FinalProj->GetBinWidth(1);
+    fProjection.at(fCurrentProjPad)->SetName(ProjName.Data());
+    fProjection.at(fCurrentProjPad)->SetTitle(ProjName.Data());
+
+    Float_t WidthRef = fProjection.at(fCurrentProjPad)->GetBinWidth(1);
 
     TString XAxis = GetXaxis()->GetTitle();
     if(XAxis.Contains("[X"))
@@ -245,17 +282,17 @@ void CXTH1Proj::Project(Bool_t FixRange, int _rebin_value) {
     else if(XAxis.Contains("[Y"))
         XAxis.ReplaceAll("[Y","[X");
 
-    FinalProj->GetXaxis()->SetTitle(XAxis);
-    FinalProj->GetXaxis()->SetTitleSize(GetXaxis()->GetTitleSize());
-    FinalProj->GetXaxis()->SetTitleOffset(GetXaxis()->GetTitleOffset());
-    FinalProj->GetXaxis()->SetTitleFont(GetXaxis()->GetTitleFont());
-    FinalProj->GetXaxis()->SetLabelFont(GetXaxis()->GetLabelFont());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitle(XAxis);
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitleSize(GetXaxis()->GetTitleSize());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitleOffset(GetXaxis()->GetTitleOffset());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitleFont(GetXaxis()->GetTitleFont());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetLabelFont(GetXaxis()->GetLabelFont());
 
-    FinalProj->GetYaxis()->SetTitle(GetYaxis()->GetTitle());
-    FinalProj->GetYaxis()->SetTitleSize(GetYaxis()->GetTitleSize());
-    FinalProj->GetYaxis()->SetTitleOffset(GetYaxis()->GetTitleOffset());
-    FinalProj->GetYaxis()->SetTitleFont(GetYaxis()->GetTitleFont());
-    FinalProj->GetYaxis()->SetLabelFont(GetYaxis()->GetLabelFont());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitle(GetYaxis()->GetTitle());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitleSize(GetYaxis()->GetTitleSize());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitleOffset(GetYaxis()->GetTitleOffset());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitleFont(GetYaxis()->GetTitleFont());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetLabelFont(GetYaxis()->GetLabelFont());
 
     for(int i=0 ; i<fListOfGates->GetEntries() ; i++) {
         auto* box =  dynamic_cast<CXGateBox*>(fListOfGates->At(i));
@@ -287,25 +324,26 @@ void CXTH1Proj::Project(Bool_t FixRange, int _rebin_value) {
 
             if(_rebin_value>1) temp->Rebin(_rebin_value);
 
-            temp->Scale(FinalProj->GetBinWidth(ibin)/WidthRef);
-            FinalProj->Add(temp,Weight);
+            temp->Scale(fProjection.at(fCurrentProjPad)->GetBinWidth(ibin)/WidthRef);
+            fProjection.at(fCurrentProjPad)->Add(temp,Weight);
             delete temp;
         }
     }
 
-    gbash_color->InfoMessage(Form("Integral of projection: %g",FinalProj->Integral()));
+    gbash_color->InfoMessage(Form("Integral of projection: %g",fProjection.at(fCurrentProjPad)->Integral()));
 
-    fProjPad->cd();
-    FinalProj->Draw("hist");
-    if(FixRange)
-        FinalProj->GetXaxis()->SetRangeUser(SavedRange.at(0),SavedRange.at(1));
+    fProjPad.at(fCurrentProjPad)->cd();
+    fProjection.at(fCurrentProjPad)->Draw("hist");
+    if(FixRange) fProjection.at(fCurrentProjPad)->GetXaxis()->SetRangeUser(SavedRange.at(0),SavedRange.at(1));
     gErrorIgnoreLevel = kPrint;
 
-    fProjPad->Update();
-    fProjPad->Modified();
+    fProjPad.at(fCurrentProjPad)->Update();
+    fProjPad.at(fCurrentProjPad)->Modified();
 
-    fProjPad->SetBit(TPad::kCannotMove);
-    fProjPad->GetFrame()->SetBit(TObject::kCannotPick);
+    fProjPad.at(fCurrentProjPad)->SetBit(TPad::kCannotMove);
+    fProjPad.at(fCurrentProjPad)->GetFrame()->SetBit(TObject::kCannotPick);
+
+    fprojok=true;
 }
 
 void CXTH1Proj::ClearGates(){
@@ -321,7 +359,16 @@ void CXTH1Proj::RemoveGate(CXGateBox *box){
 
 void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObject *selected)
 {
-    //    cout<<EventType<<" "<<EventX<<" "<<EventY<<" "<<selected<<endl;
+    // cout<<EventType<<" "<<EventX<<" "<<EventY<<" "<<selected<<endl;
+
+    if(gROOT->GetSelectedPad()) {
+        TString PadName = gROOT->GetSelectedPad()->GetName();
+        TObjArray *arr = PadName.Tokenize("_");
+        int padnum = atoi(arr->Last()->GetName());
+        if(padnum>1) {
+            fCurrentProjPad = padnum-2;
+        }
+    }
 
     bool CTRL = (( EventX == EventY-96) || fMainWindow->IsCtrlOn());
 
@@ -346,7 +393,7 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
             fAddNewGate = true;
         if(fLastSym == kKey_b && KeySym == kKey_b)  {
             fAddNewBacground = false;
-            TMethod* m = Class()->GetMethod("AddBackgd", "500,2");
+            TMethod* m = Class()->GetMethod("AddBackgd1", "500,2");
             if (m != 0x0 && gPad->GetCanvas()->GetContextMenu() != 0x0)
                 gPad->GetCanvas()->GetContextMenu()->Action(this, m);
         }
@@ -369,6 +416,13 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
     }
     case kButton1Down:{
         fLastSym = kAnyKey;
+
+        if((fAddNewGate || fAddNewBacground) && f2DPlayer->UseFWHM()) {
+            double x = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            if(fAddNewGate) AddGate1(x);
+            else AddBackgd1(x);
+        }
+
         if(!fAddNewGate && !fAddNewBacground)
             break;
 
@@ -385,6 +439,10 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
         oldy = gPad->AbsPixeltoY(gPad->GetCanvas()->GetEventY());
         xinit = oldx;
         yinit = oldy;
+
+        xmin = xinit;
+        xmax = xinit;
+
         dynamic_cast<TPadPainter*>(gPad->GetPainter())->DrawBox(xinit,yinit,xinit,yinit, TVirtualPadPainter::kHollow);
 
         fGateVirtualBox = new TBox(xinit, yinit, xinit, yinit);
@@ -411,8 +469,16 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
     }
     case kButton1Motion:{
         fLastSym = kAnyKey;
-        if(!fAddNewGate && !fAddNewBacground)
-            break;
+
+        if(!fAddNewGate && !fAddNewBacground) {
+            CXGateBox*box = dynamic_cast<CXGateBox*>(selected);
+            if(f2DPlayer->UseDynamicProjection() && box) {
+                if(fMainWindow->GetHisto(fProjPad.at(fCurrentProjPad))) {
+                    f2DPlayer->Project();
+                }
+            }
+            else break;
+        }
 
         if(!moved) break;
 
@@ -460,7 +526,6 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
             UpdateGates();
             break;
         }
-
         if(moved){
             gPad = fCurrentPad;
 
@@ -470,7 +535,7 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
             if(fAddNewGate)
                 AddGate1(Mean,Width);
             if(fAddNewBacground)
-                AddBackgd(Mean,Width);
+                AddBackgd1(Mean,Width);
 
             xmax = xmin = ymax = ymin = 0.;
         }

@@ -57,9 +57,11 @@ class CXRadCubeTH1Proj : public  TH1D
     RQ_OBJECT("CXRadCubeTH1Proj");
 
 public:
+    TH2 *fGGHist = nullptr;
     CXRadReader *fRadReader = nullptr;
-    TPad *fProjPad = nullptr;
     TPad *fCurrentPad = nullptr;
+
+    vector<TPad *> fProjPad;
 
 private:
 
@@ -90,26 +92,35 @@ private:
 
     EKeySym fLastSym;
 
+    int fNProjs;
+    int fCurrentProjPad = 0;
+
+    vector<TH1 *> fProjection;
+    bool fprojok = true;
+
 public:
-    CXRadCubeTH1Proj(CXRadReader *radreader);
-    CXRadCubeTH1Proj(TH2 *hist);
+    CXRadCubeTH1Proj(CXRadReader *radreader, int _nprojs=1);
+    CXRadCubeTH1Proj(TH2 *hist, int _nprojs=1);
     CXRadCubeTH1Proj();
 
     ~CXRadCubeTH1Proj();
 
     void SetMainWindow(CXMainWindow *w);
 
-    void SetProjPad(TPad *pad);
+    void SetTH2(TH2 *hist);
+    TH2 *GetTH2() {return fGGHist;}
+
+    void SetProjPad(int _ipad, TPad *_pad);
     void SetCurrentPad(TPad *pad);
     void SetCubePlayer(CXRadCubePlayer *player);
     void Set2DPlayer(CXRad2DPlayer *player);
     void HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObject *selected);
     void Project(Bool_t FixRange=false, Bool_t BGSubtract = true, Int_t Rebin=1);
 
-    void AddGate1(){fAddNewGate1 = true;}
-    void AddGate1(Float_t TheMean, Float_t TheWidth); //*MENU*
-    void AddGate2(){fAddNewGate2 = true;}
-    void AddGate2(Float_t Mean, Float_t Width); //*MENU*
+    void AddNewGate1(){fAddNewGate1 = true;}
+    void AddGate1(Float_t TheMean=0., Float_t TheWidth=0.); //*MENU*
+    void AddNewGate2(){fAddNewGate2 = true;}
+    void AddGate2(Float_t Mean=0., Float_t Width=0.); //*MENU*
     void ClearGates();
     TList *GetGatesList(){return fListOfGates;}
     void UpdateGates();

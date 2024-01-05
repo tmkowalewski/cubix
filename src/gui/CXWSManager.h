@@ -60,16 +60,28 @@ public:
     TString fname="";
     TString fdirectory="";
 
-    TString fCalibFileName="None";
+    TString fCalibGraphFileName = "None";
+    TString fCalibFuncFileName  = "None";
+    TString fCalibErrorFileName = "None";
+    TString fCalibResidueFileName = "None";
+
     TF1 *fCalibFunction = nullptr;
     TGraph *fCalibrationGraph = nullptr;
+    TH1 *fCalibrationErrors = nullptr;
+    TGraph *fCalibrationResidue = nullptr;
 
-    TString fFWHMFileName="None";
+    TString fFWHMGraphFileName = "None";
+    TString fFWHMFuncFileName  = "None";
+    TString fFWHMErrorFileName = "None";
+
     TF1 *fFWHMFunction = nullptr;
     TGraph *fFWHMGraph = nullptr;
     TH1 *fFWHMErrors = nullptr;
 
-    TString fEfficiencyFileName="None";
+    TString fEfficiencyGraphFileName = "None";
+    TString fEfficiencyFuncFileName  = "None";
+    TString fEfficiencyErrorFileName = "None";
+
     TF1 *fEfficiencyFunction = nullptr;
     TH1 *fEfficiencyErrors = nullptr;
     TGraph *fEfficiencyGraph = nullptr;
@@ -80,7 +92,7 @@ public:
 
 
     void SetEfficiency(TGraph *_graph, TF1 *_func, TH1 *_error);
-    void SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error);
+    void SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error, TGraph *_residue);
     void SetFWHM(TGraph *_graph, TF1 *_func, TH1 *_error);
 
     void ReadWS();
@@ -109,7 +121,7 @@ private:
     TString fWorkspaceDirectory = "";
 
     TGLabel *fActiveWSLabel = nullptr;
-    TString fCurrentWorkspaceName = "None";
+    TString fActiveWorkspaceName = "None";
     CXWorkspace *fCurrentWorkspace = nullptr;
     CXWorkspace *fActiveWorkspace = nullptr;
 
@@ -128,6 +140,8 @@ public:
 
     void RefreshWS();
     void NewWS();
+
+    TString GetActiveWSName() {return fActiveWorkspaceName;}
 
     void SetWSDirectory(TString _ws_dir) {fWorkspaceDirectory = _ws_dir;}
     void LoadWS(TString _ws_dir="");

@@ -293,6 +293,7 @@ R__EXTERN ULong_t CXred;
 R__EXTERN ULong_t CXblue;
 R__EXTERN ULong_t CXblack;
 R__EXTERN ULong_t CXgreen;
+R__EXTERN ULong_t CXorange;
 
 //#define ERR_MESS  std::cout<<"\e[0;3;31m -- ERROR   : "
 //#define WARN_MESS std::cout<<"\e[0;3;33m -- WARNNING: "

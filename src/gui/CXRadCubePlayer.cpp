@@ -34,9 +34,6 @@
 #include "CXRadCubePlayer.h"
 
 #include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
 
 #include "TGButton.h"
 #include "TGTextEntry.h"
@@ -51,6 +48,7 @@
 #include "CXGateBox.h"
 #include "CXRadReader.h"
 #include "CXSavedList.h"
+#include "CXBashColor.h"
 
 using namespace std;
 
@@ -70,18 +68,40 @@ CXRadCubePlayer::CXRadCubePlayer(const TGCompositeFrame *MotherFrame, UInt_t w, 
     fGroupFrame->AddFrame(fSubGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, -10, -10, 0, 0));
 
     TGCompositeFrame *fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "N projs: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,5,0,0));
+    fNProjections = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fNProjections->Connect("ValueSet(Long_t)", "CXRadCubePlayer", this, "ChangeNProjections()");
+    fHorizontalFrame->AddFrame(fNProjections,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX ,1,3,5,5));
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Use FWHM: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,3,0,0,0));
+    fUseFWHM = new TGCheckButton(fHorizontalFrame);
+    fUseFWHM->SetState(kButtonUp);
+    fUseFWHM->Connect("Clicked()","CXRad2DPlayer", this, "ToggleFWHM()");
+    fHorizontalFrame->AddFrame(fUseFWHM,new TGLayoutHints(kLHintsLeft | kLHintsCenterY ,3,0,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Gate frac: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,0,0,0));
+    fFWHMGateFraction = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESRealOne, TGNumberFormat::kNEAPositive);
+    fHorizontalFrame->AddFrame(fFWHMGateFraction,new TGLayoutHints(kLHintsLeft | kLHintsCenterY | kLHintsExpandX ,3,3,0,0));
+
+    ToggleFWHM();
+
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
     TGTextButton *GateButton = new TGTextButton(fHorizontalFrame, "Gate 1");
     GateButton->SetTextColor(CXred);
     GateButton->Connect("Clicked()", "CXRadCubePlayer", this, "AddGate1()");
     fHorizontalFrame->AddFrame(GateButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
 
     TGTextButton *BackgroundButton = new TGTextButton(fHorizontalFrame, "Gate 2");
-    BackgroundButton->SetTextColor(CXblue);
+    BackgroundButton->SetTextColor(CXgreen);
     BackgroundButton->Connect("Clicked()", "CXRadCubePlayer", this, "AddGate2()");
     fHorizontalFrame->AddFrame(BackgroundButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
 
     TGTextButton *ClearButton = new TGTextButton(fHorizontalFrame, "Clear");
-    ClearButton->SetTextColor(CXgreen);
+    ClearButton->SetTextColor(CXorange);
     ClearButton->Connect("Clicked()", "CXRadCubePlayer", this, "ClearGates()");
     fHorizontalFrame->AddFrame(ClearButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
 
@@ -107,9 +127,14 @@ CXRadCubePlayer::CXRadCubePlayer(const TGCompositeFrame *MotherFrame, UInt_t w, 
     fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
     fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Rebin projection: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,20,0,0));
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Rebin projection: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,5,0,0));
     fRebinValue = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
     fHorizontalFrame->AddFrame(fRebinValue,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX ,1,3,5,5));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Dynamic mode: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
+    fDynamicProj = new TGCheckButton(fHorizontalFrame, "", 0);
+    fDynamicProj->SetState(kButtonUp);
+    fHorizontalFrame->AddFrame(fDynamicProj,new TGLayoutHints(kLHintsLeft | kLHintsCenterY ,0,5,0,0));
 
     fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
@@ -208,14 +233,14 @@ void CXRadCubePlayer::AddGate1(){
     fCurrentProj = GetProj();
 
     if(fCurrentProj)
-        fCurrentProj->AddGate1();
+        fCurrentProj->AddNewGate1();
 }
 
 void CXRadCubePlayer::AddGate2(){
     fCurrentProj = GetProj();
 
     if(fCurrentProj)
-        fCurrentProj->AddGate2();
+        fCurrentProj->AddNewGate2();
 }
 
 void CXRadCubePlayer::ClearGates(){
@@ -239,10 +264,10 @@ void CXRadCubePlayer::Init(CXRadReader *radreader)
         return;
     }
 
-    CXRadCubeTH1Proj *NewProj = new CXRadCubeTH1Proj(radreader);
+    CXRadCubeTH1Proj *NewProj = new CXRadCubeTH1Proj(radreader, fNProjs);
     NewProj->SetMainWindow(fMainWindow);
     NewProj->SetCubePlayer(this);
-    fMainWindow->NewTab(1,2,"RadCube");
+    fMainWindow->NewTab(1,fNProjs+1,"RadCube");
 
     Background = NewProj->GetBackground();
     Background->SetName(Form("%s_Background",radreader->GetName().Data()));
@@ -258,8 +283,10 @@ void CXRadCubePlayer::Init(CXRadReader *radreader)
     pad->SetBit(TPad::kCannotMove);
     pad->GetFrame()->SetBit(TObject::kCannotPick);
 
-    pad = fMainWindow->GetCanvas()->GetPad(2);
-    NewProj->SetProjPad(dynamic_cast<TPad*>(pad));
+    for(int i=0 ; i<fNProjs ; i++) {
+        pad = fMainWindow->GetCanvas()->GetPad(i+2);
+        NewProj->SetProjPad(i,dynamic_cast<TPad*>(pad));
+    }
 
     gROOT->SetSelectedPad(fMainWindow->GetCanvas()->GetPad(1));
 }
@@ -267,6 +294,35 @@ void CXRadCubePlayer::Init(CXRadReader *radreader)
 void CXRadCubePlayer::UpdateDrawOpt()
 {
     fMainWindow->GetSaveList()->SetListDrawOption(fDrawOpt->GetText());
+}
+
+void CXRadCubePlayer::ToggleFWHM()
+{
+    if(fUseFWHM->GetState() == kButtonUp) {
+        fFWHMGateFraction->SetState(0);
+    }
+    else {
+        fFWHMGateFraction->SetState(1);
+    }
+}
+
+bool CXRadCubePlayer::UseFWHM()
+{
+    if(!fMainWindow) return false;
+    if(!fMainWindow->GetWSManager()->GetActiveWorkspace() || !fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction) {
+        if(fUseFWHM->GetState()==kButtonDown) gbash_color->WarningMessage(Form("No FWHM function in the active workspace: %s -> remove FWHM option",fMainWindow->GetWSManager()->GetActiveWSName().Data()));
+        return false;
+    }
+    if(fUseFWHM->GetState()==kButtonUp) return false;
+    return true;
+}
+
+void CXRadCubePlayer::ChangeNProjections()
+{
+    fNProjs = fNProjections->GetIntNumber();
+    if(GetProj()) {
+        Init(GetProj()->fRadReader);
+    }
 }
 
 ClassImp(CXRadCubePlayer)

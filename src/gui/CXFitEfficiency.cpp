@@ -716,7 +716,7 @@ void CXFitEfficiency::DoFit()
     }
     else {
         delete gROOT->FindObject("EffConfidence95");
-        fEfficiencyConfidenceIntervall = new TH1D("EffConfidence95","Efficiency 0.95 confidence band", 5000, xmin, xmax);
+        fEfficiencyConfidenceIntervall = new TH1D("EffConfidence95","Efficiency 0.95 confidence band", 10000, 0, 10000);
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fEfficiencyConfidenceIntervall);
         fEfficiencyConfidenceIntervall->SetLineWidth(0);
         fEfficiencyConfidenceIntervall->SetFillColor(kBlue);
@@ -724,6 +724,8 @@ void CXFitEfficiency::DoFit()
         fEfficiencyConfidenceIntervall->SetFillStyle(1001);
         fEfficiencyConfidenceIntervall->SetStats(false);
         fEfficiencyConfidenceIntervall->SetDirectory(nullptr);
+        fEfficiencyConfidenceIntervall->GetXaxis()->SetTitle(fEfficiencyGraph->GetXaxis()->GetTitle());
+        fEfficiencyConfidenceIntervall->GetYaxis()->SetTitle(fEfficiencyGraph->GetYaxis()->GetTitle());
     }
 
     if(fEfficiencyCanvas && fEfficiencyCanvas->GetCanvasImp()) {
@@ -825,13 +827,13 @@ void CXFitEfficiency::AutoFit()
         fNE_FitPars[i][1]->SetNumber(fEfficiencyFunction->GetParameter(i+1));
     }
 
+    delete gROOT->FindObject("EffConfidence95");
+    fEfficiencyConfidenceIntervall = nullptr;
+
     if(!r->IsValid()) {
         gbash_color->WarningMessage("Warning: Fit failed");
-        delete gROOT->FindObject("EffConfidence95");
-        fEfficiencyConfidenceIntervall = nullptr;
     }
     else {
-        delete gROOT->FindObject("EffConfidence95");
         fEfficiencyConfidenceIntervall = new TH1D("EffConfidence95","Efficiency 0.95 confidence band", 5000, 0, 10000);
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fEfficiencyConfidenceIntervall);
         fEfficiencyConfidenceIntervall->SetLineWidth(0);

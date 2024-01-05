@@ -33,11 +33,6 @@
 
 #include "CXRadCubeTH1Proj.h"
 
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
-
 #include "TH2.h"
 #include "TCanvas.h"
 #include "KeySymbols.h"
@@ -51,6 +46,7 @@
 #include "TVirtualX.h"
 #include "TSystem.h"
 #include "TGFileDialog.h"
+#include "TF1.h"
 
 #include "CXMainWindow.h"
 #include "CXRad2DPlayer.h"
@@ -60,11 +56,17 @@
 
 using namespace std;
 
-CXRadCubeTH1Proj::CXRadCubeTH1Proj(CXRadReader *radreader) : TH1D(*radreader->GetTotalProjection())
+CXRadCubeTH1Proj::CXRadCubeTH1Proj(CXRadReader *radreader, int _nprojs) : TH1D(*radreader->GetTotalProjection())
 {
     fListOfGates = new TList;
     fListOfGates->SetOwner();
     fListOfGates->SetName("ListOfGates");
+
+    fNProjs = _nprojs;
+    for(int i=0 ; i<fNProjs ; i++) {
+        fProjection.push_back(nullptr);
+        fProjPad.push_back(nullptr);
+    }
 
     fRadReader = new CXRadReader;
 
@@ -110,17 +112,26 @@ CXRadCubeTH1Proj::CXRadCubeTH1Proj(CXRadReader *radreader) : TH1D(*radreader->Ge
     SetStats();
 }
 
-CXRadCubeTH1Proj::CXRadCubeTH1Proj(TH2 *hist) : TH1D(*hist->ProjectionX("CXRadCubeTH1Proj_tmp"))
+CXRadCubeTH1Proj::CXRadCubeTH1Proj(TH2 *hist, int _nprojs) : TH1D(*hist->ProjectionX("CXRadCubeTH1Proj_tmp"))
 {
     SetName(Form("%s_TotProj",hist->GetName()));
     fListOfGates = new TList;
     fListOfGates->SetOwner();
     fListOfGates->SetName("ListOfGates");
 
+    fNProjs = _nprojs;
+    for(int i=0 ; i<fNProjs ; i++) {
+        fProjection.push_back(nullptr);
+        fProjPad.push_back(nullptr);
+    }
+
     fRadReader = new CXRadReader;
 
     // Read 2D projection
     fRadReader->ReadGG(hist);
+
+    delete fGGHist;
+    fGGHist = dynamic_cast<TH2 *>(hist->Clone());
 
     Reset();
     for(int i=0 ; i<=GetNbinsX() ; i++) {
@@ -167,9 +178,9 @@ void CXRadCubeTH1Proj::SetMainWindow(CXMainWindow *w)
     fMainWindow = w;
 }
 
-void CXRadCubeTH1Proj::SetProjPad(TPad *pad)
+void CXRadCubeTH1Proj::SetProjPad(int _ipad, TPad *_pad)
 {
-    fProjPad = pad;
+    fProjPad.at(_ipad) = _pad;
 }
 
 void CXRadCubeTH1Proj::SetCurrentPad(TPad *pad)
@@ -184,6 +195,28 @@ void CXRadCubeTH1Proj::SetCurrentPad(TPad *pad)
 
 void CXRadCubeTH1Proj::AddGate1(Float_t Mean, Float_t Width)
 {
+    if(Width==0.) {
+        if(( (fRadCubePlayer && fRadCubePlayer->UseFWHM()) || (fRad2DPlayer && fRad2DPlayer->UseFWHM()) )) {
+            Mean = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            Width = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction->Eval(Mean);
+            if(fRadCubePlayer) Width *= fRadCubePlayer->GetFWHMGateFraction();
+            else Width *= fRad2DPlayer->GetFWHMGateFraction();
+        }
+        else {
+            for(int i=(fListOfGates->GetEntries()-1) ; i>=0 ; i--) {
+                CXGateBox *box = dynamic_cast<CXGateBox*>(fListOfGates->At(i));
+                if(box->IsGate1()) {
+                    Width = box->GetWidth();
+                    break;
+                }
+            }
+        }
+    }
+
+    fAddNewGate1 = false;
+
+    if(Mean==0. || Width == 0.) return;
+
     CXGateBox *box = new CXGateBox(Mean,Width,fCurrentPad);
 
     box->SetGate1();
@@ -191,29 +224,50 @@ void CXRadCubeTH1Proj::AddGate1(Float_t Mean, Float_t Width)
 
     fCurrentPad->cd();
     box->Draw();
-
-    fAddNewGate1 = false;
 }
 
 void CXRadCubeTH1Proj::AddGate2(Float_t Mean, Float_t Width)
 {
+    if(Width==0.) {
+        if(( (fRadCubePlayer && fRadCubePlayer->UseFWHM()) || (fRad2DPlayer && fRad2DPlayer->UseFWHM()) )) {
+            Mean = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            Width = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction->Eval(Mean);
+            if(fRadCubePlayer) Width *= fRadCubePlayer->GetFWHMGateFraction();
+            else Width *= fRad2DPlayer->GetFWHMGateFraction();
+        }
+        else {
+            for(int i=(fListOfGates->GetEntries()-1) ; i>=0 ; i--) {
+                CXGateBox *box = dynamic_cast<CXGateBox*>(fListOfGates->At(i));
+                if(box->IsGate1()) {
+                    Width = box->GetWidth();
+                    break;
+                }
+            }
+        }
+    }
+
+    fAddNewGate2 = false;
+
+    if(Mean==0. || Width == 0.) return;
+
     CXGateBox *box = new CXGateBox(Mean,Width,fCurrentPad);
 
     box->SetGate2();
     fListOfGates->Add(box);
 
     box->Draw();
-
-    fAddNewGate2 = false;
 }
 
 void CXRadCubeTH1Proj::Project(Bool_t FixRange,Bool_t BGSubtract, Int_t Rebin)
 {
+    if(!fprojok) return;
+    fprojok = false;
+
     Float_t SavedRange[2];
-    if(!fMainWindow->GetHisto(fProjPad)) FixRange = false;
+    if(!fMainWindow->GetHisto(fProjPad.at(fCurrentProjPad))) FixRange = false;
     if( FixRange ) {
-        SavedRange[0] = fProjPad->GetUxmin();
-        SavedRange[1] = fProjPad->GetUxmax();
+        SavedRange[0] = fProjPad.at(fCurrentProjPad)->GetUxmin();
+        SavedRange[1] = fProjPad.at(fCurrentProjPad)->GetUxmax();
     }
 
     vector< pair<float, float> > gates1; //{make_pair(205.5,214.5)};
@@ -241,43 +295,46 @@ void CXRadCubeTH1Proj::Project(Bool_t FixRange,Bool_t BGSubtract, Int_t Rebin)
 
     gErrorIgnoreLevel = kError; // To avoid warnings
 
-    TH1 *FinalProj = fRadReader->Project(gates1,gates2,BGSubtract);
-    if(FinalProj == nullptr) return;
+    delete fProjection.at(fCurrentProjPad);
+    fProjection.at(fCurrentProjPad) = (TH1*) fRadReader->Project(gates1,gates2,BGSubtract)->Clone();
+    if(fProjection.at(fCurrentProjPad) == nullptr) return;
 
-    FinalProj->GetXaxis()->SetTitle(GetXaxis()->GetTitle());
-    FinalProj->GetXaxis()->SetTitleSize(GetXaxis()->GetTitleSize());
-    FinalProj->GetXaxis()->SetTitleOffset(GetXaxis()->GetTitleOffset());
-    FinalProj->GetXaxis()->SetTitleFont(GetXaxis()->GetTitleFont());
-    FinalProj->GetXaxis()->SetLabelFont(GetXaxis()->GetLabelFont());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitle(GetXaxis()->GetTitle());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitleSize(GetXaxis()->GetTitleSize());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitleOffset(GetXaxis()->GetTitleOffset());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetTitleFont(GetXaxis()->GetTitleFont());
+    fProjection.at(fCurrentProjPad)->GetXaxis()->SetLabelFont(GetXaxis()->GetLabelFont());
 
-    FinalProj->GetYaxis()->SetTitle(GetYaxis()->GetTitle());
-    FinalProj->GetYaxis()->SetTitleSize(GetYaxis()->GetTitleSize());
-    FinalProj->GetYaxis()->SetTitleOffset(GetYaxis()->GetTitleOffset());
-    FinalProj->GetYaxis()->SetTitleFont(GetYaxis()->GetTitleFont());
-    FinalProj->GetYaxis()->SetLabelFont(GetYaxis()->GetLabelFont());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitle(GetYaxis()->GetTitle());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitleSize(GetYaxis()->GetTitleSize());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitleOffset(GetYaxis()->GetTitleOffset());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetTitleFont(GetYaxis()->GetTitleFont());
+    fProjection.at(fCurrentProjPad)->GetYaxis()->SetLabelFont(GetYaxis()->GetLabelFont());
 
     if(Rebin>1) {
-        FinalProj->Rebin(Rebin);
-        FinalProj->SetYTitle(Form("Counts (%g keV/bin)",FinalProj->GetBinWidth(1)));
+        fProjection.at(fCurrentProjPad)->Rebin(Rebin);
+        fProjection.at(fCurrentProjPad)->SetYTitle(Form("Counts (%g keV/bin)",fProjection.at(fCurrentProjPad)->GetBinWidth(1)));
     }
 
-    fProjPad->cd();
-    FinalProj->Draw("hist");
+    fProjPad.at(fCurrentProjPad)->cd();
+    fProjection.at(fCurrentProjPad)->Draw("hist");
 
     if(FixRange)
-        FinalProj->GetXaxis()->SetRangeUser(SavedRange[0],SavedRange[1]);
+        fProjection.at(fCurrentProjPad)->GetXaxis()->SetRangeUser(SavedRange[0],SavedRange[1]);
     else
-        FinalProj->GetXaxis()->UnZoom();
+        fProjection.at(fCurrentProjPad)->GetXaxis()->UnZoom();
 
     gErrorIgnoreLevel = kPrint; // to recover warnings
 
-    gbash_color->InfoMessage(Form("Integral of projection: %g",FinalProj->Integral()));
+    gbash_color->InfoMessage(Form("Integral of projection: %g",fProjection.at(fCurrentProjPad)->Integral()));
 
-    fProjPad->Update();
-    fProjPad->Modified();
+    fProjPad.at(fCurrentProjPad)->Update();
+    fProjPad.at(fCurrentProjPad)->Modified();
 
-    fProjPad->SetBit(TPad::kCannotMove);
-    fProjPad->GetFrame()->SetBit(TObject::kCannotPick);
+    fProjPad.at(fCurrentProjPad)->SetBit(TPad::kCannotMove);
+    fProjPad.at(fCurrentProjPad)->GetFrame()->SetBit(TObject::kCannotPick);
+
+    fprojok=true;
 }
 
 void CXRadCubeTH1Proj::ClearGates(){
@@ -340,6 +397,15 @@ void CXRadCubeTH1Proj::SaveBackground()
 
 void CXRadCubeTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObject *selected)
 {
+    if(gROOT->GetSelectedPad()) {
+        TString PadName = gROOT->GetSelectedPad()->GetName();
+        TObjArray *arr = PadName.Tokenize("_");
+        int padnum = atoi(arr->Last()->GetName());
+        if(padnum>1) {
+            fCurrentProjPad = padnum-2;
+        }
+    }
+
     bool CTRL = (( EventX == EventY-96) || fMainWindow->IsCtrlOn());
 
     switch (EventType){
@@ -394,6 +460,13 @@ void CXRadCubeTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t Event
     }
     case kButton1Down:{
         fLastSym = kAnyKey;
+
+        if((fAddNewGate1 || fAddNewGate2) && ( (fRadCubePlayer && fRadCubePlayer->UseFWHM()) || (fRad2DPlayer && fRad2DPlayer->UseFWHM()) ) ) {
+            double x = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            if(fAddNewGate1) AddGate1(x);
+            else AddGate2(x);
+        }
+
         if(!fAddNewGate1 && !fAddNewGate2)
             break;
 
@@ -410,6 +483,10 @@ void CXRadCubeTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t Event
         oldy = gPad->AbsPixeltoY(gPad->GetCanvas()->GetEventY());
         xinit = oldx;
         yinit = oldy;
+
+        xmin = xinit;
+        xmax = xinit;
+
         ((TPadPainter*)gPad->GetPainter())->DrawBox(xinit,yinit,xinit,yinit, TVirtualPadPainter::kHollow);
 
         fGateVirtualBox = new TBox(xinit, yinit, xinit, yinit);
@@ -439,8 +516,19 @@ void CXRadCubeTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t Event
     }
     case kButton1Motion:{
         fLastSym = kAnyKey;
-        if(!fAddNewGate1 && !fAddNewGate2)
-            break;
+
+        if(!fAddNewGate1 && !fAddNewGate2) {
+            CXGateBox*box = dynamic_cast<CXGateBox*>(selected);
+            if(( (fRadCubePlayer && fRadCubePlayer->UseDynamicProjection()) || (fRad2DPlayer && fRad2DPlayer->UseDynamicProjection()) ) && box) {
+                if(fMainWindow->GetHisto(fProjPad.at(fCurrentProjPad))) {
+                    if(fRadCubePlayer)
+                        fRadCubePlayer->Project();
+                    else if(fRad2DPlayer)
+                        fRad2DPlayer->Project();
+                }
+            }
+            else break;
+        }
 
         if(moved==false)
             break;

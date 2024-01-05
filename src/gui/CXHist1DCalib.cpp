@@ -66,7 +66,7 @@ CXHist1DCalib::CXHist1DCalib(const TGCompositeFrame *MotherFrame, UInt_t w, UInt
     AddFrame(fGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 3, 3, 0, 0));
 
     fGroupFrame->AddFrame(new TGLabel(fGroupFrame,"Input data"), new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 0, 0, 5, 0));
-    fSources = new TGTextEntry(fGroupFrame, "152Eu");
+    fSources = new TGTextEntry(fGroupFrame, "");
     fSources->SetToolTipText("List of sources (files in $CUBIX_SYS/dataBase/Sources)");
     fSources->Connect("TextChanged(const char *)", "CXHist1DCalib", this, "UpdateText()");
     fSources->Connect("ReturnPressed()", "CXHist1DCalib", this, "UpdateSources()");
@@ -596,6 +596,8 @@ void CXHist1DCalib::Calibrate()
         fCalibCanvas->cd(1);
         fRecalEnergy->fCalibGraph->Draw("ape");
         fRecalEnergy->fCalibFunction->Draw("same");
+        if(fRecalEnergy->fCalibConfidenceIntervall) fRecalEnergy->fCalibConfidenceIntervall->Draw("e3 same");
+
         fCalibCanvas->cd(2);
         fRecalEnergy->fResidueGraph->Draw("ape");
 
@@ -770,7 +772,7 @@ void CXHist1DCalib::FWHMCalib()
     }
     else {
         delete gROOT->FindObjectAny("FWHMConfidence95");
-        fFWHMConfidenceIntervall = new TH1D("FWHMConfidence95","FWHM 0.95 confidence band", 5000, xmin, xmax);
+        fFWHMConfidenceIntervall = new TH1D("FWHMConfidence95","FWHM 0.95 confidence band", 10000, 0, 10000);
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fFWHMConfidenceIntervall);
         fFWHMConfidenceIntervall->SetLineWidth(0);
         fFWHMConfidenceIntervall->SetFillColor(kBlue);
@@ -778,6 +780,8 @@ void CXHist1DCalib::FWHMCalib()
         fFWHMConfidenceIntervall->SetFillStyle(1001);
         fFWHMConfidenceIntervall->SetStats(false);
         fFWHMConfidenceIntervall->SetDirectory(nullptr);
+        fFWHMConfidenceIntervall->GetXaxis()->SetTitle(fFWHMGraph->GetXaxis()->GetTitle());
+        fFWHMConfidenceIntervall->GetYaxis()->SetTitle(fFWHMGraph->GetYaxis()->GetTitle());
     }
 
     if(fFWHMCanvas && fFWHMCanvas->GetCanvasImp()) fFWHMCanvas->cd();
@@ -921,7 +925,7 @@ void CXHist1DCalib::SaveECal()
         return;
     }
 
-    workspace->SetCalibration(fRecalEnergy->fCalibGraph,fRecalEnergy->fCalibFunction,nullptr);
+    workspace->SetCalibration(fRecalEnergy->fCalibGraph,fRecalEnergy->fCalibFunction,fRecalEnergy->fCalibConfidenceIntervall,fRecalEnergy->fResidueGraph);
 }
 
 void CXHist1DCalib::SaveFWHM()

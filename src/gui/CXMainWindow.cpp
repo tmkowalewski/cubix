@@ -78,6 +78,7 @@ ULong_t CXred;
 ULong_t CXblue;
 ULong_t CXblack;
 ULong_t CXgreen;
+ULong_t CXorange;
 
 CXMainWindow::CXMainWindow(const TGWindow *p, UInt_t w, UInt_t h) : TGMainFrame(p, w, h)
 {    
@@ -92,6 +93,7 @@ void CXMainWindow::Init()
     gClient->GetColorByName("blue", CXblue);
     gClient->GetColorByName("black",CXblack);
     gClient->GetColorByName("green",CXgreen);
+    gClient->GetColorByName("orange",CXorange);
 
 //    if(gNDManager == nullptr)
 //        gNDManager = new CXNDManager(this);
@@ -375,7 +377,9 @@ void CXMainWindow::Init()
     fListOfSavedGates->SetOwner();
     fListOfSavedGates->SetName("ListOfGates");
 
-    HandleMenu(M_Hist1DCalib);
+    TH1::AddDirectory(kFALSE);
+
+    // HandleMenu(M_Hist2DPlayer);
 }
 
 CXMainWindow::~CXMainWindow() = default;
@@ -958,7 +962,6 @@ void CXMainWindow::CloseWindow()
 TH1 *CXMainWindow::GetHisto(TVirtualPad *pad, bool GetFirst)
 {
     TH1 *hist = nullptr;
-
     if(pad == nullptr && fSelectedPad == nullptr) {
         fCanvas->cd();
         fSelectedPad = fCanvas->cd();
@@ -1326,7 +1329,7 @@ void CXMainWindow::AddToStoredSpectra(TObject *c)
     TObject *o = c;
     TObject *clone = nullptr;
     if(o->InheritsFrom("CXRadCubeTH1Proj"))
-        clone = ((CXRadCubeTH1Proj*)o)->GetTotalProj();
+        clone = ((CXRadCubeTH1Proj*)o)->GetTotalProj()->Clone();
     else
         clone = o->Clone();
     if(o->InheritsFrom(TH1::Class_Name()))

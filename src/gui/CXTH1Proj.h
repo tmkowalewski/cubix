@@ -54,8 +54,9 @@ class CXTH1Proj : public  TH1D
 
 public:
     TH2 *fGGHist = nullptr;
-    TPad *fProjPad = nullptr;
     TPad *fCurrentPad = nullptr;
+
+    vector<TPad *> fProjPad;
 
 private:
 
@@ -79,8 +80,14 @@ private:
 
     EKeySym fLastSym;
 
+    int fNProjs;
+    int fCurrentProjPad = 0;
+
+    vector<TH1 *> fProjection;
+    bool fprojok = true;
+
 public:
-    CXTH1Proj(const TH1D &hist);
+    CXTH1Proj(const TH1D &hist, int _nprojs=1);
     CXTH1Proj();
     ~CXTH1Proj();
 
@@ -88,16 +95,18 @@ public:
 
     void UpdateProjection(Int_t Axis);
     void SetTH2(TH2 *hist);
-    void SetProjPad(TPad *pad);
+    TH2 *GetTH2() {return fGGHist;}
+
+    void SetProjPad(int _ipad, TPad *_pad);
     void SetCurrentPad(TPad *pad);
     void SetPlayer(CXHist2DPlayer *player);
     void HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObject *selected);
 
     void Project(Bool_t FixRange=false, int _rebin_value=1);
     void AddBackgd(){fAddNewBacground = true;}
-    void AddBackgd(Float_t Mean, Float_t Width); //*MENU*
+    void AddBackgd1(double Mean=0., double Width=0.); //*MENU*
     void AddGate(){fAddNewGate = true;}
-    void AddGate1(Float_t Mean, Float_t Width); //*MENU*
+    void AddGate1(double Mean=0., double Width=0.); //*MENU*
     void ClearGates();
     TList *GetGatesList(){return fListOfGates;}
     void UpdateGates();

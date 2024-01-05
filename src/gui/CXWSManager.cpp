@@ -41,18 +41,15 @@
 #include "TGListBox.h"
 #include "TError.h"
 #include "TGFileDialog.h"
+#include "TGraphErrors.h"
 #include "TSystem.h"
 #include "TH1.h"
 #include "TF1.h"
-#include "TGraph.h"
-#include "TFile.h"
 #include "TSystemDirectory.h"
 #include "TGLabel.h"
 #include "TVirtualX.h"
 #include "TGFSContainer.h"
 #include "TGListView.h"
-#include "TROOT.h"
-#include "TKey.h"
 #include "TGTextEntry.h"
 
 #include "CXMainWindow.h"
@@ -80,31 +77,45 @@ void CXWorkspace::ReadWS()
         TObjArray *arr = line.Tokenize(" ");
         if(arr->GetEntries()<=1) continue;
         TString filename = arr->Last()->GetName();
-        if(!filename.EndsWith(".root")) continue;
-        if(line.Contains("Calibration")) fCalibFileName = filename;
-        if(line.Contains("FWHM")) fFWHMFileName = filename;
-        if(line.Contains("Efficiency")) fEfficiencyFileName = filename;
+        if(line.Contains("Calibration graph")) fCalibGraphFileName = filename;
+        else if(line.Contains("Calibration function")) fCalibFuncFileName = filename;
+        else if(line.Contains("Calibration error")) fCalibErrorFileName = filename;
+        else if(line.Contains("Calibration residue")) fCalibResidueFileName = filename;
+
+        else if(line.Contains("FWHM graph")) fFWHMGraphFileName = filename;
+        else if(line.Contains("FWHM function")) fFWHMFuncFileName = filename;
+        else if(line.Contains("FWHM error")) fFWHMErrorFileName = filename;
+
+        else if(line.Contains("Efficiency graph")) fEfficiencyGraphFileName = filename;
+        else if(line.Contains("Efficiency function")) fEfficiencyFuncFileName = filename;
+        else if(line.Contains("Efficiency error")) fEfficiencyErrorFileName = filename;
     }
 
     TString fileName;
-    if(fCalibFileName != "None") {
-        fileName = (fCalibFileName.BeginsWith("/")) ? fCalibFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fCalibFileName.Data());
-        TFile *file = TFile::Open(fileName);
-        if(!file) {
-            glog << tkn::error << "Cannot open calibration file: " << fileName << tkn::do_endl;
+
+    if(fCalibGraphFileName != "None") {
+        delete fCalibrationGraph;
+        fCalibrationGraph = nullptr;
+        fileName = (fCalibGraphFileName.BeginsWith("/")) ? fCalibGraphFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fCalibGraphFileName.Data());
+        fCalibrationGraph = new TGraphErrors(fileName);
+        if(!fCalibrationGraph || fCalibrationGraph->GetN()==0) {
+            glog << tkn::error << "Cannot open or decode energy calibration file: " << fileName << tkn::do_endl;
         }
         else {
-            TIter next(file->GetListOfKeys());
-            while ( TKey* obj = dynamic_cast<TKey*>(next()) ) {
-                if ( obj->ReadObj()->InheritsFrom( TGraph::Class() ) ) {
-                    fCalibrationGraph = dynamic_cast<TGraph*>(obj->ReadObj());
-                }
-            }
+            fCalibrationGraph->SetName("CalibrationGraph");
+            fCalibrationGraph->SetMarkerColor(kRed);
+            fCalibrationGraph->SetMarkerStyle(20);
+            fCalibrationGraph->GetXaxis()->SetTitle("Energy (channels)");
+            fCalibrationGraph->GetYaxis()->SetTitle("Energy (keV)");
         }
-        TString filename = Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fCalibFileName.Copy().ReplaceAll(".root",".txt").Data());
-        ifstream filetoread(filename);
+    }
+    if(fCalibFuncFileName != "None") {
+        delete fCalibFunction;
+        fCalibFunction = nullptr;
+        fileName = (fCalibFuncFileName.BeginsWith("/")) ? fCalibFuncFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fCalibFuncFileName.Data());
+        ifstream filetoread(fileName);
         if(!filetoread) {
-            glog << tkn::error << "No calibration function file found -> ignored" << tkn::do_endl;
+            glog << tkn::error << "No energy calibration function file found named:" << fileName << tkn::do_endl;
         }
         else {
             TString line;
@@ -123,10 +134,10 @@ void CXWorkspace::ReadWS()
                 delete arr;
             }
             if(!params.count("Order")) {
-                glog << tkn::error << "Cannot decode order of calibration in file: " << filename << tkn::do_endl;
+                glog << tkn::error << "Cannot decode order of calibration in file: " << fileName << tkn::do_endl;
             }
             else if(range.size() !=2 || params.size() != (TMath::Nint(params["Order"])+2)) {
-                glog << tkn::error << "Error in decoding file: " << filename << tkn::do_endl;
+                glog << tkn::error << "Error in decoding file: " << fileName << tkn::do_endl;
             }
             else {
                 fCalibFunction = new TF1("ECalibration", &CXFitFunctions::PolynomialFunc, range.at(0), range.at(1), TMath::Nint(params["Order"])+2);
@@ -138,29 +149,93 @@ void CXWorkspace::ReadWS()
             }
         }
     }
-    if(fFWHMFileName != "None") {
-        fileName = (fFWHMFileName.BeginsWith("/")) ? fFWHMFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fFWHMFileName.Data());
-        TFile *file = TFile::Open(fileName);
+    if(fCalibErrorFileName != "None") {
+        delete fCalibrationErrors;
+        fCalibrationErrors = nullptr;
+        fileName = (fCalibErrorFileName.BeginsWith("/")) ? fCalibErrorFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fCalibErrorFileName.Data());
+        ifstream file(fileName);
         if(!file) {
-            glog << tkn::error << "Cannot open FWHM file: " << fileName << tkn::do_endl;
+            glog << tkn::error << "Cannot open energy calibration error file: " << fileName << tkn::do_endl;
         }
         else {
-            TIter next(file->GetListOfKeys());
-            while ( TKey* obj = dynamic_cast<TKey*>(next()) ) {
-                if ( obj->ReadObj()->InheritsFrom( TH1::Class() ) ) {
-                    fFWHMErrors = dynamic_cast<TH1*>(obj->ReadObj());
-                    fFWHMErrors->SetFillColor(kBlue);
-                    fFWHMErrors->SetFillColorAlpha(kBlue,0.1);
+            TString line;
+            int nbins  = -1;
+            double min = -1;
+            double max = -1;
+            while(line.ReadLine(file)) {
+                if(!fCalibrationErrors && nbins>0 && min != 1 && max!=-1) {
+                    fCalibrationErrors = new TH1D("CalibrationConfidence95","Calibration 0.95 confidence band", nbins, min, max);
+                    fCalibrationErrors->SetLineWidth(0);
+                    fCalibrationErrors->SetFillColor(kBlue);
+                    fCalibrationErrors->SetFillColorAlpha(kBlue,0.1);
+                    fCalibrationErrors->SetFillStyle(1001);
+                    fCalibrationErrors->SetStats(false);
+                    fCalibrationErrors->SetDirectory(nullptr);
+                    if(fCalibrationGraph) {
+                        fCalibrationErrors->GetXaxis()->SetTitle(fCalibrationGraph->GetXaxis()->GetTitle());
+                        fCalibrationErrors->GetYaxis()->SetTitle(fCalibrationGraph->GetYaxis()->GetTitle());
+                    }
                 }
-                if ( obj->ReadObj()->InheritsFrom( TGraph::Class() ) ) {
-                    fFWHMGraph = dynamic_cast<TGraph*>(obj->ReadObj());
+                TObjArray *arr = line.Tokenize(" ");
+                if(line.BeginsWith("#")) {
+                    if(line.Contains("N Bins")) nbins = atoi(arr->Last()->GetName());
+                    else if(line.Contains("X min")) min = atof(arr->Last()->GetName());
+                    else if(line.Contains("X max")) max = atof(arr->Last()->GetName());
+                    else continue;
                 }
+
+                if(fCalibrationErrors && arr->GetEntries()==4) {
+                    int ibin = atoi(arr->At(0)->GetName());
+                    double content = atof(arr->At(2)->GetName());
+                    double error = atof(arr->At(3)->GetName());
+                    fCalibrationErrors->SetBinContent(ibin,content);
+                    fCalibrationErrors->SetBinError(ibin,error);
+                }
+                delete arr;
             }
         }
-        TString filename = Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fFWHMFileName.Copy().ReplaceAll(".root",".txt").Data());
-        ifstream filetoread(filename);
+    }
+    if(fCalibResidueFileName != "None") {
+        delete fCalibrationResidue;
+        fCalibrationResidue = nullptr;
+        fileName = (fCalibResidueFileName.BeginsWith("/")) ? fCalibResidueFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fCalibResidueFileName.Data());
+        fCalibrationResidue = new TGraphErrors(fileName);
+        if(!fCalibrationResidue || fCalibrationResidue->GetN()==0) {
+            glog << tkn::error << "Cannot open or decode energy calibration residue file: " << fileName << tkn::do_endl;
+        }
+        else {
+            fCalibrationResidue->SetName("CalibrationResidue");
+            fCalibrationResidue->SetMarkerColor(kRed);
+            fCalibrationResidue->SetMarkerStyle(20);
+            fCalibrationResidue->GetXaxis()->SetTitle("Energy (keV)");
+            fCalibrationResidue->GetYaxis()->SetTitle("Residue (keV)");
+        }
+    }
+
+
+    if(fFWHMGraphFileName != "None") {
+        delete fFWHMGraph;
+        fFWHMGraph = nullptr;
+        fileName = (fFWHMGraphFileName.BeginsWith("/")) ? fFWHMGraphFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fFWHMGraphFileName.Data());
+        fFWHMGraph = new TGraphErrors(fileName);
+        if(!fFWHMGraph || fFWHMGraph->GetN()==0) {
+            glog << tkn::error << "Cannot open or decode FWHM file: " << fileName << tkn::do_endl;
+        }
+        else {
+            fFWHMGraph->SetName("FWHMGraph");
+            fFWHMGraph->SetMarkerColor(kRed);
+            fFWHMGraph->SetMarkerStyle(20);
+            fFWHMGraph->GetXaxis()->SetTitle("Energy (keV)");
+            fFWHMGraph->GetYaxis()->SetTitle("FWHM (keV)");
+        }
+    }
+    if(fFWHMFuncFileName != "None") {
+        delete fFWHMFunction;
+        fFWHMFunction = nullptr;
+        fileName = (fFWHMFuncFileName.BeginsWith("/")) ? fFWHMFuncFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fFWHMFuncFileName.Data());
+        ifstream filetoread(fileName);
         if(!filetoread) {
-            glog << tkn::error << "No FWHM function file found -> ignored" << tkn::do_endl;
+            glog << tkn::error << "No FWHM function file found named: " << fileName << tkn::do_endl;
         }
         else {
             TString line;
@@ -179,7 +254,7 @@ void CXWorkspace::ReadWS()
                 delete arr;
             }
             if(range.size() !=2 || params.size() != 3) {
-                glog << tkn::error << "Error in decoding file: " << filename << tkn::do_endl;
+                glog << tkn::error << "Error in decoding file: " << fileName << tkn::do_endl;
             }
             else {
                 fFWHMFunction = new TF1("FWHMFunc", &CXFitFunctions::FWHMFunction, range.at(0), range.at(1), 3);
@@ -190,29 +265,76 @@ void CXWorkspace::ReadWS()
             }
         }
     }
-    if(fEfficiencyFileName != "None") {
-        fileName = (fEfficiencyFileName.BeginsWith("/")) ? fEfficiencyFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fEfficiencyFileName.Data());
-        TFile *file = TFile::Open(fileName);
+    if(fFWHMErrorFileName != "None") {
+        delete fFWHMErrors;
+        fFWHMErrors = nullptr;
+        fileName = (fFWHMErrorFileName.BeginsWith("/")) ? fFWHMErrorFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fFWHMErrorFileName.Data());
+        ifstream file(fileName);
         if(!file) {
-            glog << tkn::error << "Cannot open Efficiency file: " << fileName << tkn::do_endl;
+            glog << tkn::error << "Cannot open FWHM error file: " << fileName << tkn::do_endl;
         }
         else {
-            TIter next(file->GetListOfKeys());
-            while ( TKey* obj = dynamic_cast<TKey*>(next()) ) {
-                if ( obj->ReadObj()->InheritsFrom( TH1::Class() ) ) {
-                    fEfficiencyErrors = dynamic_cast<TH1*>(obj->ReadObj());
-                    fEfficiencyErrors->SetFillColor(kBlue);
-                    fEfficiencyErrors->SetFillColorAlpha(kBlue,0.1);
+            TString line;
+            int nbins  = -1;
+            double min = -1;
+            double max = -1;
+            while(line.ReadLine(file)) {
+                if(!fFWHMErrors && nbins>0 && min != 1 && max!=-1) {
+                    fFWHMErrors = new TH1D("FWHMConfidence95","FWHM 0.95 confidence band", nbins, min, max);
+                    fFWHMErrors->SetLineWidth(0);
+                    fFWHMErrors->SetFillColor(kBlue);
+                    fFWHMErrors->SetFillColorAlpha(kBlue,0.1);
+                    fFWHMErrors->SetFillStyle(1001);
+                    fFWHMErrors->SetStats(false);
+                    fFWHMErrors->SetDirectory(nullptr);
+                    if(fFWHMGraph) {
+                        fFWHMErrors->GetXaxis()->SetTitle(fFWHMGraph->GetXaxis()->GetTitle());
+                        fFWHMErrors->GetYaxis()->SetTitle(fFWHMGraph->GetYaxis()->GetTitle());
+                    }
                 }
-                if ( obj->ReadObj()->InheritsFrom( TGraph::Class() ) ) {
-                    fEfficiencyGraph = dynamic_cast<TGraph*>(obj->ReadObj());
+                TObjArray *arr = line.Tokenize(" ");
+                if(line.BeginsWith("#")) {
+                    if(line.Contains("N Bins")) nbins = atoi(arr->Last()->GetName());
+                    else if(line.Contains("X min")) min = atof(arr->Last()->GetName());
+                    else if(line.Contains("X max")) max = atof(arr->Last()->GetName());
+                    else continue;
                 }
+
+                if(fFWHMErrors && arr->GetEntries()==4) {
+                    int ibin = atoi(arr->At(0)->GetName());
+                    double content = atof(arr->At(2)->GetName());
+                    double error = atof(arr->At(3)->GetName());
+                    fFWHMErrors->SetBinContent(ibin,content);
+                    fFWHMErrors->SetBinError(ibin,error);
+                }
+                delete arr;
             }
         }
-        TString filename = Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fEfficiencyFileName.Copy().ReplaceAll(".root",".txt").Data());
-        ifstream filetoread(filename);
+    }
+
+    if(fEfficiencyGraphFileName != "None") {
+        delete fEfficiencyGraph;
+        fEfficiencyGraph = nullptr;
+        fileName = (fEfficiencyGraphFileName.BeginsWith("/")) ? fEfficiencyGraphFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fEfficiencyGraphFileName.Data());
+        fEfficiencyGraph = new TGraphErrors(fileName);
+        if(!fEfficiencyGraph || fEfficiencyGraph->GetN()==0) {
+            glog << tkn::error << "Cannot open or decode efficiency file: " << fileName << tkn::do_endl;
+        }
+        else {
+            fEfficiencyGraph->SetName("EfficiencyGraph");
+            fEfficiencyGraph->SetMarkerColor(kRed);
+            fEfficiencyGraph->SetMarkerStyle(20);
+            fEfficiencyGraph->GetXaxis()->SetTitle("Energy (keV)");
+            fEfficiencyGraph->GetYaxis()->SetTitle("Normalized area (counts)");
+        }
+    }
+    if(fEfficiencyFuncFileName != "None") {
+        delete fEfficiencyFunction;
+        fEfficiencyFunction = nullptr;
+        fileName = (fEfficiencyFuncFileName.BeginsWith("/")) ? fEfficiencyFuncFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fEfficiencyFuncFileName.Data());
+        ifstream filetoread(fileName);
         if(!filetoread) {
-            glog << tkn::error << "No efficiency function file found -> ignored" << tkn::do_endl;
+            glog << tkn::error << "No efficiency function file found named: " << fileName << tkn::do_endl;
         }
         else {
             TString line;
@@ -231,7 +353,7 @@ void CXWorkspace::ReadWS()
                 delete arr;
             }
             if(range.size() !=2 || params.size()!=8) {
-                glog << tkn::error << "Error in decoding file: " << filename << tkn::do_endl;
+                glog << tkn::error << "Error in decoding file: " << fileName << tkn::do_endl;
             }
             else {
                 fEfficiencyFunction = new TF1("EfficiencyFunc", &CXFitFunctions::EfficiencyFunc, range.at(0), range.at(1), 8);
@@ -239,6 +361,52 @@ void CXWorkspace::ReadWS()
                 fEfficiencyFunction->SetNpx(5000);
                 fEfficiencyFunction->SetParNames("Scale","A","B","C","D","E","F","G");
                 for(const auto &par: params) fEfficiencyFunction->SetParameter(par.first,par.second);
+            }
+        }
+    }
+    if(fEfficiencyErrorFileName != "None") {
+        delete fEfficiencyErrors;
+        fEfficiencyErrors = nullptr;
+        fileName = (fEfficiencyErrorFileName.BeginsWith("/")) ? fEfficiencyErrorFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fEfficiencyErrorFileName.Data());
+        ifstream file(fileName);
+        if(!file) {
+            glog << tkn::error << "Cannot open efficiency error file: " << fileName << tkn::do_endl;
+        }
+        else {
+            TString line;
+            int nbins  = -1;
+            double min = -1;
+            double max = -1;
+            while(line.ReadLine(file)) {
+                if(!fEfficiencyErrors && nbins>0 && min != 1 && max!=-1) {
+                    fEfficiencyErrors = new TH1D("EfficiencyConfidence95","Efficiency 0.95 confidence band", nbins, min, max);
+                    fEfficiencyErrors->SetLineWidth(0);
+                    fEfficiencyErrors->SetFillColor(kBlue);
+                    fEfficiencyErrors->SetFillColorAlpha(kBlue,0.1);
+                    fEfficiencyErrors->SetFillStyle(1001);
+                    fEfficiencyErrors->SetStats(false);
+                    fEfficiencyErrors->SetDirectory(nullptr);
+                    if(fEfficiencyGraph) {
+                        fEfficiencyErrors->GetXaxis()->SetTitle(fEfficiencyGraph->GetXaxis()->GetTitle());
+                        fEfficiencyErrors->GetYaxis()->SetTitle(fEfficiencyGraph->GetYaxis()->GetTitle());
+                    }
+                }
+                TObjArray *arr = line.Tokenize(" ");
+                if(line.BeginsWith("#")) {
+                    if(line.Contains("N Bins")) nbins = atoi(arr->Last()->GetName());
+                    else if(line.Contains("X min")) min = atof(arr->Last()->GetName());
+                    else if(line.Contains("X max")) max = atof(arr->Last()->GetName());
+                    else continue;
+                }
+
+                if(fEfficiencyErrors && arr->GetEntries()==4) {
+                    int ibin = atoi(arr->At(0)->GetName());
+                    double content = atof(arr->At(2)->GetName());
+                    double error = atof(arr->At(3)->GetName());
+                    fEfficiencyErrors->SetBinContent(ibin,content);
+                    fEfficiencyErrors->SetBinError(ibin,error);
+                }
+                delete arr;
             }
         }
     }
@@ -253,9 +421,20 @@ void CXWorkspace::UpdateWSFile()
     file << header << endl;
     for(int i=0 ; i<header.Length() ; i++) {file << "#";} file << endl << endl;
 
-    file << "Calibration file name: " << fCalibFileName << endl;
-    file << "FWHM file name: " << fFWHMFileName << endl;
-    file << "Efficiency file name: " << fEfficiencyFileName << endl;
+    file << "Calibration graph   : " << fCalibGraphFileName << endl;
+    file << "Calibration function: " << fCalibFuncFileName << endl;
+    file << "Calibration error   : " << fCalibErrorFileName << endl;
+    file << "Calibration residue : " << fCalibResidueFileName << endl;
+
+    file << endl;
+    file << "FWHM graph          : " << fFWHMGraphFileName << endl;
+    file << "FWHM function       : " << fFWHMFuncFileName << endl;
+    file << "FWHM error          : " << fFWHMErrorFileName << endl;
+
+    file << endl;
+    file << "Efficiency graph    : " << fEfficiencyGraphFileName << endl;
+    file << "Efficiency function : " << fEfficiencyFuncFileName << endl;
+    file << "Efficiency error    : " << fEfficiencyErrorFileName << endl;
     file.close();
 
     glog << tkn::info << "Updating Workspace: " << fname << " in " << fdirectory << tkn::do_endl;
@@ -265,9 +444,13 @@ CXWorkspace::~CXWorkspace()
 {
     delete fCalibFunction;
     delete fCalibrationGraph;
+    delete fCalibrationErrors;
+    delete fCalibrationResidue;
+
     delete fFWHMFunction;
     delete fFWHMGraph;
     delete fFWHMErrors;
+
     delete fEfficiencyGraph;
     delete fEfficiencyFunction;
     delete fEfficiencyErrors;
@@ -275,21 +458,43 @@ CXWorkspace::~CXWorkspace()
 
 void CXWorkspace::SetEfficiency(TGraph *_graph, TF1 *_func, TH1 *_error)
 {
-    TString filename = Form("%s/%s/%s_efficiency.root",fdirectory.Data(),fname.Data(),fname.Data());
+    TString filename = Form("%s/%s/%s_efficiency.dat",fdirectory.Data(),fname.Data(),fname.Data());
     if(!gSystem->AccessPathName(filename)) {
         glog << tkn::error << " file: " << filename << " already existing, plese delete it manually before saving workspace" << tkn::do_endl;
         return;
     }
-    TFile *f = new TFile(Form("%s/%s/%s_efficiency.root",fdirectory.Data(),fname.Data(),fname.Data()),"recreate");
     if(_graph) {
-        _graph->GetListOfFunctions()->Clear();
-        _graph->Write();
-    }
-    if(_error) _error->Write();
-    f->Close();
+        ofstream outfile(filename);
+        outfile<<"# "<< _graph->GetName() << " " << _graph->GetTitle() <<endl;
+        outfile<<"# X axis : "<< _graph->GetXaxis()->GetTitle() <<endl;
+        outfile<<"# Y axis : "<< _graph->GetYaxis()->GetTitle() <<endl;
+        outfile<<"# N points : "<< _graph->GetN() <<endl;
+        outfile<<"# X value     Y value       X error       Y error" <<endl;
+        for(int ipoint = 0 ; ipoint < _graph->GetN() ; ipoint++) {
+            outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+        }
+        outfile.close();
 
+        fEfficiencyGraphFileName = Form("%s_efficiency.dat",fname.Data());
+    }
+    if(_error) {
+        ofstream outfile(filename.Copy().ReplaceAll(".dat",".err"));
+        outfile<<"# "<< _error->GetName() << " " << _error->GetTitle() <<endl;
+        outfile<<"# X axis : "<< _error->GetXaxis()->GetTitle() <<endl;
+        outfile<<"# Y axis : "<< _error->GetYaxis()->GetTitle() <<endl;
+        outfile<<"# N Bins : "<< _error->GetXaxis()->GetNbins() <<endl;
+        outfile<<"# X min  : "<< _error->GetXaxis()->GetXmin() <<endl;
+        outfile<<"# X max  : "<< _error->GetXaxis()->GetXmax() <<endl;
+        outfile<<"# Bin       BinCenter     BinContent    BinError" <<endl;
+        for(int ibin = 1 ; ibin<=_error->GetXaxis()->GetNbins() ; ibin++) {
+            outfile << left << setw(12) << ibin << setw(14) << _error->GetBinCenter(ibin) << setw(14) << _error->GetBinContent(ibin) << setw(14) << _error->GetBinError(ibin) <<endl;
+        }
+        outfile.close();
+
+        fEfficiencyErrorFileName = Form("%s_efficiency.err",fname.Data());
+    }
     if(_func) {
-        ofstream file(Form("%s/%s/%s_efficiency.txt",fdirectory.Data(),fname.Data(),fname.Data()));
+        ofstream file(filename.Copy().ReplaceAll(".dat",".func"));
         TString header = "## Workspace " + fname + ": efficiency function ##";
         for(int i=0 ; i<header.Length() ; i++) {file << "#";} file << endl;
         file << header << endl;
@@ -303,30 +508,51 @@ void CXWorkspace::SetEfficiency(TGraph *_graph, TF1 *_func, TH1 *_error)
             file << left << setw(10) << _func->GetParName(i) << _func->GetParameter(i) << endl;
         }
         file.close();
+        fEfficiencyFuncFileName = Form("%s_efficiency.func",fname.Data());
     }
-
-    fEfficiencyFileName = Form("%s_efficiency.root",fname.Data());
 
     UpdateWSFile();
 }
 
-void CXWorkspace::SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error)
+void CXWorkspace::SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error, TGraph *_residue)
 {
-    TString filename = Form("%s/%s/%s_calibration.root",fdirectory.Data(),fname.Data(),fname.Data());
+    TString filename = Form("%s/%s/%s_calibration.dat",fdirectory.Data(),fname.Data(),fname.Data());
     if(!gSystem->AccessPathName(filename)) {
         glog << tkn::error << " file: " << filename << " already existing, plese delete it manually before saving workspace" << tkn::do_endl;
         return;
     }
-    TFile *f = new TFile(Form("%s/%s/%s_calibration.root",fdirectory.Data(),fname.Data(),fname.Data()),"recreate");
     if(_graph) {
-        _graph->GetListOfFunctions()->Clear();
-        _graph->Write();
-    }
-    if(_error) _error->Write();
-    f->Close();
+        ofstream outfile(filename);
+        outfile<<"# "<< _graph->GetName() << " " << _graph->GetTitle() <<endl;
+        outfile<<"# X axis : "<< _graph->GetXaxis()->GetTitle() <<endl;
+        outfile<<"# Y axis : "<< _graph->GetYaxis()->GetTitle() <<endl;
+        outfile<<"# N points : "<< _graph->GetN() <<endl;
+        outfile<<"# X value     Y value       X error       Y error" <<endl;
+        for(int ipoint = 0 ; ipoint < _graph->GetN() ; ipoint++) {
+            outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+        }
+        outfile.close();
 
+        fCalibGraphFileName = Form("%s_calibration.dat",fname.Data());
+    }
+    if(_error) {
+        ofstream outfile(filename.Copy().ReplaceAll(".dat",".err"));
+        outfile<<"# "<< _error->GetName() << " " << _error->GetTitle() <<endl;
+        outfile<<"# X axis : "<< _error->GetXaxis()->GetTitle() <<endl;
+        outfile<<"# Y axis : "<< _error->GetYaxis()->GetTitle() <<endl;
+        outfile<<"# N Bins : "<< _error->GetXaxis()->GetNbins() <<endl;
+        outfile<<"# X min  : "<< _error->GetXaxis()->GetXmin() <<endl;
+        outfile<<"# X max  : "<< _error->GetXaxis()->GetXmax() <<endl;
+        outfile<<"# Bin       BinCenter     BinContent    BinError" <<endl;
+        for(int ibin = 1 ; ibin<=_error->GetXaxis()->GetNbins() ; ibin++) {
+            outfile << left << setw(12) << ibin << setw(14) << _error->GetBinCenter(ibin) << setw(14) << _error->GetBinContent(ibin) << setw(14) << _error->GetBinError(ibin) <<endl;
+        }
+        outfile.close();
+
+        fCalibErrorFileName = Form("%s_calibration.err",fname.Data());
+    }
     if(_func) {
-        ofstream file(Form("%s/%s/%s_calibration.txt",fdirectory.Data(),fname.Data(),fname.Data()));
+        ofstream file(filename.Copy().ReplaceAll(".dat",".func"));
         TString header = "## Workspace " + fname + ": calibration function ##";
         for(int i=0 ; i<header.Length() ; i++) {file << "#";} file << endl;
         file << header << endl;
@@ -337,30 +563,65 @@ void CXWorkspace::SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error)
             file << left << setw(10) << _func->GetParName(i) << _func->GetParameter(i) << endl;
         }
         file.close();
+        fCalibFuncFileName = Form("%s_calibration.func",fname.Data());
     }
+    if(_residue) {
+        ofstream outfile(filename.Copy().ReplaceAll(".dat",".res"));
+        outfile<<"# "<< _residue->GetName() << " " << _residue->GetTitle() <<endl;
+        outfile<<"# X axis : "<< _residue->GetXaxis()->GetTitle() <<endl;
+        outfile<<"# Y axis : "<< _residue->GetYaxis()->GetTitle() <<endl;
+        outfile<<"# N points : "<< _residue->GetN() <<endl;
+        outfile<<"# X value     Y value       X error       Y error" <<endl;
+        for(int ipoint = 0 ; ipoint < _residue->GetN() ; ipoint++) {
+            outfile << left << setw(14) << _residue->GetX()[ipoint] << setw(14) << _residue->GetY()[ipoint] << setw(14) << _residue->GetEX()[ipoint] << setw(14) << _residue->GetEY()[ipoint] <<endl;
+        }
+        outfile.close();
 
-    fCalibFileName = Form("%s_calibration.root",fname.Data());
+        fCalibResidueFileName = Form("%s_calibration.res",fname.Data());
+    }
 
     UpdateWSFile();
 }
 
 void CXWorkspace::SetFWHM(TGraph *_graph, TF1 *_func, TH1 *_error)
 {
-    TString filename = Form("%s/%s/%s_FWHM.root",fdirectory.Data(),fname.Data(),fname.Data());
+    TString filename = Form("%s/%s/%s_FWHM.dat",fdirectory.Data(),fname.Data(),fname.Data());
     if(!gSystem->AccessPathName(filename)) {
         glog << tkn::error << " file: " << filename << " already existing, plese delete it manually before saving workspace" << tkn::do_endl;
         return;
     }
-    TFile *f = new TFile(Form("%s/%s/%s_FWHM.root",fdirectory.Data(),fname.Data(),fname.Data()),"recreate");
     if(_graph) {
-        _graph->GetListOfFunctions()->Clear();
-        _graph->Write();
-    }
-    if(_error) _error->Write();
-    f->Close();
+        ofstream outfile(filename);
+        outfile<<"# "<< _graph->GetName() << " " << _graph->GetTitle() <<endl;
+        outfile<<"# X axis : "<< _graph->GetXaxis()->GetTitle() <<endl;
+        outfile<<"# Y axis : "<< _graph->GetYaxis()->GetTitle() <<endl;
+        outfile<<"# N points : "<< _graph->GetN() <<endl;
+        outfile<<"# X value     Y value       X error       Y error" <<endl;
+        for(int ipoint = 0 ; ipoint < _graph->GetN() ; ipoint++) {
+            outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+        }
+        outfile.close();
 
+        fFWHMGraphFileName = Form("%s_FWHM.dat",fname.Data());
+    }
+    if(_error) {
+        ofstream outfile(filename.Copy().ReplaceAll(".dat",".err"));
+        outfile<<"# "<< _error->GetName() << " " << _error->GetTitle() <<endl;
+        outfile<<"# X axis : "<< _error->GetXaxis()->GetTitle() <<endl;
+        outfile<<"# Y axis : "<< _error->GetYaxis()->GetTitle() <<endl;
+        outfile<<"# N Bins : "<< _error->GetXaxis()->GetNbins() <<endl;
+        outfile<<"# X min  : "<< _error->GetXaxis()->GetXmin() <<endl;
+        outfile<<"# X max  : "<< _error->GetXaxis()->GetXmax() <<endl;
+        outfile<<"# Bin       BinCenter     BinContent    BinError" <<endl;
+        for(int ibin = 1 ; ibin<=_error->GetXaxis()->GetNbins() ; ibin++) {
+            outfile << left << setw(12) << ibin << setw(14) << _error->GetBinCenter(ibin) << setw(14) << _error->GetBinContent(ibin) << setw(14) << _error->GetBinError(ibin) <<endl;
+        }
+        outfile.close();
+
+        fFWHMErrorFileName = Form("%s_FWHM.err",fname.Data());
+    }
     if(_func) {
-        ofstream file(Form("%s/%s/%s_FWHM.txt",fdirectory.Data(),fname.Data(),fname.Data()));
+        ofstream file(filename.Copy().ReplaceAll(".dat",".func"));
         TString header = "## Workspace " + fname + ": FWHM function ##";
         for(int i=0 ; i<header.Length() ; i++) {file << "#";} file << endl;
         file << header << endl;
@@ -371,9 +632,8 @@ void CXWorkspace::SetFWHM(TGraph *_graph, TF1 *_func, TH1 *_error)
             file << left << setw(10) << _func->GetParName(i) << _func->GetParameter(i) << endl;
         }
         file.close();
+        fFWHMFuncFileName = Form("%s_FWHM.func",fname.Data());
     }
-
-    fFWHMFileName = Form("%s_FWHM.root",fname.Data());
 
     UpdateWSFile();
 }
@@ -407,7 +667,7 @@ CXWSManager::CXWSManager(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h
     TGLabel *label;
     fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Current Workspace: "),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
     label->SetTextColor(CXblue);
-    fHorizontalFrame->AddFrame(fActiveWSLabel = new TGLabel(fHorizontalFrame, fCurrentWorkspaceName.Data()),new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 5, 5, 0, 0));
+    fHorizontalFrame->AddFrame(fActiveWSLabel = new TGLabel(fHorizontalFrame, fActiveWorkspaceName.Data()),new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 5, 5, 0, 0));
     fActiveWSLabel->SetTextColor(CXred);
     fActiveWSLabel->SetTextJustify(kTextLeft);
     fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,10,5));
@@ -506,6 +766,14 @@ void CXWSManager::SelectionChanged()
     subname = (fCurrentWorkspace->fCalibFunction) ? fCurrentWorkspace->fCalibFunction->GetName() : "None";
     entry->SetSubnames(subname); fWSContentBox->AddItem(entry);
 
+    entry = new TGLVEntry(fWSContentBox,"Calibration error","TH1F");
+    subname = (fCurrentWorkspace->fCalibrationErrors) ? fCurrentWorkspace->fCalibrationErrors->GetName() : "None";
+    entry->SetSubnames(subname); fWSContentBox->AddItem(entry);
+
+    entry = new TGLVEntry(fWSContentBox,"Calibration residue","TGraph");
+    entry->SetPictures(gClient->GetPicture("graph.xpm"),gClient->GetPicture("graph.xpm"));
+    subname = (fCurrentWorkspace->fCalibrationResidue) ? fCurrentWorkspace->fCalibrationResidue->GetName() : "None";
+    entry->SetSubnames(subname); fWSContentBox->AddItem(entry);
 
     entry = new TGLVEntry(fWSContentBox,"Efficiency graph","TGraph");
     entry->SetPictures(gClient->GetPicture("graph.xpm"),gClient->GetPicture("graph.xpm"));
@@ -519,6 +787,7 @@ void CXWSManager::SelectionChanged()
     entry = new TGLVEntry(fWSContentBox,"Efficiency error","TH1F");
     subname = (fCurrentWorkspace->fEfficiencyErrors) ? fCurrentWorkspace->fEfficiencyErrors->GetName() : "None";
     entry->SetSubnames(subname); fWSContentBox->AddItem(entry);
+
 
     entry = new TGLVEntry(fWSContentBox,"FWHM graph","TGraph");
     entry->SetPictures(gClient->GetPicture("graph.xpm"),gClient->GetPicture("graph.xpm"));
@@ -579,7 +848,8 @@ void CXWSManager::LoadWS(TString _ws_dir)
     }
 
     if(fActiveWorkspace) {
-        fActiveWSLabel->SetText(fActiveWorkspace->GetName());
+        fActiveWorkspaceName = fActiveWorkspace->GetName();
+        fActiveWSLabel->SetText(fActiveWorkspaceName);
         auto entry = fWSListBox->FindEntry(fActiveWorkspace->GetName());
         fWSListBox->Select(entry->EntryId());
     }
@@ -656,6 +926,37 @@ void CXWSManager::OnDoubleClick(TGLVEntry *f, Int_t btn)
         else {
             fMainWindow->DoDraw(fCurrentWorkspace->fCalibFunction,DrawOpt);
         }
+    }
+    if(name == "Calibration error" && fCurrentWorkspace->fCalibrationErrors) {
+        if(!DrawOpt.Length()) {
+            if(fCurrentWorkspace->fCalibrationGraph) {
+                fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationGraph,"ape");
+                if(fCurrentWorkspace->fCalibFunction) {
+                    fMainWindow->DoDraw(fCurrentWorkspace->fCalibFunction,"same");
+                    fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationErrors,"e3 same");
+                }
+                else {
+                    fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationErrors,"e3 same");
+                }
+            }
+            else {
+                if(fCurrentWorkspace->fCalibFunction) {
+                    fMainWindow->DoDraw(fCurrentWorkspace->fCalibFunction,"");
+                    fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationErrors,"e3 same");
+                }
+                else {
+                    fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationErrors,"e3");
+                }
+            }
+        }
+        else {
+            fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationErrors,DrawOpt);
+        }
+    }
+    if(name == "Calibration residue" && fCurrentWorkspace->fCalibrationResidue) {
+        fCurrentWorkspace->fCalibrationResidue->Print("all");
+        if(!DrawOpt.Length()) fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationResidue,"ape");
+        else fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationResidue,DrawOpt);
     }
 
     if(name == "Efficiency graph" && fCurrentWorkspace->fEfficiencyGraph) {
@@ -768,4 +1069,4 @@ void CXWSManager::SetMainWindow(CXMainWindow *w)
 }
 
 ClassImp(CXWSManager)
-ClassImp(CXWorkspace)
+    ClassImp(CXWorkspace)

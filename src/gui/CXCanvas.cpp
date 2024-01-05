@@ -1570,8 +1570,7 @@ void CXCanvas::SaveHistToAsciiFile()
     typeidx = fi.fFileTypeIdx;
     overwr  = fi.fOverwrite;
 
-    if(!hist->InheritsFrom("TH2"))
-    {
+    if(!hist->InheritsFrom("TH2")) {
         ofstream outfile(fn);
         outfile<<"# "<<hist->GetName()<<endl;
         outfile<<"# X axis : "<<hist->GetXaxis()->GetTitle()<<endl;
@@ -1585,8 +1584,7 @@ void CXCanvas::SaveHistToAsciiFile()
 
         outfile.close();
     }
-    else
-    {
+    else {
         TH2 *Hist2D = dynamic_cast<TH2*>(hist);
 
         ofstream outfile(fn);
@@ -1597,15 +1595,11 @@ void CXCanvas::SaveHistToAsciiFile()
         outfile<<"# N BinsY : "<<Hist2D->GetYaxis()->GetNbins()<<endl;
 
         outfile<<"# Value at the center of the bins"<<endl;
-        for(int ibinx = 1 ; ibinx<=Hist2D->GetXaxis()->GetNbins() ; ibinx++)
-        {
-            for(int ibiny = 1 ; ibiny<=Hist2D->GetYaxis()->GetNbins() ; ibiny++)
-            {
+        for(int ibinx = 1 ; ibinx<=Hist2D->GetXaxis()->GetNbins() ; ibinx++) {
+            for(int ibiny = 1 ; ibiny<=Hist2D->GetYaxis()->GetNbins() ; ibiny++) {
                 outfile<<Hist2D->GetXaxis()->GetBinCenter(ibinx)<<" "<<Hist2D->GetYaxis()->GetBinCenter(ibiny)<<" "<<Hist2D->GetBinContent(ibinx,ibiny)<<endl;
             }
-
         }
-
         outfile.close();
     }
 }
