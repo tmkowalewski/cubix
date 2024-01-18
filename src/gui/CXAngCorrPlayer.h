@@ -31,125 +31,78 @@
  *    knowledge of the CeCILL-B license and that you accept its terms.          *
  ********************************************************************************/
 
-#ifndef CXHist1DPlayer_H
-#define CXHist1DPlayer_H
+#ifndef CXAngCorrPlayer_H
+#define CXAngCorrPlayer_H
 
 #include "RQ_OBJECT.h"
 #include "TGFrame.h"
 #include "TObject.h"
-#include "TGComboBox.h"
-#include "TGNumberEntry.h"
 
 using namespace std;
 
+class TGTextEntry;
 class CXMainWindow;
+class TGNumberEntry;
 class TF1;
-class TGraphErrors;
-class TH1;
+class TGComboBox;
 class TGCheckButton;
-class TGListBox;
+class CXCanvas;
+class TCanvas;
+class TGHSlider;
 class TVirtualPad;
-class CXArrow;
-class CXHist1DPlayer;
-class CXFit;
-class CXBgdFit;
-class CXWorkspace;
+class TGLabel;
+class TGraph;
 
-class CXHist1DPlayer : public  TGVerticalFrame
+class CXAngCorrPlayer : public  TGVerticalFrame
 {
-    RQ_OBJECT("CXHist1DPlayer");
+    RQ_OBJECT("CXAngCorrPlayer");
 
 public:
-    TGCheckButton *fUseLT, *fUseRT;
-    TGCheckButton *fFixFWHM, *fFWHMFromWS, *fFixLT, *fFixRT, *fFixMean, *fFixAmpli;
-    TGCheckButton *fBckStep, *fBckPol1, *fBckExp;
-    TGCheckButton *fBckPol1_Bgd, *fBckExp_Bgd;
-    TGNumberEntry *fFWHMSigma;
-    TGNumberEntry *fNE_FWHM[3];
-    TGNumberEntry *fNE_LT[3];
-    TGNumberEntry *fNE_RT[3];
-    TGTextEntry   *fFitOptions;
-
-    bool fUseStep = true;
-    bool fUsePol1 = false;
-    bool fUseExp = false;
-    bool fUseFWHM = false;
-    double fFWHMSigmaValue = 2.;
-
-    bool fUseBgdPol1 = false;
-    bool fUseBgdExp = false;
-
-    bool DoNewFit = false;
-    bool DoNewBgdFit = false;
 
 private:
 
     CXMainWindow *fMainWindow = nullptr;
 
-    TGNumberEntry *fSigmaSPEntry = nullptr;
-    TGNumberEntry *fThresholdSPEntry = nullptr;
-    TGNumberEntry *fTextSize = nullptr;
+    TGNumberEntry *fNESpins[3];
+    TGNumberEntry *fNEMixing[2];
+    TGHSlider *fSlider[2];
 
-    TGComboBox *fMinimizer = nullptr;
-    TGComboBox *fAlgorithm = nullptr;
-    TGNumberEntry *fTolenrance = nullptr;
-    TGNumberEntry *fPrintLevel = nullptr;
+    TGLabel* fAksLabel = nullptr;
 
-    TList *fListOfFitObjects = nullptr;
-    TList *fListOfBgdFitObjects = nullptr;
+    TGCheckButton *fFixMixing[2];
 
-    vector<Float_t> fEnergies;
-    vector<Float_t> fFitEnergies;
-    vector<Float_t> fFitBackgd;
+    TVirtualPad *fAngCorrPads[4];
+    TF1 *fTheoreticalDistribution = nullptr;
 
-    TH1 *fCurrentHist = nullptr;
-
-    TF1 *fFitFunction = nullptr;
-    TF1 *fBackFunction = nullptr;
-    TF1 *fResidue = nullptr;
-    TList *fListOfPeakFunctions = nullptr;
-
-    TGListBox *fFitResultsBox = nullptr;
-
-    CXFit     *fCurrentFit = nullptr;
-    CXBgdFit  *fCurrentBgdFit = nullptr;
+    TGraph *fA2A4MixingGraph = nullptr;
+    TGraph *fA2A4MixingTheoMarker = nullptr;
 
 public:
-    CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
-    ~CXHist1DPlayer();
 
-    Bool_t IsCurrentFit(){return DoNewFit;}
-
-    void PeakSearch();
-    void PeakSearchClear();
-    void NewFit();
-    void NewBgdFit();
-
-    void EndFit(){DoNewFit = false;}
-    void DoFit();
-    void DoBgdFit();
-    void ClearFits();
-    void RemoveFit(CXFit *fit);
-    void RemoveBgdFit(CXBgdFit *fit);
-
-    void HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObject* selected);
-    void HandleMyButton();
-
-    TGListBox *GetFitResultsBox(){return fFitResultsBox;}
-    void PrintInListBox(TString mess, Int_t Type);
+    CXAngCorrPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
+    ~CXAngCorrPlayer();
 
     CXMainWindow *GetMainWindow(){return fMainWindow;}
     void SetMainWindow(CXMainWindow *w);
 
-    void UpdateMinimizer();
-    const char *GetMinimizer() {return fMinimizer->GetSelectedEntry()->GetTitle();}
-    const char *GetAlgorithm() {return fAlgorithm->GetSelectedEntry()->GetTitle();}
-    Double_t GetTolerance() {return fTolenrance->GetNumber();}
-    Int_t GetPrintLevel() {return fPrintLevel->GetNumber();}
+    void NewInstance();
+    void GetCurrentInstance();
 
-    void SaveFit();
+    template <typename T>
+    T *GetElement(TVirtualPad *_pad, TString _namepattern="");
 
-    ClassDef(CXHist1DPlayer,0);
+    void DoSlider(Int_t _pos);
+    void UpdateTheory();
+
+    void PlotMixingEvaluation();
+
+private:
+
+    double Fk(int twoL1, int twoL1p, int twoIi, int twoI, int k);
+    vector<double> Eval_Ak(int TwoJ1, int TwoJ2, int TwoJ3, double _mix12, double _mix23);
+    double TheoreticalAngCorrFunction(double *x, double *p);
+
+    ClassDef(CXAngCorrPlayer,0);
 };
 
 #endif

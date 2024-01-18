@@ -32,12 +32,9 @@
  ********************************************************************************/
 
 #include "CXHist1DPlayer.h"
-#include "cubix_config.h"
+// #include "cubix_config.h"
 
 #include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
 
 #include "TGButton.h"
 #include "TGLabel.h"
@@ -48,14 +45,17 @@
 #include "TSystem.h"
 #include "TError.h"
 
-#if (OS_TYPE == OS_LINUX)
+// #if (OS_TYPE == OS_LINUX)
 #include "TGResourcePool.h"
-#endif
+// #endif
 
 #include "CXMainWindow.h"
 #include "CXArrow.h"
 #include "CXFit.h"
 #include "CXBgdFit.h"
+#include "CXBashColor.h"
+#include "CXWSManager.h"
+#include "CXDialogBox.h"
 
 using namespace std;
 
@@ -215,105 +215,120 @@ CXHist1DPlayer::CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     TGLabel *label;
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Mean:"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 28, 0, 0));
+    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Mean:"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 0, 0, 0));
     label->SetTextColor(CXblue);
     fFixMean = new TGCheckButton(fHorizontalFrame, "Fixed", 0);
     fFixMean->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
-    fHorizontalFrame->AddFrame(fFixMean,new TGLayoutHints(kLHintsTop | kLHintsLeft,15,5,0,0));
-    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Amplitude:"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
+    fHorizontalFrame->AddFrame(fFixMean,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
+
+    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Amplitude:"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 20, 5, 0, 0));
     label->SetTextColor(CXblue);
     fFixAmpli = new TGCheckButton(fHorizontalFrame, "Fixed", 0);
     fFixAmpli->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
-    fHorizontalFrame->AddFrame(fFixAmpli,new TGLayoutHints(kLHintsTop | kLHintsLeft,15,5,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
+    fHorizontalFrame->AddFrame(fFixAmpli,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,15,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Background:"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 0, 0, 0));
+    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Background:"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 0, 0, 0));
     label->SetTextColor(CXblue);
     fBckStep = new TGCheckButton(fHorizontalFrame, "Step", 0);
     fBckStep->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
     fBckStep->SetState((EButtonState)fUseStep);
-    fHorizontalFrame->AddFrame(fBckStep,new TGLayoutHints(kLHintsTop | kLHintsLeft,10,5,0,0));
+    fHorizontalFrame->AddFrame(fBckStep,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
     fBckPol1 = new TGCheckButton(fHorizontalFrame, "Pol1", 0);
     fBckPol1->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
     fBckPol1->SetState((EButtonState)fUsePol1);
-    fHorizontalFrame->AddFrame(fBckPol1,new TGLayoutHints(kLHintsTop | kLHintsLeft,5,5,0,0));
+    fHorizontalFrame->AddFrame(fBckPol1,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,5,0,0));
     fBckExp = new TGCheckButton(fHorizontalFrame, "Exp", 0);
     fBckExp->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
     fBckExp->SetState((EButtonState)fUseExp);
-    fHorizontalFrame->AddFrame(fBckExp,new TGLayoutHints(kLHintsTop | kLHintsLeft,5,5,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
+    fHorizontalFrame->AddFrame(fBckExp,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "FWHM:"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 24, 0, 0));
+    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "FWHM:"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 0, 0, 0));
     label->SetTextColor(CXblue);
     fFixFWHM = new TGCheckButton(fHorizontalFrame, "Fixed", 0);
     fFixFWHM->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
-    fHorizontalFrame->AddFrame(fFixFWHM,new TGLayoutHints(kLHintsTop | kLHintsLeft,15,5,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
+    fHorizontalFrame->AddFrame(fFixFWHM,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
 
-    fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Val "),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
-    fNE_FWHM[0] = new TGNumberEntry(fHorizontalFrame, (Double_t)5, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
-    fHorizontalFrame->AddFrame(fNE_FWHM[0],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Min"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
-    fNE_FWHM[1] = new TGNumberEntry(fHorizontalFrame, (Double_t)2, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
-    fHorizontalFrame->AddFrame(fNE_FWHM[1],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Max"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
-    fNE_FWHM[2] = new TGNumberEntry(fHorizontalFrame, (Double_t)10, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
-    fHorizontalFrame->AddFrame(fNE_FWHM[2],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+    fFWHMFromWS = new TGCheckButton(fHorizontalFrame, "From WS", 0);
+    fFWHMFromWS->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
+    fHorizontalFrame->AddFrame(fFWHMFromWS,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Sigma"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
+    fFWHMSigma = new TGNumberEntry(fHorizontalFrame, 2., 5,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fHorizontalFrame->AddFrame(fFWHMSigma,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,5,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
 
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Left tail:"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Value: "),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 3, 3, 0, 0));
+    fNE_FWHM[1] = new TGNumberEntry(fHorizontalFrame, (Double_t)2, 5,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fHorizontalFrame->AddFrame(fNE_FWHM[1],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
+    fNE_FWHM[0] = new TGNumberEntry(fHorizontalFrame, (Double_t)5, 5,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fHorizontalFrame->AddFrame(fNE_FWHM[0],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
+    fNE_FWHM[2] = new TGNumberEntry(fHorizontalFrame, (Double_t)10, 5,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fHorizontalFrame->AddFrame(fNE_FWHM[2],new TGLayoutHints(kLHintsCenterY | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
+
+
+    fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
+    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Left tail:"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 0, 0, 0));
     label->SetTextColor(CXblue);
-
     fUseLT = new TGCheckButton(fHorizontalFrame, "Used", 0);
     fUseLT->SetState(kButtonDown);
     fUseLT->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
-    fHorizontalFrame->AddFrame(fUseLT,new TGLayoutHints(kLHintsTop | kLHintsLeft,15,5,0,0));
+    fHorizontalFrame->AddFrame(fUseLT,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
     fFixLT = new TGCheckButton(fHorizontalFrame, "Fixed", 0);
     fFixLT->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
-    fHorizontalFrame->AddFrame(fFixLT,new TGLayoutHints(kLHintsTop | kLHintsLeft,15,5,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,10,5));
+    fHorizontalFrame->AddFrame(fFixLT,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Val "),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
-    fNE_LT[0] = new TGNumberEntry(fHorizontalFrame, (Double_t)-2, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)-5 ,(Double_t)-0.1);
-    fHorizontalFrame->AddFrame(fNE_LT[0],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Min"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Value: "),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 3, 3, 0, 0));
     fNE_LT[1] = new TGNumberEntry(fHorizontalFrame, (Double_t)-5, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)-5 ,(Double_t)-0.1);
-    fHorizontalFrame->AddFrame(fNE_LT[1],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Max"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
+    fHorizontalFrame->AddFrame(fNE_LT[1],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
+    fNE_LT[0] = new TGNumberEntry(fHorizontalFrame, (Double_t)-2, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)-5 ,(Double_t)-0.1);
+    fHorizontalFrame->AddFrame(fNE_LT[0],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
     fNE_LT[2] = new TGNumberEntry(fHorizontalFrame, (Double_t)-0.1, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)-5 ,(Double_t)-0.1);
-    fHorizontalFrame->AddFrame(fNE_LT[2],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+    fHorizontalFrame->AddFrame(fNE_LT[2],new TGLayoutHints(kLHintsCenterY | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
 
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Right tail:"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
+    fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, "Right tail:"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 0, 0, 0));
     label->SetTextColor(CXblue);
     fUseRT = new TGCheckButton(fHorizontalFrame, "Used", 0);
     fUseRT->SetState(kButtonUp);
     fUseRT->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
-    fHorizontalFrame->AddFrame(fUseRT,new TGLayoutHints(kLHintsTop | kLHintsLeft,15,5,0,0));
+    fHorizontalFrame->AddFrame(fUseRT,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
     fFixRT = new TGCheckButton(fHorizontalFrame, "Fixed", 0);
     fFixRT->Connect("Clicked()", "CXHist1DPlayer", this, "HandleMyButton()");
-    fHorizontalFrame->AddFrame(fFixRT,new TGLayoutHints(kLHintsTop | kLHintsLeft,15,5,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,10,5));
+    fHorizontalFrame->AddFrame(fFixRT,new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Val "),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
-    fNE_RT[0] = new TGNumberEntry(fHorizontalFrame, (Double_t)2, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)0.1 ,(Double_t)5);
-    fHorizontalFrame->AddFrame(fNE_RT[0],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Min"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Value: "),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 3, 3, 0, 0));
     fNE_RT[1] = new TGNumberEntry(fHorizontalFrame, (Double_t)0.1, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)0.1 ,(Double_t)5);
-    fHorizontalFrame->AddFrame(fNE_RT[1],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Max"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 3, 3, 0, 0));
+    fHorizontalFrame->AddFrame(fNE_RT[1],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
+    fNE_RT[0] = new TGNumberEntry(fHorizontalFrame, (Double_t)2, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)0.1 ,(Double_t)5);
+    fHorizontalFrame->AddFrame(fNE_RT[0],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
     fNE_RT[2] = new TGNumberEntry(fHorizontalFrame, (Double_t)5, 7,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELLimitMinMax, (Double_t)0.1 ,(Double_t)5);
-    fHorizontalFrame->AddFrame(fNE_RT[2],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
-    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+    fHorizontalFrame->AddFrame(fNE_RT[2],new TGLayoutHints(kLHintsCenterY | kLHintsLeft| kLHintsExpandX,5,5,0,0));
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
 
 
     fGroupFrame = new TGGroupFrame(MotherFrame, "Fit results", kVerticalFrame);
@@ -326,6 +341,13 @@ CXHist1DPlayer::CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fFitResultsBox->GetContainer()->RemoveInput(kButtonReleaseMask | kButtonMotionMask);
     fGroupFrame->AddFrame(fFitResultsBox, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,-10,-10,0,0));
 
+    fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
+    TGTextButton *Save = new TGTextButton(fHorizontalFrame, "Save fit result");
+    Save->SetTextColor(CXred);
+    Save->Connect("Clicked()", "CXHist1DPlayer", this, "SaveFit()");
+    fHorizontalFrame->AddFrame(Save,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,20,20,0,0));
+
+    fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
 
     HandleMyButton();
 
@@ -429,7 +451,7 @@ void CXHist1DPlayer::NewBgdFit()
 
     fMainWindow->GetCanvas()->Connect("ProcessedEvent(Int_t, Int_t, Int_t, TObject*)", "CXHist1DPlayer", this, "HandleMouse(Int_t,Int_t,Int_t, TObject*)");
 
-    fCurrentBgdFit = new CXBgdFit(fCurrentHist,fMainWindow->GetSelectedPad(),this);
+    fCurrentBgdFit = new CXBgdFit(fCurrentHist,fMainWindow->GetSelectedPad(),this, fMainWindow->GetWSManager()->GetActiveWorkspace());
     fListOfBgdFitObjects->Add(fCurrentBgdFit);
 }
 
@@ -567,12 +589,14 @@ void CXHist1DPlayer::DoBgdFit()
 void CXHist1DPlayer::HandleMyButton()
 {
 
-    fUseBgdPol1 = (Bool_t)fBckPol1_Bgd->GetState();
-    fUseBgdExp = (Bool_t)fBckExp_Bgd->GetState();
+    fUseBgdPol1 = (bool)fBckPol1_Bgd->GetState();
+    fUseBgdExp = (bool)fBckExp_Bgd->GetState();
 
-    fUseStep = (Bool_t)fBckStep->GetState();
-    fUsePol1 = (Bool_t)fBckPol1->GetState();
-    fUseExp = (Bool_t)fBckExp->GetState();
+    fUseStep = (bool)fBckStep->GetState();
+    fUsePol1 = (bool)fBckPol1->GetState();
+    fUseExp = (bool)fBckExp->GetState();
+
+    fUseFWHM = (bool)fFWHMFromWS->GetState();
 
     if(fUseLT->GetState() == kButtonUp) {
         fFixLT->SetState(kButtonDisabled);
@@ -599,7 +623,6 @@ void CXHist1DPlayer::HandleMyButton()
         fNE_LT[2]->SetState(true);
     }
 
-
     if(fUseRT->GetState() == kButtonUp) {
         fFixRT->SetState(kButtonDisabled);
 
@@ -624,23 +647,55 @@ void CXHist1DPlayer::HandleMyButton()
         fNE_RT[1]->SetState(true);
         fNE_RT[2]->SetState(true);
     }
+    
+    if(fUseFWHM) {
+        auto WS = fMainWindow->GetWSManager()->GetActiveWorkspace();
+        if(!WS) {
+            gbash_color->ErrorMessage("No workspace loaded");
+            fUseFWHM = false;
+        }
+        else {
+            auto func = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction;
+            auto err = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMErrors;
+            if(!func) {
+                gbash_color->ErrorMessage(Form("No FWHM function defined in current workspace: %s", fMainWindow->GetWSManager()->GetActiveWSName().Data()));
+                fUseFWHM = false;
+            }
+            else if(!err && (fFixFWHM->GetState() == kButtonUp)) {
+                gbash_color->ErrorMessage(Form("No FWHM error band defined in current workspace: %s", fMainWindow->GetWSManager()->GetActiveWSName().Data()));
+                fUseFWHM = false;
+            }
+        }
+        if(!fUseFWHM) fFWHMFromWS->SetState(kButtonUp);
+    }
 
-    if(fFixFWHM->GetState() == kButtonDown) {
-        fNE_FWHM[0]->SetState(true);
+    fFWHMSigma->SetState(false);
+    if(fUseFWHM) {
+        if(fFixFWHM->GetState() == kButtonDown) fFWHMSigma->SetState(false);
+        else fFWHMSigma->SetState(true);
+
+        fNE_FWHM[0]->SetState(false);
         fNE_FWHM[1]->SetState(false);
         fNE_FWHM[2]->SetState(false);
     }
-    if(fFixFWHM->GetState() == kButtonUp) {
-        fNE_FWHM[0]->SetState(true);
-        fNE_FWHM[1]->SetState(true);
-        fNE_FWHM[2]->SetState(true);
+    else {
+        if((fFixFWHM->GetState() == kButtonDown) || fUseFWHM) {
+            fNE_FWHM[0]->SetState(true);
+            fNE_FWHM[1]->SetState(false);
+            fNE_FWHM[2]->SetState(false);
+        }
+        if((fFixFWHM->GetState() == kButtonUp) && !fUseFWHM) {
+            fNE_FWHM[0]->SetState(true);
+            fNE_FWHM[1]->SetState(true);
+            fNE_FWHM[2]->SetState(true);
+        }
     }
+
 }
 
 void CXHist1DPlayer::PrintInListBox(TString mess, Int_t Type)
 {
-
-#if (OS_TYPE == OS_LINUX)
+// #if (OS_TYPE == OS_LINUX)
     const TGFont *ufont;         // will reflect user font changes
     ufont = gClient->GetFont("-*-courier-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
     // ufont = gClient->GetFont("-adobe-times-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
@@ -655,9 +710,9 @@ void CXHist1DPlayer::PrintInListBox(TString mess, Int_t Type)
     uGC = gClient->GetGC(&val, kTRUE);
 
     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1, uGC->GetGC(), ufont->GetFontStruct());
-#else
-    TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1);
-#endif
+// #else
+//     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1);
+// #endif
 
     if(Type == kError)
         entry->SetBackgroundColor((Pixel_t)0xff0000);
@@ -717,6 +772,44 @@ void CXHist1DPlayer::UpdateMinimizer()
         fAlgorithm->AddEntry("Genetic",0);
         fAlgorithm->Select(0);
     }
+}
+
+void CXHist1DPlayer::SaveFit()
+{
+    if(!fMainWindow->GetWSManager()->GetActiveWorkspace()) {
+        gbash_color->ErrorMessage("A workspace needs to be defined to save fit results");
+        return;
+    }
+
+    TString name = "";
+    TString overwrite="0";
+    CXDialogBox *diag = new CXDialogBox(this->GetMainFrame(),"Save fit results");
+    diag->Add("File name (without extension)",name);
+    diag->Add("Overwrite",overwrite);
+    diag->Popup();
+
+    TString FolderName = Form("%s/%s/FitResults",fMainWindow->GetWSManager()->GetWSDirectory().Data(),fMainWindow->GetWSManager()->GetActiveWSName().Data());
+    gSystem->mkdir(FolderName,true);
+    TString FileName = Form("%s/%s.fit",FolderName.Data(),name.Data());
+
+    bool ow = (overwrite=="1");
+
+    if(!ow && !gSystem->AccessPathName(FileName)) {
+        gbash_color->WarningMessage("File already existing ==> ignored");
+        return;
+    }
+
+    ofstream file(FileName);
+
+    TString StringToBeSaved;
+    for(int i=0 ; i<fListOfFitObjects->GetEntries() ; i++) {
+        CXFit *fit = (CXFit*)fListOfFitObjects->At(i);
+        file << fit->Save();
+    }
+
+    file.close();
+
+    gbash_color->InfoMessage(Form("Fit saved in: %s",FileName.Data()));
 }
 
 ClassImp(CXHist1DPlayer)

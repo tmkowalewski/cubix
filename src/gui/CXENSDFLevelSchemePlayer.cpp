@@ -162,9 +162,9 @@ shared_ptr<tklevel_scheme> CXENSDFLevelSchemePlayer::DrawArrows(TString ListOfNu
         Float_t YMax = 0;
 
         Float_t PadMax = gPad->GetUymax();
-        if(gPad->GetLogy())
-            PadMax = TMath::Power(10,gPad->GetUymax());
+        if(gPad->GetLogy()) PadMax = TMath::Power(10,gPad->GetUymax());
 
+        int itest=0;
         while(YMax>PadMax || YMax==0) {
             for(int i=0 ; i<fListOfLatex->GetEntries() ; i++) {
                 TLatex *l = (TLatex*)fListOfLatex->At(i);
@@ -179,22 +179,21 @@ shared_ptr<tklevel_scheme> CXENSDFLevelSchemePlayer::DrawArrows(TString ListOfNu
             gPad->Update();
             gPad->Modified();
 
-            for(int i=0 ; i<fListOfLatex->GetEntries() ; i++)
-            {
+            for(int i=0 ; i<fListOfLatex->GetEntries() ; i++) {
                 TLatex *l = (TLatex*)fListOfLatex->At(i);
                 if(gPad->GetListOfPrimitives()->FindObject(l) == nullptr) continue;
                 Float_t Y = l->GetY()-(gPad->AbsPixeltoY(l->GetBBox().fY+l->GetBBox().fWidth)-gPad->AbsPixeltoY(l->GetBBox().fY));
-                if(Y>YMax)
-                    YMax = Y;
+                if(Y>YMax) YMax = Y;
             }
 
             PadMax = gPad->GetUymax();
-            if(gPad->GetLogy())
-                PadMax = TMath::Power(10,gPad->GetUymax());
+            if(gPad->GetLogy()) PadMax = TMath::Power(10,gPad->GetUymax());
+
+            itest++;
+            if(itest>10) break;
         }
 
-        if(YMax<fCurrentHist->GetBinContent(fCurrentHist->GetMaximumBin()))
-            fCurrentHist->GetYaxis()->UnZoom();
+        if(YMax<fCurrentHist->GetBinContent(fCurrentHist->GetMaximumBin())) fCurrentHist->GetYaxis()->UnZoom();
 
         gPad->Update();
         gPad->Modified();

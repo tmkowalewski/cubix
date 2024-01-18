@@ -35,4 +35,5 @@
 #pragma link C++ class CXNucChart+;
 #pragma link C++ class CXNucleusBox+;
 #pragma link C++ class CXDialogBox+;
+#pragma link C++ class CXAngCorrPlayer+;
 #endif

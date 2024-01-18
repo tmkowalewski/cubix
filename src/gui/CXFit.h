@@ -34,9 +34,10 @@
 #ifndef CXFit_H
 #define CXFit_H
 
-#include "TObject.h"
-
+#include <sstream>
 #include <vector>
+
+#include "TObject.h"
 
 class CXHist1DPlayer;
 class TVirtualPad;
@@ -64,6 +65,8 @@ private:
 
     CXWorkspace *fWorkspace = nullptr;
 
+    std::ostringstream fsavedStream;
+
 public:
     CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
     ~CXFit();
@@ -79,6 +82,8 @@ public:
     Double_t Residue(Double_t*xx,Double_t*pp);
 
     void Clear(TVirtualPad *pad = nullptr);
+
+    TString Save();
 
     ClassDef(CXFit,0);
 };

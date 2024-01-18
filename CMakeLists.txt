@@ -93,6 +93,19 @@ MESSAGE(STATUS "ROOT Version: ${ROOT_VERSION} ")
 INCLUDE_DIRECTORIES( ${ROOT_INCLUDE_DIR} )
 LINK_DIRECTORIES( ${ROOT_LIBRARY_DIR} )
 
+unset(MATHMORE_FOUND CACHE)
+unset(HAS_MATHMORE CACHE)
+
+find_library(MATHMORE_FOUND "mathmore")
+
+if(NOT MATHMORE_FOUND)
+    print(WARNING "Cubix compiled without mathmore, angular correlations tool will not be available !")
+    SET(HAS_MATHMORE OFF)
+else ()
+    MESSAGE(STATUS "mathmore lib has been found")
+    SET(HAS_MATHMORE On)
+endif()
+
 # ==================================================================
 # -------------------------- Link TkN ------------------------------
 # ==================================================================

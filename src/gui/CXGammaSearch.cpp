@@ -37,7 +37,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
-#include <fstream>
 
 #include "TString.h"
 #include "TSystem.h"
@@ -47,9 +46,9 @@
 #include "TGLabel.h"
 #include "TGButton.h"
 
-#if (OS_TYPE == OS_LINUX)
+// #if (OS_TYPE == OS_LINUX)
 #include "TGResourcePool.h"
-#endif
+// #endif
 
 #include "CXMainWindow.h"
 #include "CXSpreadIntensityMatrix.h"
@@ -642,7 +641,7 @@ std::vector<int> CXGammaSearch::Sort_Index(std::vector<int> Index_Nuclei, std::v
 void CXGammaSearch::PrintInListBox(TString mess, Int_t Type)
 {
 
-#if (OS_TYPE == OS_LINUX)
+// #if (OS_TYPE == OS_LINUX)
     const TGFont *ufont;         // will reflect user font changes
     ufont = gClient->GetFont("-adobe-courier-medium-r-*-*-14-*-*-*-*-*-iso8859-1");
     // ufont = gClient->GetFont("-adobe-times-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
@@ -657,9 +656,9 @@ void CXGammaSearch::PrintInListBox(TString mess, Int_t Type)
     uGC = gClient->GetGC(&val, kTRUE);
 
     TGTextLBEntry *entry = new TGTextLBEntry(fResultsBox->GetContainer(), new TGString(mess), fResultsBox->GetNumberOfEntries()+1, uGC->GetGC(), ufont->GetFontStruct());
-#else
-    TGTextLBEntry *entry = new TGTextLBEntry(fResultsBox->GetContainer(), new TGString(mess), fResultsBox->GetNumberOfEntries()+1);
-#endif
+// #else
+//     TGTextLBEntry *entry = new TGTextLBEntry(fResultsBox->GetContainer(), new TGString(mess), fResultsBox->GetNumberOfEntries()+1);
+// #endif
 
     if(Type == kError)
         entry->SetBackgroundColor((Pixel_t)0xff0000);

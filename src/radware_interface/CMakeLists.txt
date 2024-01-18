@@ -18,12 +18,8 @@ file(GLOB sources ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 file(GLOB headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 list(REMOVE_ITEM headers ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
 
-if(ROOT_FOUND)
-    include(GenerateROOTLibrary)
-    GENERATE_ROOT_DICTIONARY(${PROJECT_NAME} LINKDEF LinkDef.h HEADERS ${headers} SOURCES ${sources} DEPENDENCIES cubix::CubixCore ROOT::Core ROOT::Hist)
-else ()
-    add_library(${PROJECT_NAME} SHARED ${sources})
-endif()
+include(GenerateROOTLibrary)
+GENERATE_ROOT_DICTIONARY(${PROJECT_NAME} LINKDEF LinkDef.h HEADERS ${headers} SOURCES ${sources} DEPENDENCIES cubix::CubixCore ROOT::Core ROOT::Hist)
 
 add_library(cubix::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 

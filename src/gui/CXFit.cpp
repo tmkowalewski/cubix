@@ -218,6 +218,8 @@ void CXFit::Fit()
         return;
     }
 
+    fsavedStream.str("");
+
     ROOT::Math::MinimizerOptions::SetDefaultMinimizer(fPlayer->GetMinimizer(),fPlayer->GetAlgorithm());
     ROOT::Math::MinimizerOptions::SetDefaultTolerance(fPlayer->GetTolerance());
     ROOT::Math::MinimizerOptions::SetDefaultPrintLevel(fPlayer->GetPrintLevel());
@@ -287,16 +289,33 @@ void CXFit::Fit()
         //Height
         fFitFunction->SetParameter(4+i*6+0, fHistogram->GetBinContent(fHistogram->FindBin(fEnergies[i])) - (fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[0]))+fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[1])))*0.5 );
         fFitFunction->SetParLimits(4+i*6+0, fFitFunction->GetParameters()[4+i*6+0]*0.5, fFitFunction->GetParameters()[4+i*6+0]*1.5);
+
         //Position
         fFitFunction->SetParameter(4+i*6+1, fEnergies[i]);
         fFitFunction->SetParLimits(4+i*6+1, fEnergies[i]-DefFWHM, fEnergies[i]+DefFWHM);
         if(fPlayer->fFixMean->GetState() == kButtonDown)
             fFitFunction->FixParameter(4+i*6+1,fEnergies[i]);
+
         //FWHM
-        fFitFunction->SetParameter(4+i*6+2, DefFWHM);
-        fFitFunction->SetParLimits(4+i*6+2, DefFWHM_min, DefFWHM_max);
-        if(fPlayer->fFixFWHM->GetState() == kButtonDown)
-            fFitFunction->FixParameter(4+i*6+2,DefFWHM);
+        if(fPlayer->fUseFWHM) {
+            double FWHM = fWorkspace->fFWHMFunction->Eval(fEnergies[i]);
+            if(fPlayer->fFixFWHM->GetState() == kButtonDown) {
+                fFitFunction->FixParameter(4+i*6+2,FWHM);
+            }
+            else {
+                double error = fWorkspace->fFWHMErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(fEnergies[i]));
+                double sigma = fPlayer->fFWHMSigma->GetNumber();
+                fFitFunction->SetParameter(4+i*6+2, FWHM);
+                fFitFunction->SetParLimits(4+i*6+2, FWHM-error*sigma, FWHM+error*sigma);
+            }
+        }
+        else {
+            fFitFunction->SetParameter(4+i*6+2, DefFWHM);
+            fFitFunction->SetParLimits(4+i*6+2, DefFWHM_min, DefFWHM_max);
+            if(fPlayer->fFixFWHM->GetState() == kButtonDown)
+                fFitFunction->FixParameter(4+i*6+2,DefFWHM);
+        }
+
         //LeftTail
         fFitFunction->SetParameter(4+i*6+3, LeftTailVal);
         fFitFunction->SetParLimits(4+i*6+3, LeftTailValMin, LeftTailValMax);
@@ -304,6 +323,7 @@ void CXFit::Fit()
             fFitFunction->FixParameter(4+i*6+3,-5);
         else if(fPlayer->fFixLT->GetState() == kButtonDown)
             fFitFunction->FixParameter(4+i*6+3,LeftTailVal);
+
         //RightTail
         fFitFunction->SetParameter(4+i*6+4, RightTailVal);
         fFitFunction->SetParLimits(4+i*6+4, RightTailValMin, RightTailValMax);
@@ -311,6 +331,7 @@ void CXFit::Fit()
             fFitFunction->FixParameter(4+i*6+4,5);
         else if(fPlayer->fFixRT->GetState() == kButtonDown)
             fFitFunction->FixParameter(4+i*6+4,RightTailVal);
+
         //AmplitudeStep
         fFitFunction->SetParameter(4+i*6+5, StepVal);
         fFitFunction->SetParLimits(4+i*6+5, StepValMin, StepValMax);
@@ -340,7 +361,10 @@ void CXFit::Fit()
         r = fHistogram->Fit(fFitFunction,FitOpt.Data());
     }
 
-    if(r.Get() == nullptr) return;
+    if(r.Get() == nullptr) {
+        gbash_color->WarningMessage("Oups... Error in fitting histogram");
+        return;
+    }
 
     //Extract Background
     delete fBackFunction;
@@ -364,31 +388,31 @@ void CXFit::Fit()
     ostringstream text;
 
     text << "Fit results :";
-    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kPrint);text.str("");
+    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kPrint); fsavedStream << text.str() << endl; text.str("");
     text << "Status: ";
-    if(r->Status()==0)
+    if(r->IsValid())
         text << " Successeful" << endl;
     else
         text << " Failed" << endl;
-    cout<<text.str();
-    if(r->Status()==0)
+    cout<<text.str();fsavedStream << text.str();
+    if(r->IsValid())
         fPlayer->PrintInListBox(text.str(),kPrint);
     else
         fPlayer->PrintInListBox(text.str(),kError);
     text.str("");
 
     text << "Chi2  = "<< r->Chi2();
-    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kInfo);text.str("");
+    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kInfo); fsavedStream << text.str() << endl; text.str("");
     text << "Ndf   = "<< r->Ndf();
-    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kInfo);text.str("");
+    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kInfo); fsavedStream << text.str() << endl; text.str("");
     text << "P val = "<< r->Prob();
-    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kInfo);text.str("");
+    cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kInfo); fsavedStream << text.str() << endl; text.str("");
 
     fListOfPeaks->Clear();
 
     for(auto i=0U ; i< fEnergies.size() ; i++) {
         text<<"Peak "<<i<<":";
-        cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kPrint);text.str("");
+        cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kPrint); fsavedStream << text.str() << endl; text.str("");
 
         TF1 *peak = new TF1(Form("Peak%d",i), this, &CXFit::PeakFunction, fBackgd[0], fBackgd[1], NPars, "CXFit", "PeakFunction");
         peak->SetParameters(fFitFunction->GetParameters());
@@ -409,10 +433,10 @@ void CXFit::Fit()
         Double_t MeanErr  = peak->GetParError(4+i*6+1);
         Double_t FWHM     = peak->GetParameter(4+i*6+2);
         Double_t FWHMErr  = peak->GetParError(4+i*6+2);
-//        Double_t LeftT    = TMath::Abs(peak->GetParameter(4+i*6+3));
-//        Double_t LeftTErr = peak->GetParError(4+i*6+3);
-//        Double_t Right    = peak->GetParameter(4+i*6+4);
-//        Double_t RightErr = peak->GetParError(4+i*6+4);
+        //        Double_t LeftT    = TMath::Abs(peak->GetParameter(4+i*6+3));
+        //        Double_t LeftTErr = peak->GetParError(4+i*6+3);
+        //        Double_t Right    = peak->GetParameter(4+i*6+4);
+        //        Double_t RightErr = peak->GetParError(4+i*6+4);
 
         Double_t Area_eff = 0.;
         Double_t Area_eff_err = 0.;
@@ -440,53 +464,55 @@ void CXFit::Fit()
 
         Double_t LeftTailParam = F01_L/(FWHM*0.5);
         Double_t RightTailParam = F01_R/(FWHM*0.5);
-        cout<<F01_L<<" "<<FWHM<<" "<<endl;
+
         Double_t FWHM_Real     = FWHM_R-FWHM_L;
         Double_t FWHM_Real_err = (FWHM_R_err-FWHM_L_err)-FWHM_Real;
         peak->SetParameter(1,1);//with backgroud
 
         text<<left<<setw(11)<<"Mean"<<": "<<setprecision(7)<<setw(10)<<Mean<<" ("<<setprecision(7)<<setw(10)<<MeanErr<<")";
-        cout<<text.str()<<endl;
+        cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
         text<<left<<setw(11)<<"Amplitude"<<": "<<setprecision(7)<<setw(10)<<Max<<" ("<<setprecision(7)<<setw(10)<<MaxErr<<")";
-        cout<<text.str()<<endl;
+        cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
         text<<left<<setw(11)<<"FWHM (gaus)"<<": "<<setprecision(7)<<setw(10)<<FWHM<<" ("<<setprecision(7)<<setw(10)<<FWHMErr<<")";
-        cout<<text.str()<<endl;
+        cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
         text<<left<<setw(11)<<"FWHM (real)"<<": "<<setprecision(7)<<setw(10)<<FWHM_Real<<" ("<<setprecision(7)<<setw(10)<<FWHM_Real_err<<")";
-        cout<<text.str()<<endl;
+        cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
         text<<left<<setw(11)<<"L Tail"<<": "<<setprecision(7)<<setw(10)<<LeftTailParam;
-        cout<<text.str()<<endl;
+        cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
         text<<left<<setw(11)<<"R Tail"<<": "<<setprecision(7)<<setw(10)<<RightTailParam;
-        cout<<text.str()<<endl;
+        cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
         text<<left<<setw(11)<<"Area"<<": "<<setprecision(7)<<setw(10)<<Area<<" ("<<setprecision(7)<<setw(10)<<AreaErr<<")";
-        cout<<text.str()<<endl;
+        cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
         if(Area_eff>0.) {
             text<<left<<setw(11)<<Form("%s area",fWorkspace->GetName())<<": "<<setprecision(7)<<setw(10)<<Area_eff<<" ("<<setprecision(7)<<setw(10)<<Area_eff_err<<")";
-            cout<<text.str()<<endl;
+            cout<<text.str()<<endl;fsavedStream << text.str() << endl;
             fPlayer->PrintInListBox(text.str(),kInfo);
             text.str("");
         }
     }
+
+    fsavedStream << endl;
 
     fFitFunction->Draw("same");
 
@@ -608,4 +634,9 @@ Double_t CXFit::Residue(Double_t*xx,Double_t*/*pp*/)
     Double_t x   = xx[0];
 
     return fFitFunction->Eval(fHistogram->GetBinCenter(fHistogram->FindBin(x))) - fHistogram->GetBinContent(fHistogram->FindBin(x));
+}
+
+TString CXFit::Save()
+{
+    return fsavedStream.str();
 }

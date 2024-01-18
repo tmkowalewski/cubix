@@ -38,6 +38,12 @@
 
 #include "TMath.h"
 
+#include "cubix_config.h"
+
+#ifdef HAS_MATHMORE
+#include "Math/SpecFuncMathMore.h"
+#endif
+
 using namespace std;
 
 class CXFitFunctions
@@ -106,6 +112,23 @@ public:
         double H = p[2];
 
         return sqrt(F*F + G*G*E + H*H*E*E);
+    }
+
+    static double AngCorrFunction(double *x, double *p) {
+
+        double theta = x[0];
+
+        double A0  = p[0];
+        double A2  = p[1];
+        double A4  = p[2];
+
+        double total=0.;
+
+#ifdef HAS_MATHMORE
+        total = A0*(1+A2*ROOT::Math::legendre(2,cos(theta*TMath::DegToRad())) + A4*ROOT::Math::legendre(4,cos(theta*TMath::DegToRad())));
+#endif
+
+        return total;
     }
 
     ClassDef(CXFitFunctions,0)

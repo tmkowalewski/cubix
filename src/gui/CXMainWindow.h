@@ -56,6 +56,7 @@ class CXFileList;
 class CXGuiENSDFPlayer;
 class CXHist1DPlayer;
 class CXHist1DCalib;
+class CXAngCorrPlayer;
 class CXFitEfficiency;
 class CXHist2DPlayer;
 class CXRad2DPlayer;
@@ -76,6 +77,7 @@ public:
     enum ETestCommandIdentifiers
     {
         M_New_Canvas,
+        M_New_MultiPad_Canvas,
         M_New_Browser,
         M_Save_As,
         M_Save_To_Ascii,
@@ -90,6 +92,7 @@ public:
         M_Hist1DPlayer,
         M_Hist1DCalib,
         M_HistEffFit,
+        M_AngCorrPlayer,
         M_Hist2DPlayer,
         M_Rad2DPlayer,
         M_RadCubePlayer,
@@ -124,6 +127,7 @@ protected:
     TGCompositeFrame *fHist1DPlayerTab = nullptr;
     TGCompositeFrame *fHist1DCalibTab = nullptr;
     TGCompositeFrame *fHistEffFitTab = nullptr;
+    TGCompositeFrame *fAngCorrPlayerTab = nullptr;
     TGCompositeFrame *fHist2DPlayerTab = nullptr;
     TGCompositeFrame *fRad2DPlayerTab = nullptr;
     TGCompositeFrame *fRadCubePlayerTab = nullptr;
@@ -147,6 +151,8 @@ protected:
     CXHist1DPlayer  *fHist1DPlayer = nullptr;
     CXHist1DCalib  *fHist1DCalib = nullptr;
     CXFitEfficiency *fHistEffFit = nullptr;
+    CXAngCorrPlayer  *fAngCorrPlayer = nullptr;
+
     CXHist2DPlayer  *fHist2DPlayer = nullptr;
     CXRad2DPlayer   *fRad2DPlayer = nullptr;
     CXRadCubePlayer *fRadCubePlayer = nullptr;
@@ -162,6 +168,7 @@ protected:
     Bool_t IsHist1DPlayerEnabled{};
     Bool_t IsHist1DCalibPlayerEnabled{};
     Bool_t IsHistEffFitPlayerEnabled{};
+    Bool_t IsAngCorrPlayerEnabled{};
     Bool_t IsHist2DPlayerEnabled{};
     Bool_t IsRad2DPlayerEnabled{};
     Bool_t IsRadCubePlayerEnabled{};
@@ -281,6 +288,7 @@ private:
 
     std::future<void> loadingFuture;
     bool fdb_loaded=false;
+    bool fstop_db_loading = false;
     bool fdb_loading_paused=false;
 
     void load_tkn_db();

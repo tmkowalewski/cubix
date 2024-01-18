@@ -194,27 +194,27 @@ CXFitEfficiency::CXFitEfficiency(const TGCompositeFrame *MotherFrame, UInt_t w, 
 
     for(int i=0 ; i<7 ; i++) {
         fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
-        fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, Form("%s:",Names[i].Data())),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
+        fHorizontalFrame->AddFrame(label = new TGLabel(fHorizontalFrame, Form("%s:",Names[i].Data())),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
         label->SetTextColor(CXblue);
-        fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "fixed"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
+        fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "fixed"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
         fFixFitPar[i] = new TGCheckButton(fHorizontalFrame, "", 0);
         fFixFitPar[i]->Connect("Clicked()", "CXFitEfficiency", this, "HandleMyButton()");
-        fHorizontalFrame->AddFrame(fFixFitPar[i],new TGLayoutHints(kLHintsTop | kLHintsLeft,5,5,0,0));
+        fHorizontalFrame->AddFrame(fFixFitPar[i],new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,5,0,0));
 
         fNE_FitPars[i][0] = new TGNumberEntry(fHorizontalFrame, mins[i], 5,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELNoLimits);
-        fHorizontalFrame->AddFrame(fNE_FitPars[i][0],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
+        fHorizontalFrame->AddFrame(fNE_FitPars[i][0],new TGLayoutHints(kLHintsCenterY | kLHintsLeft| kLHintsExpandX,0,0,0,0));
 
-        fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "<"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
+        fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
 
         fNE_FitPars[i][1] = new TGNumberEntry(fHorizontalFrame, values[i], 5,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELNoLimits);
-        fHorizontalFrame->AddFrame(fNE_FitPars[i][1],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
+        fHorizontalFrame->AddFrame(fNE_FitPars[i][1],new TGLayoutHints(kLHintsCenterY | kLHintsLeft| kLHintsExpandX,0,0,0,0));
 
-        fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "<"),new TGLayoutHints(kLHintsTop | kLHintsLeft, 0, 5, 0, 0));
+        fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, " <"),new TGLayoutHints(kLHintsCenterY | kLHintsLeft, 0, 5, 0, 0));
 
         fNE_FitPars[i][2] = new TGNumberEntry(fHorizontalFrame, maxs[i], 5,0, TGNumberFormat::kNESReal, TGNumberFormat::kNEAAnyNumber ,TGNumberFormat::kNELNoLimits);
-        fHorizontalFrame->AddFrame(fNE_FitPars[i][2],new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,0,0,0,0));
+        fHorizontalFrame->AddFrame(fNE_FitPars[i][2],new TGLayoutHints(kLHintsCenterY | kLHintsLeft| kLHintsExpandX,0,0,0,0));
 
-        fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
+        fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,0,5));
 
         if(i==1) fFixFitPar[i]->SetState(kButtonDown);
         if(i==2) fFixFitPar[i]->SetState(kButtonDown);

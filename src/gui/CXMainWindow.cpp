@@ -51,6 +51,9 @@
 #include "TVirtualX.h"
 #include "TSystem.h"
 #include "TGFileDialog.h"
+#include "TRootBrowser.h"
+
+#include "cubix_config.h"
 
 #include "CXBgdUtility.h"
 #include "CXGuiToolbar.h"
@@ -59,6 +62,7 @@
 #include "CXHist1DPlayer.h"
 #include "CXHist1DCalib.h"
 #include "CXFitEfficiency.h"
+#include "CXAngCorrPlayer.h"
 #include "CXHist2DPlayer.h"
 #include "CXRad2DPlayer.h"
 #include "CXGammaSearch.h"
@@ -69,6 +73,7 @@
 #include "CXRadCubeTH1Proj.h"
 #include "CXArrow.h"
 #include "CXBashColor.h"
+#include "CXDialogBox.h"
 
 #include "tkmanager.h"
 
@@ -106,6 +111,7 @@ void CXMainWindow::Init()
     
     fMenuFile = new TGPopupMenu(gClient->GetRoot());
     fMenuFile->AddEntry("New Canvas", M_New_Canvas, nullptr , gClient->GetPicture("newcanvas.xpm"));
+    fMenuFile->AddEntry("New multi-pad Canvas", M_New_MultiPad_Canvas, nullptr , gClient->GetPicture("multiple_pads.png"));
     fMenuFile->AddEntry("New Browser", M_New_Browser, nullptr, gClient->GetPicture("browser.xpm"));
     fMenuFile->AddEntry("Save Canvas as", M_Save_As, nullptr, gClient->GetPicture("bld_save.png"));
     fMenuFile->AddEntry("Save hist to ascii", M_Save_To_Ascii, nullptr, gClient->GetPicture("query_new.xpm"));
@@ -145,35 +151,31 @@ void CXMainWindow::Init()
 
     fMenuTools->AddEntry("ENSDF reader", M_LSPlayerUtility,nullptr,gClient->GetPicture("levelscheme_t.png"));
 
-    //    fMenuTools->CheckEntry(M_LSPlayerUtility);
     IsLSPlayerToolEnabled = true;
 
     fMenuTools->AddEntry("Peak fitter", M_Hist1DPlayer,nullptr,gClient->GetPicture("FitTool.xpm"));
-    //    fMenuTools->CheckEntry(M_Hist1DPlayer);
     IsHist1DPlayerEnabled= true;
 
     fMenuTools->AddEntry("Energy calibration", M_Hist1DCalib,nullptr,gClient->GetPicture("calib.png"));
-    //    fMenuTools->CheckEntry(M_Hist1DPlayer);
     IsHist1DCalibPlayerEnabled= true;
 
     fMenuTools->AddEntry("Efficiency fit", M_HistEffFit,nullptr,gClient->GetPicture("efficiency.png"));
-    //    fMenuTools->CheckEntry(M_Hist1DPlayer);
     IsHistEffFitPlayerEnabled= true;
 
     fMenuTools->AddEntry("Background player", M_BkdUtility,nullptr,gClient->GetPicture("h1_t.xpm"));
-    //    fMenuTools->CheckEntry(M_BkdUtility);
     IsBkdUtilityEnabled = true;
+
+    fMenuTools->AddEntry("Angular correlations", M_AngCorrPlayer,nullptr,gClient->GetPicture("angcorr.png"));
+    IsAngCorrPlayerEnabled= true;
 
     fMenuTools->AddSeparator();
     fMenuTools->AddLabel("2D Tools...",gClient->GetPicture("h2_t.xpm"));
     fMenuTools->AddSeparator();
 
     fMenuTools->AddEntry("GxG standard", M_Hist2DPlayer,nullptr,gClient->GetPicture("h2_t.xpm"));
-    //    fMenuTools->CheckEntry(M_Hist2DPlayer);
     IsHist2DPlayerEnabled= true;
 
     fMenuTools->AddEntry("GxG radware's style", M_Rad2DPlayer,nullptr,gClient->GetPicture("rw3.gif"));
-    //    fMenuTools->CheckEntry(M_Rad2DPlayer);
     IsRad2DPlayerEnabled= true;
 
     fMenuTools->AddSeparator();
@@ -181,7 +183,6 @@ void CXMainWindow::Init()
     fMenuTools->AddSeparator();
 
     fMenuTools->AddEntry("GxGxG radware's style", M_RadCubePlayer,nullptr,gClient->GetPicture("rw3.gif"));
-    //    fMenuTools->CheckEntry(M_RadCubePlayer);
     IsRadCubePlayerEnabled= true;
 
     fMenuTools->AddSeparator();
@@ -277,6 +278,14 @@ void CXMainWindow::Init()
     fHistEffFit->SetName(Name);
     fHistEffFitTab->AddFrame(fHistEffFit, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
     ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,Name);
+
+    Name = "AngCorr";
+    fAngCorrPlayerTab = fMainTab->AddTab(Name);
+    fAngCorrPlayer = new CXAngCorrPlayer(fAngCorrPlayerTab,10,10);
+    fAngCorrPlayer->SetMainWindow(this);
+    fAngCorrPlayer->SetName(Name);
+    fAngCorrPlayerTab->AddFrame(fAngCorrPlayer, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
+    ToggleTab(IsAngCorrPlayerEnabled,fAngCorrPlayerTab,Name);
 
     Name = "2D Player";
     fHist2DPlayerTab = fMainTab->AddTab(Name);
@@ -379,7 +388,7 @@ void CXMainWindow::Init()
 
     TH1::AddDirectory(kFALSE);
 
-    // HandleMenu(M_Hist2DPlayer);
+    HandleMenu(M_AngCorrPlayer);
 }
 
 CXMainWindow::~CXMainWindow() = default;
@@ -467,6 +476,9 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
         if((EKeySym)EventY==kKey_n && !fCTRL) {
             NewTab();
         }
+        if((EKeySym)EventY==kKey_N && !fCTRL) {
+            HandleMenu(M_New_MultiPad_Canvas);
+        }
         if((EKeySym)EventY==kKey_S && !fCTRL && selected && (selected->InheritsFrom("TH1") || selected->InheritsFrom("TGraph") || selected->InheritsFrom("TF1") )) {
             AddToStoredSpectra(selected);
         }
@@ -509,6 +521,8 @@ void CXMainWindow::CloseToolsTab(Int_t tabnr)
         ToggleTab(IsHist1DCalibPlayerEnabled,fHist1DCalibTab,Name);
     else if(Name==fHistEffFit->GetName())
         ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,Name);
+    else if(Name==fAngCorrPlayer->GetName())
+        ToggleTab(IsAngCorrPlayerEnabled,fAngCorrPlayerTab,Name);
     else if(Name==fHist2DPlayer->GetName())
         ToggleTab(IsHist2DPlayerEnabled,fHist2DPlayerTab,Name);
     else if(Name==fRad2DPlayer->GetName())
@@ -610,8 +624,8 @@ void CXMainWindow::DoTab(Int_t tabnr)
 void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
 {
     TString TabName = Form("Canvas %d",fCanvasTab->GetNumberOfTabs());
-    if(name != "")
-        TabName = name;
+    if(px>1 || py>1) TabName = Form("MultiPad %d",fCanvasTab->GetNumberOfTabs());
+    if(name != "") TabName = name;
 
     while(fCanvasTab->GetTabTab(TabName)) {
         TObjArray *arr = TabName.Tokenize("_");
@@ -662,9 +676,11 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
         for(int i=0 ;i<px*py ; i++) {
             TVirtualPad *pad = fCanvas->GetPad(i+1);
             pad->cd();
-            pad->SetLeftMargin(0.05);
+            pad->SetLeftMargin(0.06);
+            if(px>1) pad->SetLeftMargin(0.06*px*0.7);
             pad->SetRightMargin(fCanvas->GetRightMargin());
             pad->SetBottomMargin(fCanvas->GetBottomMargin());
+            if(py>1) pad->SetBottomMargin(fCanvas->GetBottomMargin()*py*0.7);
             pad->SetTopMargin(fCanvas->GetTopMargin());
             pad->DrawFrame(0,0,1,1);
             pad->Update();
@@ -701,6 +717,15 @@ void CXMainWindow::HandleMenu(Int_t id)
     case M_New_Canvas:
         NewTab();
         break;
+    case M_New_MultiPad_Canvas: {
+        TString px="1", py="2";
+        CXDialogBox *diag = new CXDialogBox(this->GetMainFrame(),"New multi pad canvas:");
+        diag->Add("NX",px);
+        diag->Add("NY",py);
+        diag->Popup();
+        NewTab(px.Atoi(),py.Atoi());
+        break;
+    }
     case M_New_Browser:
         new TBrowser;
         break;
@@ -734,6 +759,15 @@ void CXMainWindow::HandleMenu(Int_t id)
     case M_HistEffFit:
         ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,fHistEffFit->GetName());
         break;
+    case M_AngCorrPlayer: {
+#ifdef HAS_MATHMORE
+        ToggleTab(IsAngCorrPlayerEnabled,fAngCorrPlayerTab,fAngCorrPlayer->GetName());
+        break;
+#else
+        gbash_color->ErrorMessage("ROOT needs to be compiled with mathmore to use the angular correlations utility");
+        break;
+#endif
+    }
     case M_Hist2DPlayer:
         ToggleTab(IsHist2DPlayerEnabled,fHist2DPlayerTab,fHist2DPlayer->GetName());
         break;
@@ -821,6 +855,8 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
                 ToggleTab(IsHist1DCalibPlayerEnabled,fHist1DCalibTab,Name);
             else if(Name==fHistEffFit->GetName())
                 ToggleTab(IsHistEffFitPlayerEnabled,fHistEffFitTab,Name);
+            else if(Name==fAngCorrPlayer->GetName())
+                ToggleTab(IsAngCorrPlayerEnabled,fAngCorrPlayerTab,Name);
             else if(Name==fHist2DPlayer->GetName())
                 ToggleTab(IsHist2DPlayerEnabled,fHist2DPlayerTab,Name);
             else if(Name==fRad2DPlayer->GetName())
@@ -949,10 +985,11 @@ void CXMainWindow::CloseWindow()
         }
     }
 
-    UnmapWindow();
-    DeleteWindow();//  launch a delete but after a short time like a thread.
-
     cout << " Bye Bye Cubix!" <<endl;
+    fstop_db_loading = true;
+
+    // UnmapWindow();
+    // DeleteWindow();//  launch a delete but after a short time like a thread.
 
     gApplication->Disconnect("Terminate(Int_t)", this, "CloseWindow()");
     gApplication->SetReturnFromRun(false);
@@ -1412,13 +1449,42 @@ void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
         gPad->AddExec("ex1","CXMainWindow::SetPalette()");
     }
 
+    if(((TString)gPad->GetCanvas()->GetName()).BeginsWith("AngCorr")) {
+        TGraph *g = nullptr;
+        if(obj->InheritsFrom(TCanvas::Class())) {
+            auto *canvas_in = (TCanvas*)obj;
+            for(int i=0 ; i<canvas_in->GetListOfPrimitives()->GetEntries() ; i++){
+                TObject *o = canvas_in->GetListOfPrimitives()->At(i);
+                if(o->InheritsFrom(TGraph::Class())) g = dynamic_cast<TGraph*>(o);
+                if(g) break;
+            }
+        }
+        else {
+            if(obj->InheritsFrom(TGraph::Class())) g = dynamic_cast<TGraph*>(obj);
+        }
+
+        if(g) {
+            gPad->GetCanvas()->cd(3);
+            g->Draw("ape");
+            g->SetMarkerStyle(20);
+            g->SetMarkerColor(kRed);
+            g->SetMarkerSize(1);
+            RefreshPads();
+            gPad->GetFrame()->SetBit(TObject::kCannotPick);
+            return;
+        }
+        else {
+            gbash_color->WarningMessage("Only a TGraph can be drawn in an angular correlation canvas");
+            return;
+        }
+    }
+
+
     DrawOpt.ReplaceAll(" ","");
 
-    if(obj->InheritsFrom(TCanvas::Class())){
+    if(obj->InheritsFrom(TCanvas::Class())) {
         auto *canvas_in = (TCanvas*)obj;
-        CXCanvas *canvas_out = GetCanvas();
-        canvas_out->cd();
-        canvas_out->Clear();
+        gPad->Clear();
 
         Int_t idraw = 0;
 
@@ -1550,6 +1616,7 @@ void CXMainWindow::load_tkn_db() {
     int inuc=0;
     for(auto nuc : gmanager->get_nuclei()) {
         for(auto &lvl : nuc->get_level_scheme()->get_levels()){
+            if(fstop_db_loading) return;
             while(fdb_loading_paused) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 continue;

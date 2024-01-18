@@ -144,6 +144,8 @@ public:
     TString GetActiveWSName() {return fActiveWorkspaceName;}
 
     void SetWSDirectory(TString _ws_dir) {fWorkspaceDirectory = _ws_dir;}
+    TString GetWSDirectory(){return fWorkspaceDirectory;}
+
     void LoadWS(TString _ws_dir="");
     void SelectionChanged();
 

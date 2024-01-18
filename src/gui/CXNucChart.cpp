@@ -32,12 +32,10 @@
  ********************************************************************************/
 
 #include "CXNucChart.h"
-#include "cubix_config.h"
+// #include "cubix_config.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <iostream>
-#include <fstream>
 
 #include "TGListBox.h"
 #include "TGLabel.h"
@@ -58,10 +56,11 @@
 #include "TExec.h"
 #include "TPaletteAxis.h"
 #include "TSystem.h"
+#include "TGSplitter.h"
 
-#if (OS_TYPE == OS_LINUX)
+// #if (OS_TYPE == OS_LINUX)
 #include "TGResourcePool.h"
-#endif
+// #endif
 
 #include "CXMainWindow.h"
 #include "CXCanvas.h"
@@ -82,7 +81,7 @@ CXNucChart::CXNucChart(const TGWindow *p, const TGWindow *main, UInt_t w, UInt_t
     TGGroupFrame *gFrame = new TGGroupFrame(Toolbar, "Tools", kVerticalFrame);
     gFrame->SetTextColor(CXblue);
     gFrame->SetTitlePos(TGGroupFrame::kLeft); // right aligned
-    Toolbar->AddFrame(gFrame, new TGLayoutHints( kLHintsExpandX  | kLHintsExpandY , 0, 0, 0, -10) );
+    Toolbar->AddFrame(gFrame, new TGLayoutHints( kLHintsExpandX  | kLHintsExpandY , 0, 0, 3, -3) );
 
     TGHorizontalFrame *hframe = new TGHorizontalFrame(gFrame);
     gFrame->AddFrame(hframe, new TGLayoutHints( kLHintsCenterY  | kLHintsLeft ,-10,-5,0,-2));
@@ -133,24 +132,41 @@ CXNucChart::CXNucChart(const TGWindow *p, const TGWindow *main, UInt_t w, UInt_t
     hframe->AddFrame(label, new TGLayoutHints( kLHintsCenterY  | kLHintsLeft ,10,5,0,0));
 
     fDataSetMode = new TGComboBox(hframe);
-    fDataSetMode->Resize(200,20);
+    fDataSetMode->Resize(300,20);
     fDataSetMode->Connect("Selected(Int_t)", "CXNucChart", this, "UpdateDataSet()");
     hframe->AddFrame(fDataSetMode, new TGLayoutHints( kLHintsCenterY  | kLHintsLeft ,0,0,0,0));
 
     TGCompositeFrame *Global = new TGCompositeFrame(this,600,100,kHorizontalFrame);
-    AddFrame(Global,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY,5,5,5,5));
+    AddFrame(Global,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY,5,5,2,5));
 
-    TGVerticalFrame *Main = new TGVerticalFrame(Global,600,100,kFixedWidth);
-    Global->AddFrame(Main,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandY,5,5,5,5));
-    Main->SetWidth(220);
 
-    gFrame = new TGGroupFrame(Main, "Selected nucleus", kVerticalFrame);
-    gFrame->SetTextColor(CXblue);
-    gFrame->SetTitlePos(TGGroupFrame::kLeft); // right aligned
-    Main->AddFrame(gFrame, new TGLayoutHints(kLHintsTop | kLHintsExpandX  | kLHintsExpandY , 0, 0, -5, -10) );
-    fInfoBox = new TGListBox(gFrame);
+    fTGCanvas = new TGCanvas(Global, 10, 10, kFixedWidth);
+    Global->AddFrame(fTGCanvas, new TGLayoutHints(kLHintsLeft | kLHintsExpandY));
+
+    auto *Main = new TGVerticalFrame(fTGCanvas->GetViewPort());
+    fTGCanvas->SetContainer(Main);
+
+    fTGCanvas->Resize(GetWidth()*0.2, GetHeight());
+
+    // TGVerticalFrame *Main = new TGVerticalFrame(Global,600,100,kFixedWidth);
+    // Global->AddFrame(Main,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandY,5,5,0,5));
+    // Main->SetWidth(220);
+
+    fLeftPart = new TGGroupFrame(Main, "Selected nucleus", kVerticalFrame);
+    fLeftPart->SetTextColor(CXblue);
+    fLeftPart->SetTitlePos(TGGroupFrame::kLeft); // right aligned
+    Main->AddFrame(fLeftPart, new TGLayoutHints(kLHintsTop | kLHintsExpandX  | kLHintsExpandY , 0, 0, 1, 0) );
+
+    fInfoBox = new TGListBox(fLeftPart);
     fInfoBox->GetContainer()->RemoveInput(kButtonReleaseMask | kButtonMotionMask);
-    gFrame->AddFrame(fInfoBox, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,-10,-10,3,0));
+    fInfoBox->SetWidth(fTGCanvas->GetWidth()+100);
+
+    fLeftPart->AddFrame(fInfoBox, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY,-10,-10,3,0));
+
+    TGVFileSplitter *fSplitter = new TGVFileSplitter(Global,2,2);
+    fSplitter->SetFrame(fTGCanvas, kTRUE);
+    Global->AddFrame(fSplitter, new TGLayoutHints(kLHintsLeft | kLHintsExpandY));
+    fSplitter->Connect("LayoutHeader(TGFrame *)", "CXNucChart", this, "DoRefresh()");
 
     //Canvas Panel
 
@@ -208,7 +224,10 @@ CXNucChart::CXNucChart(const TGWindow *p, const TGWindow *main, UInt_t w, UInt_t
     MapSubwindows();
     Layout();
     MapWindow();
+
+    DoRefresh(10);
 }
+
 
 CXNucChart::~CXNucChart()
 {
@@ -220,6 +239,13 @@ CXNucChart::~CXNucChart()
 
     UnmapWindow();
     CloseWindow();
+}
+
+void CXNucChart::DoRefresh(int _width)
+{
+    fLeftPart->Resize(10,10);
+    fInfoBox->SetWidth(_width);
+    Layout();
 }
 
 void CXNucChart::ShowMagicNumbers(bool On)
@@ -281,8 +307,8 @@ void CXNucChart::PlotBoxes()
         for (int nn = fNMin+1; nn <= fNMax; nn++) {
             if(gmanager->known_nucleus(zz,nn+zz)) {
                 Int_t charheight;
-                Float_t pad_width  = gPad->XtoPixel(gPad->GetX2());
-                Float_t pad_height = gPad->YtoPixel(gPad->GetY1());
+                double pad_width  = gPad->XtoPixel(gPad->GetX2());
+                double pad_height = gPad->YtoPixel(gPad->GetY1());
                 if (pad_width < pad_height)  charheight = pad_width/(fNMax-fNMin);
                 else                         charheight = pad_height/(fZMax-fZMin);
 
@@ -566,10 +592,9 @@ void CXNucChart::UpdateNucChart()
     fCanvas->GetFrame()->SetBit(TObject::kCannotPick);
 }
 
-void CXNucChart::PrintInListBox(TString mess, Int_t Type)
+int CXNucChart::PrintInListBox(TString mess, Int_t Type)
 {
-
-#if (OS_TYPE == OS_LINUX)
+    // #if (OS_TYPE == OS_LINUX)
     const TGFont *ufont;         // will reflect user font changes
     ufont = gClient->GetFont("-*-courier-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
     // ufont = gClient->GetFont("-adobe-times-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
@@ -584,9 +609,11 @@ void CXNucChart::PrintInListBox(TString mess, Int_t Type)
     uGC = gClient->GetGC(&val, kTRUE);
 
     TGTextLBEntry *entry = new TGTextLBEntry(fInfoBox->GetContainer(), new TGString(mess), fInfoBox->GetNumberOfEntries()+1, uGC->GetGC(), ufont->GetFontStruct());
-#else
-    TGTextLBEntry *entry = new TGTextLBEntry(fInfoBox->GetContainer(), new TGString(mess), fInfoBox->GetNumberOfEntries()+1);
-#endif
+    // #else
+    //     TGTextLBEntry *entry = new TGTextLBEntry(fInfoBox->GetContainer(), new TGString(mess), fInfoBox->GetNumberOfEntries()+1);
+    // #endif
+
+    int width = entry->GetWidth();
 
     if(Type == kError)
         entry->SetBackgroundColor((Pixel_t)0xff0000);
@@ -599,6 +626,8 @@ void CXNucChart::PrintInListBox(TString mess, Int_t Type)
 
     fInfoBox->AddEntry((TGLBEntry *)entry, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX));
     fInfoBox->Layout();
+
+    return width;
 }
 
 void CXNucChart::SelectNucleus(Int_t Z, Int_t N)
@@ -608,7 +637,8 @@ void CXNucChart::SelectNucleus(Int_t Z, Int_t N)
     fDataSetMode->RemoveAll();
 
     if(fSelectedNucleus == nullptr) {
-        PrintInListBox(Form("Nucleus: Z=%d, N=%d unknown",Z,N),kError);
+        int width = PrintInListBox(Form("Nucleus: Z=%d, N=%d unknown",Z,N),kError);
+        DoRefresh(width);
         fCanvas->Modified();
         fCanvas->Update();
         return;
@@ -702,6 +732,8 @@ void CXNucChart::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TOb
 
 void CXNucChart::PrintInfos(bool inprompt)
 {
+    int MaxSize=10;
+
     if(fSelectedNucleus == nullptr) {
         if(inprompt) cout<<Form("No selected nucleus")<<endl;
         return;
@@ -719,7 +751,8 @@ void CXNucChart::PrintInfos(bool inprompt)
             TString stars; for (int i=0 ; i<text.Length() ; i++) stars.Append("*");
             cout<<endl<<endl<<stars<<endl<<text<<endl<<stars<<endl<<endl;
         }
-        PrintInListBox(Form("Nucleus: %s (Z:%d, N:%d)",fSelectedNucleus->get_symbol().data(),fSelectedNucleus->get_z(),fSelectedNucleus->get_n()),kPrint);
+        int width = PrintInListBox(Form("Nucleus: %s (Z:%d, N:%d)",fSelectedNucleus->get_symbol().data(),fSelectedNucleus->get_z(),fSelectedNucleus->get_n()),kPrint);
+        if(width>MaxSize) MaxSize = width;
 
         auto gamma = fSelectedLevelScheme->get_decay<tkn::tkgammadecay>("2+1->0+1",false);
         if(gamma) {
@@ -728,12 +761,14 @@ void CXNucChart::PrintInfos(bool inprompt)
             if(BE2) {
                 if(inprompt) cout<<BE2 << endl;
                 ostringstream s; s << BE2;
-                PrintInListBox(s.str().data(),kPrint);
+                int width = PrintInListBox(s.str().data(),kPrint);
+                if(width>MaxSize) MaxSize = width;
             }
             if(BE2W) {
                 if(inprompt) cout<<BE2W << endl;
                 ostringstream s; s << BE2W;
-                PrintInListBox(s.str().data(),kPrint);
+                int width = PrintInListBox(s.str().data(),kPrint);
+                if(width>MaxSize) MaxSize = width;
             }
         }
 
@@ -754,20 +789,29 @@ void CXNucChart::PrintInfos(bool inprompt)
         }
         PrintInListBox("");
         if(ground_state) {
-            PrintInListBox(Form("Energy (keV): %g",ground_state->get_energy()),kInfo);
-            PrintInListBox(Form("Jpi         : %s",ground_state->get_spin_parity_str().data()),kInfo);
+            int width = PrintInListBox(Form("Energy (keV): %g",ground_state->get_energy()),kInfo);
+            if(width>MaxSize) MaxSize = width;
+
+            width = PrintInListBox(Form("Jpi         : %s",ground_state->get_spin_parity_str().data()),kInfo);
+            if(width>MaxSize) MaxSize = width;
         }
         if(fSelectedNucleus->get_mass_excess_measure()) {
-            PrintInListBox(Form("Mass Excess : %g",fSelectedNucleus->get_mass_excess()),kInfo);
+            int width = PrintInListBox(Form("Mass Excess : %g",fSelectedNucleus->get_mass_excess()),kInfo);
+            if(width>MaxSize) MaxSize = width;
         }
         if(fSelectedNucleus->get_lifetime_measure()) {
-            PrintInListBox(Form("T 1/2       : %s",ground_state->get_lifetime_str().data()),kInfo);
+            int width = PrintInListBox(Form("T 1/2       : %s",ground_state->get_lifetime_str().data()),kInfo);
+            if(width>MaxSize) MaxSize = width;
         }
-        if(fSelectedNucleus->get_abundance()>0.) PrintInListBox(Form("Abundance   : %g %%",fSelectedNucleus->get_abundance()),kInfo);
+        if(fSelectedNucleus->get_abundance()>0.) {
+            int width = PrintInListBox(Form("Abundance   : %g %%",fSelectedNucleus->get_abundance()),kInfo);
+            if(width>MaxSize) MaxSize = width;
+        }
         if(!fSelectedNucleus->is_stable()) {
             for(auto &dec: fSelectedNucleus->get_decay_modes()) {
                 if(inprompt) cout<<Form("decay       : %s -- %g %%",dec.first.data(), dec.second)<<endl;
-                PrintInListBox(Form("decay       : %s -- %g %%",dec.first.data(), dec.second),kInfo);
+                int width = PrintInListBox(Form("decay       : %s -- %g %%",dec.first.data(), dec.second),kInfo);
+                if(width>MaxSize) MaxSize = width;
             }
         }
 
@@ -780,43 +824,52 @@ void CXNucChart::PrintInfos(bool inprompt)
             if(inprompt) {
                 cout<<endl;
                 cout<<"Isomer N° " << iso->get_isomer_level() << endl;
-                        cout<<Form("Energy (keV): %g",iso->get_energy())<<endl;
+                cout<<Form("Energy (keV): %g",iso->get_energy())<<endl;
                 cout<<Form("Jpi         : %s",iso->get_spin_parity_str().data())<<endl;
                 if(iso->get_lifetime_measure()) {
                     cout<<Form("T 1/2       : %s",iso->get_lifetime_str().data())<<endl;
                 }
             }
             PrintInListBox("");
-            PrintInListBox(Form("Isomer N°   : %d",iso->get_isomer_level()),kInfo);
-                PrintInListBox(Form("Energy (keV): %g",iso->get_energy()),kInfo);
-            PrintInListBox(Form("Jpi         : %s",iso->get_spin_parity_str().data()),kInfo);
+            int width = PrintInListBox(Form("Isomer N°   : %d",iso->get_isomer_level()),kInfo);
+            if(width>MaxSize) MaxSize = width;
+            width = PrintInListBox(Form("Energy (keV): %g",iso->get_energy()),kInfo);
+            if(width>MaxSize) MaxSize = width;
+            width = PrintInListBox(Form("Jpi         : %s",iso->get_spin_parity_str().data()),kInfo);
+            if(width>MaxSize) MaxSize = width;
             if(iso->get_lifetime_measure()) {
-                PrintInListBox(Form("T 1/2       : %s",iso->get_lifetime_str().data()),kInfo);
+                width = PrintInListBox(Form("T 1/2       : %s",iso->get_lifetime_str().data()),kInfo);
+                if(width>MaxSize) MaxSize = width;
             }
         }
     }
     else if(fPrintMode->GetSelected() == M_LevelsInfo) {
         TString Text = PrintNucleusLevels(fSelectedLevelScheme,fSelectedNucleus->get_symbol(),inprompt);
-        PrintInListBox(Form("Energy (keV)"),kInfo);
-
+        int width = PrintInListBox(Form("Energy (keV)"),kInfo);
+        if(width>MaxSize) MaxSize = width;
         TObjArray *arr = Text.Tokenize("!");
         for(int i=0 ; i<arr->GetEntries() ; i++) {
-            PrintInListBox(arr->At(i)->GetName());
+            int width = PrintInListBox(arr->At(i)->GetName());
+            if(width>MaxSize) MaxSize = width;
         }
         delete arr;
     }
     else if(fPrintMode->GetSelected() == M_GammaInfos) {
         TString Text = PrintNucleusGammas(fSelectedLevelScheme,fSelectedNucleus->get_symbol(),inprompt);
 
-        PrintInListBox(Form("Energy (keV)"),kInfo);
+        int width = PrintInListBox(Form("Energy (keV)"),kInfo);
+        if(width>MaxSize) MaxSize = width;
 
         TObjArray *arr = Text.Tokenize("!");
         for(int i=0 ; i<arr->GetEntries() ; i++) {
-            PrintInListBox(arr->At(i)->GetName());
+            int width = PrintInListBox(arr->At(i)->GetName());
+            if(width>MaxSize) MaxSize = width;
         }
         delete arr;
     }
     if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
+
+    DoRefresh(MaxSize+5);
 }
 
 void CXNucChart::NucNotValidated()
@@ -938,9 +991,9 @@ void CXNucChart::UpdateDataSet()
     if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
 }
 
-TString CXNucChart::PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> lev, TString NucName, bool print)
+TString CXNucChart::PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> _levscheme, TString NucName, bool print)
 {
-    if(lev == nullptr) return "";
+    if(_levscheme == nullptr) return "";
 
     TString Text="";
 
@@ -950,28 +1003,37 @@ TString CXNucChart::PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> lev, TStr
         cout<<endl<<endl<<stars<<endl<<text<<endl<<stars<<endl<<endl;
     }
 
-    for(auto &lev: lev->get_levels()) {
+    map <double, TString> levels;
+
+    for(auto &lev: _levscheme->get_levels()) {
         if(print) {
             lev->print();
             for(auto &dec: lev->get_decays_down()) {
                 cout << "              -> "; dec->print("quiet,levto");
 
-                Float_t Energy = dec-> get_energy();
+                double Energy = dec-> get_energy();
                 auto NucLevI = dec->get_level_from();
                 auto NucLevF = dec->get_level_to();
 
                 TString spinI_s = NucLevI->get_spin_parity_str();
                 TString spinF_s = NucLevF->get_spin_parity_str();
-                Text += Form("!%-7g %-7s->%-7s",Energy,spinI_s.Data(),spinF_s.Data());
+
+                if(!levels.count(Energy)) levels[Energy] = Form("!%-7g %s (%g) -> %s (%g)",Energy,spinI_s.Data(),NucLevI->get_energy(), spinF_s.Data(), NucLevF->get_energy());
             }
         }
     }
+
+
+    for(auto &lev: levels) {
+        Text += lev.second;
+    }
+
     return Text;
 }
 
-TString CXNucChart::PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> lev, TString NucName, bool print)
+TString CXNucChart::PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> _levscheme, TString NucName, bool print)
 {
-    if(lev == nullptr) return "";
+    if(_levscheme == nullptr) return "";
 
     TString Text="";
     if(!fMainWindow->is_db_loaded()) {
@@ -984,8 +1046,8 @@ TString CXNucChart::PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> lev, TStr
         cout<<endl<<endl<<stars<<endl<<text<<endl<<stars<<endl<<endl;
     }
 
-    for(auto &lev: lev->get_levels()) {
-        Float_t ELev   = lev->get_energy(tkn::tkunit_manager::keV,true);
+    for(auto &lev: _levscheme->get_levels()) {
+        double ELev   = lev->get_energy(tkn::tkunit_manager::keV,true);
         TString offset="";
         if(lev->is_energy_offset()) offset += lev->get_offset_bandhead() + "+";
         TString spin = lev->get_spin_parity_str();

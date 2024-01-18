@@ -954,7 +954,6 @@ void CXWSManager::OnDoubleClick(TGLVEntry *f, Int_t btn)
         }
     }
     if(name == "Calibration residue" && fCurrentWorkspace->fCalibrationResidue) {
-        fCurrentWorkspace->fCalibrationResidue->Print("all");
         if(!DrawOpt.Length()) fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationResidue,"ape");
         else fMainWindow->DoDraw(fCurrentWorkspace->fCalibrationResidue,DrawOpt);
     }
