@@ -311,11 +311,15 @@ void CXAngCorrPlayer::UpdateTheory()
 // Fk(LL′IiI)
 double CXAngCorrPlayer::Fk(int twoL1, int twoL1p, int twoIi, int twoI, int k)
 {
-    double tot = pow(-1.,(twoIi+twoI-2)/2)*
+    double tot = 0;
+
+#ifdef HAS_MATHMORE
+    tot = pow(-1.,(twoIi+twoI-2)/2)*
                  sqrt((twoL1+1)*(twoL1p+1)*(twoI+1)*(2*k+1))*
                  ROOT::Math::wigner_3j(twoL1,twoL1p,2*k,2,-2,0)*          // wigner_3j takes 2ji as input
                  ROOT::Math::wigner_6j(twoL1,twoL1p,2*k,twoI,twoI,twoIi); // wigner_6j takes 2ji as input
 
+#endif
     return  tot;
 }
 
@@ -360,7 +364,9 @@ double CXAngCorrPlayer::TheoreticalAngCorrFunction(double *x, double *p)
     int iak=0;
     for(int k=2; k<=kmax; k+=2, iak++) {
         double arg = cos(*x*TMath::DegToRad());
+#ifdef HAS_MATHMORE
         tot+=Akks.at(iak)*ROOT::Math::legendre(k,arg);
+#endif
     }
     return scale*tot;
 }
