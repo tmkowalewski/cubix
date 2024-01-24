@@ -279,6 +279,8 @@ public:
     void SetWorkSpaceDirectory(TString _ws_dir) {fWSManager->SetWSDirectory(_ws_dir);fWSManager->RefreshWS();}
     void LoadWorkSpace(TString _ws) {fWSManager->LoadWS(_ws);}
 
+    CXAngCorrPlayer *GetAngCorrPlayer() {return fAngCorrPlayer;}
+
 protected:
 
 private:

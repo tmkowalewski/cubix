@@ -190,7 +190,7 @@ void CXTH1Proj::AddGate1(double Mean, double Width)
 {
     if(Width==0.) {
         if(f2DPlayer->UseFWHM()) {
-            Mean = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            if(Mean==0) return;
             Width = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction->Eval(Mean);
             Width *= f2DPlayer->GetFWHMGateFraction();
         }

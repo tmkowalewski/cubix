@@ -262,7 +262,7 @@ void CXBgdFit::Fit()
     double CorrArea = Area-BgdArea;
     double CorrAreaErr  = sqrt(4*Area + 4*BgdArea);
 
-    double Mean = 0.5*(fHistogram->GetMean());
+    double Mean = fHistogram->GetXaxis()->GetBinCenter(fHistogram->GetMaximumBin());
 
     Double_t Area_eff = 0.;
     Double_t Area_eff_err = 0.;
@@ -290,6 +290,10 @@ void CXBgdFit::Fit()
     text.str("");
 
     if(Area_eff>0.) {
+        text<<left<<setw(11)<<"Mean"<<": "<<setprecision(7)<<setw(10)<<Mean;
+        cout<<text.str()<<endl;
+        fPlayer->PrintInListBox(text.str(),kInfo);
+        text.str("");
         text<<left<<setw(11)<<Form("%s area",fWorkspace->GetName())<<": "<<setprecision(7)<<setw(10)<<Area_eff<<" ("<<setprecision(7)<<setw(10)<<Area_eff_err<<")";
         cout<<text.str()<<endl;
         fPlayer->PrintInListBox(text.str(),kInfo);

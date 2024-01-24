@@ -147,7 +147,7 @@ int main(int argc, char **argv)
 
     ReadCubixrc();
 
-    fCXMainWindow = new CXMainWindow(gClient->GetRoot(), 1300, 600 );
+    fCXMainWindow = new CXMainWindow(gClient->GetRoot(), 1500, 700 );
     gApplication->Connect("Terminate(Int_t)", "CXMainWindow", fCXMainWindow, "CloseWindow()");
 
     if(CXWorkspace !="") fCXMainWindow->SetWorkSpaceDirectory(CXWorkspace);

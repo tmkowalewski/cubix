@@ -55,6 +55,7 @@
 #include "CXMainWindow.h"
 #include "CXDialogBox.h"
 #include "CXFitFunctions.h"
+#include "CXAngCorrPlayer.h"
 
 #include "tklog.h"
 
@@ -89,9 +90,36 @@ void CXWorkspace::ReadWS()
         else if(line.Contains("Efficiency graph")) fEfficiencyGraphFileName = filename;
         else if(line.Contains("Efficiency function")) fEfficiencyFuncFileName = filename;
         else if(line.Contains("Efficiency error")) fEfficiencyErrorFileName = filename;
+
+        else if(line.Contains("AngCorr Qis")) fQAngCorrQiFileName = filename;
     }
 
     TString fileName;
+
+    if(fQAngCorrQiFileName != "None") {
+        fileName = (fQAngCorrQiFileName.BeginsWith("/")) ? fQAngCorrQiFileName : Form("%s/%s/%s",fdirectory.Data(),fname.Data(),fQAngCorrQiFileName.Data());
+        ifstream filetoread(fileName);
+        if(!filetoread) {
+            glog << tkn::error << "No angular correlation Qis file found named:" << fileName << tkn::do_endl;
+        }
+        else {
+            TString line;
+            line.ReadLine(filetoread);
+            line.ReadLine(filetoread);
+            TObjArray *arr = line.Tokenize(" ");
+            fAngCorrQis.at(0).at(0) = ((TString)arr->At(1)->GetName()).Atof();
+            fAngCorrQis.at(0).at(1) = ((TString)arr->At(2)->GetName()).Atof();
+            fAngCorrQis.at(0).at(2) = ((TString)arr->At(3)->GetName()).Atof();
+            delete arr;
+            line.ReadLine(filetoread);
+            arr = line.Tokenize(" ");
+            fAngCorrQis.at(1).at(0) = ((TString)arr->At(1)->GetName()).Atof();
+            fAngCorrQis.at(1).at(1) = ((TString)arr->At(2)->GetName()).Atof();
+            fAngCorrQis.at(1).at(2) = ((TString)arr->At(3)->GetName()).Atof();
+            delete arr;
+        }
+    }
+
 
     if(fCalibGraphFileName != "None") {
         delete fCalibrationGraph;
@@ -435,6 +463,8 @@ void CXWorkspace::UpdateWSFile()
     file << "Efficiency graph    : " << fEfficiencyGraphFileName << endl;
     file << "Efficiency function : " << fEfficiencyFuncFileName << endl;
     file << "Efficiency error    : " << fEfficiencyErrorFileName << endl;
+
+    file << "AngCorr Qis         : " << fQAngCorrQiFileName << endl;
     file.close();
 
     glog << tkn::info << "Updating Workspace: " << fname << " in " << fdirectory << tkn::do_endl;
@@ -510,6 +540,24 @@ void CXWorkspace::SetEfficiency(TGraph *_graph, TF1 *_func, TH1 *_error)
         file.close();
         fEfficiencyFuncFileName = Form("%s_efficiency.func",fname.Data());
     }
+
+    UpdateWSFile();
+}
+
+void CXWorkspace::SetAngCorrQis(double _Q2, double _Q2low, double _Q2high, double _Q4, double _Q4low, double _Q4high)
+{
+    TString filename = Form("%s/%s/%s_angcorr_qi.dat",fdirectory.Data(),fname.Data(),fname.Data());
+    if(!gSystem->AccessPathName(filename)) {
+        glog << tkn::error << " file: " << filename << " already existing, plese delete it manually before saving workspace" << tkn::do_endl;
+        return;
+    }
+    ofstream outfile(filename);
+    outfile<< left << setw(5) << "#Qi" << setw(7) << "value" << setw(7) << "low" << setw(7) << "high" << endl;
+    outfile<< left << setw(5) << "Q2" << setw(7) << _Q2 << setw(7) << _Q2low << setw(7) << _Q2high << endl;
+    outfile<< left << setw(5) << "Q4" << setw(7) << _Q4 << setw(7) << _Q4low << setw(7) << _Q4high << endl;
+    outfile.close();
+
+    fQAngCorrQiFileName = Form("%s_angcorr_qi.dat.err",fname.Data());
 
     UpdateWSFile();
 }
@@ -802,6 +850,12 @@ void CXWSManager::SelectionChanged()
     subname = (fCurrentWorkspace->fFWHMErrors) ? fCurrentWorkspace->fFWHMErrors->GetName() : "None";
     entry->SetSubnames(subname); fWSContentBox->AddItem(entry);
 
+    if(fCurrentWorkspace->fQAngCorrQiFileName != "None") {
+        entry = new TGLVEntry(fWSContentBox,"AngCorr Qis","");
+        subname = fCurrentWorkspace->fQAngCorrQiFileName;
+        entry->SetSubnames(subname); fWSContentBox->AddItem(entry);
+    }
+
     fListView->Resize();
     fWSContentBox->SetViewMode(EListViewMode::kLVDetails);
     fWSContentBox->GetListView()->AdjustHeaders();
@@ -852,6 +906,11 @@ void CXWSManager::LoadWS(TString _ws_dir)
         fActiveWSLabel->SetText(fActiveWorkspaceName);
         auto entry = fWSListBox->FindEntry(fActiveWorkspace->GetName());
         fWSListBox->Select(entry->EntryId());
+
+        if(fActiveWorkspace->fQAngCorrQiFileName != "None" && fMainWindow->GetAngCorrPlayer()) {
+            fMainWindow->GetAngCorrPlayer()->SetQis(fActiveWorkspace->fAngCorrQis.at(0).at(0), fActiveWorkspace->fAngCorrQis.at(0).at(1), fActiveWorkspace->fAngCorrQis.at(0).at(2),
+                                                    fActiveWorkspace->fAngCorrQis.at(1).at(0), fActiveWorkspace->fAngCorrQis.at(1).at(1), fActiveWorkspace->fAngCorrQis.at(1).at(2));
+        }
     }
 }
 

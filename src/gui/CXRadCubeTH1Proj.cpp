@@ -197,7 +197,7 @@ void CXRadCubeTH1Proj::AddGate1(Float_t Mean, Float_t Width)
 {
     if(Width==0.) {
         if(( (fRadCubePlayer && fRadCubePlayer->UseFWHM()) || (fRad2DPlayer && fRad2DPlayer->UseFWHM()) )) {
-            Mean = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            if(Mean==0) return;
             Width = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction->Eval(Mean);
             if(fRadCubePlayer) Width *= fRadCubePlayer->GetFWHMGateFraction();
             else Width *= fRad2DPlayer->GetFWHMGateFraction();
@@ -230,7 +230,7 @@ void CXRadCubeTH1Proj::AddGate2(Float_t Mean, Float_t Width)
 {
     if(Width==0.) {
         if(( (fRadCubePlayer && fRadCubePlayer->UseFWHM()) || (fRad2DPlayer && fRad2DPlayer->UseFWHM()) )) {
-            Mean = gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX());
+            if(Mean==0) return;
             Width = fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction->Eval(Mean);
             if(fRadCubePlayer) Width *= fRadCubePlayer->GetFWHMGateFraction();
             else Width *= fRad2DPlayer->GetFWHMGateFraction();

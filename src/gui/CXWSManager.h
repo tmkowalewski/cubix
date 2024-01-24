@@ -64,6 +64,7 @@ public:
     TString fCalibFuncFileName  = "None";
     TString fCalibErrorFileName = "None";
     TString fCalibResidueFileName = "None";
+    TString fQAngCorrQiFileName = "None";
 
     TF1 *fCalibFunction = nullptr;
     TGraph *fCalibrationGraph = nullptr;
@@ -86,6 +87,8 @@ public:
     TH1 *fEfficiencyErrors = nullptr;
     TGraph *fEfficiencyGraph = nullptr;
 
+    array< array<double,3>, 2> fAngCorrQis;
+
 public:
     CXWorkspace(const char *_name, const char *_dir);
     ~CXWorkspace();
@@ -94,6 +97,8 @@ public:
     void SetEfficiency(TGraph *_graph, TF1 *_func, TH1 *_error);
     void SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error, TGraph *_residue);
     void SetFWHM(TGraph *_graph, TF1 *_func, TH1 *_error);
+
+    void SetAngCorrQis(double _Q2, double _Q2low, double _Q2high, double _Q4, double _Q4low, double _Q4high);
 
     void ReadWS();
     void UpdateWSFile();

@@ -223,7 +223,7 @@ void CXMainWindow::Init()
     auto *VFrame = new TGVerticalFrame(fTGCanvas->GetViewPort());
     fTGCanvas->SetContainer(VFrame);
 
-    fTGCanvas->Resize(GetWidth()*0.27, GetHeight());
+    fTGCanvas->Resize(GetWidth()*0.23, GetHeight());
 
     fMainTab = new TGTab(VFrame);
     VFrame->AddFrame(fMainTab, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX | kLHintsExpandY, 0, 4, 0, 0));
@@ -677,7 +677,7 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
             TVirtualPad *pad = fCanvas->GetPad(i+1);
             pad->cd();
             pad->SetLeftMargin(0.06);
-            if(px>1) pad->SetLeftMargin(0.06*px*0.7);
+            if(px>1) pad->SetLeftMargin(0.06*px*0.85);
             pad->SetRightMargin(fCanvas->GetRightMargin());
             pad->SetBottomMargin(fCanvas->GetBottomMargin());
             if(py>1) pad->SetBottomMargin(fCanvas->GetBottomMargin()*py*0.7);

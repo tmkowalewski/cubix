@@ -394,11 +394,14 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
     case kButton1Double:{
         auto *padsave = gROOT->GetSelectedPad();
         gPad = padsave;
+
         auto *hist = FindHisto();
-        if(fMainWindow->IsShiftOn() && hist) {
+        TGraph *graph = nullptr;
+        if(!hist) graph = FindGraph();
+        if(fMainWindow->IsShiftOn() && (hist|| graph)) {
             if(!fMainWindow->IsCtrlOn()) {
-                hist->GetXaxis()->UnZoom();
-                hist->GetYaxis()->UnZoom();
+                GetAxis(gROOT->GetSelectedPad(),0)->UnZoom();
+                GetAxis(gROOT->GetSelectedPad(),1)->UnZoom();
 
                 gPad->Update();
                 gPad->Modified();
@@ -410,13 +413,12 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
                 TIter    next(fPrimitives);
                 while ((obj = next())) {
                     if (obj->InheritsFrom(TPad::Class())) {
-                        hist = FindHisto(dynamic_cast<TVirtualPad*>(obj));
-                        if(hist){
-                            hist->GetXaxis()->UnZoom();
-                            hist->GetYaxis()->UnZoom();
-                            dynamic_cast<TVirtualPad*>(obj)->Update();
-                            dynamic_cast<TVirtualPad*>(obj)->Modified();
-                        }
+                        TAxis* ax =  GetAxis(gROOT->GetSelectedPad(),0);
+                        TAxis* ay =  GetAxis(gROOT->GetSelectedPad(),1);
+                        if(ax) ax->UnZoom();
+                        if(ay) ay->UnZoom();
+                        dynamic_cast<TVirtualPad*>(obj)->Update();
+                        dynamic_cast<TVirtualPad*>(obj)->Modified();
                     }
                 }
             }
@@ -477,7 +479,9 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
             RunAutoExec();
         }
         auto *hist = FindHisto();
-        if (fMainWindow->IsShiftOn() && fSelected && hist && hist->GetDimension() == 1) {
+        TGraph *graph = nullptr;
+        if(!hist) graph = FindGraph();
+        if (fMainWindow->IsShiftOn() && ((fSelected && hist && hist->GetDimension() == 1) || graph)) {
             auto *padsave = gROOT->GetSelectedPad();
             gPad = padsave;
             if(!moved1D) {
@@ -545,11 +549,13 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
             }
 
             auto *hist = FindHisto();
-            if(hist && hist->GetDimension()==1 && !button1double) {
-                if(!moved1D && fMainWindow->IsShiftOn()) {
-                    TAxis* ax =  nullptr;
+            TGraph *graph = nullptr;
+            if(!hist) graph = FindGraph();
+            if(((hist && hist->GetDimension()==1) || graph) && !button1double) {
+                TAxis* ax =  GetAxis(gROOT->GetSelectedPad(),0);
+                TAxis* ay =  GetAxis(gROOT->GetSelectedPad(),1);
+                if(!moved1D && fMainWindow->IsShiftOn() && hist) {
                     if(!fMainWindow->IsCtrlOn()) {
-                        ax = FindHisto()->GetXaxis();
                         ax->SetRangeUser(ax->GetBinLowEdge(ax->GetFirst()), gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX()));
 
                         gPad->Update();
@@ -558,13 +564,13 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
                     }
                     else {
                         TObject *obj = nullptr;
-                        TH1 *hist = nullptr;
+                        TH1 *hist_test = nullptr;
                         TIter    next(fPrimitives);
                         while ((obj = next())) {
                             if (obj->InheritsFrom(TPad::Class())) {
-                                hist = FindHisto(dynamic_cast<TVirtualPad*>(obj));
-                                if(hist){
-                                    ax = hist->GetXaxis();
+                                hist_test = FindHisto(dynamic_cast<TVirtualPad*>(obj));
+                                if(hist_test){
+                                    ax = hist_test->GetXaxis();
                                     ax->SetRangeUser(ax->GetBinLowEdge(ax->GetFirst()), gPad->AbsPixeltoX(gPad->GetCanvas()->GetEventX()));
                                     dynamic_cast<TVirtualPad*>(obj)->Update();
                                     dynamic_cast<TVirtualPad*>(obj)->Modified();
@@ -576,23 +582,30 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
                 if(moved1D) {
                     xmin = xinit;
                     xmax = oldx;
+                    ymin = yinit;
+                    ymax = oldy;
 
-                    Double_t toto = 0;
                     if (xmax < xmin) {
-                        toto = xmax;
+                        double toto = xmax;
                         xmax = xmin;
                         xmin = toto;
                     }
+                    if (ymax < ymin) {
+                        double toto = ymax;
+                        ymax = ymin;
+                        ymin = toto;
+                    }
 
-                    Double_t ratio1 = (xmin - GetUxmin()) / (GetUxmax() - GetUxmin());
-                    Double_t ratio2 = (xmax - GetUxmin()) / (GetUxmax() - GetUxmin());
+                    Double_t ratio1 = (xmin - gPad->GetUxmin()) / (gPad->GetUxmax() - gPad->GetUxmin());
+                    Double_t ratio2 = (xmax - gPad->GetUxmin()) / (gPad->GetUxmax() - gPad->GetUxmin());
 
-                    if((ratio2 - ratio1 > 0.05)) {
-                        TAxis* ax =  nullptr;
+                    Double_t ratio1y = (ymin - gPad->GetUymin()) / (gPad->GetUymax() - gPad->GetUymin());
+                    Double_t ratio2y = (ymax - gPad->GetUymin()) / (gPad->GetUymax() - gPad->GetUymin());
 
+                    if((ratio2 - ratio1 > 0.05) && ((!graph) || (graph && (ratio2y - ratio1y > 0.05)) ) ) {
                         if(!fMainWindow->IsCtrlOn()) {
-                            ax = FindHisto()->GetXaxis();
                             ax->SetRangeUser(xmin, xmax);
+                            if(graph) ay->SetRangeUser(ymin, ymax);
 
                             gPad->Update();
                             gPad->Modified();
@@ -600,16 +613,33 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
                         }
                         else {
                             TObject *obj = nullptr;
-                            TH1 *hist = nullptr;
+                            TH1 *hist_test = nullptr;
+                            TGraph *graph_test = nullptr;
                             TIter    next(fPrimitives);
                             while ((obj = next())) {
                                 if (obj->InheritsFrom(TPad::Class())) {
-                                    hist = FindHisto(dynamic_cast<TVirtualPad*>(obj));
-                                    if(hist){
-                                        ax = hist->GetXaxis();
-                                        ax->SetRangeUser(xmin, xmax);
-                                        dynamic_cast<TVirtualPad*>(obj)->Update();
-                                        dynamic_cast<TVirtualPad*>(obj)->Modified();
+                                    if(hist) {
+                                        hist_test = FindHisto(dynamic_cast<TVirtualPad*>(obj));
+                                        if(hist_test) {
+                                            ax = hist_test->GetXaxis();
+                                            ax->SetRangeUser(xmin, xmax);
+
+                                            dynamic_cast<TVirtualPad*>(obj)->Update();
+                                            dynamic_cast<TVirtualPad*>(obj)->Modified();
+                                        }
+                                    }
+                                    else if (graph) {
+                                        graph_test = FindGraph(dynamic_cast<TVirtualPad*>(obj));
+                                        if(graph_test) {
+                                            ax = hist_test->GetXaxis();
+                                            ax->SetRangeUser(xmin, xmax);
+
+                                            ay = FindHisto()->GetYaxis();
+                                            ay->SetRangeUser(ymin, ymax);
+
+                                            dynamic_cast<TVirtualPad*>(obj)->Update();
+                                            dynamic_cast<TVirtualPad*>(obj)->Modified();
+                                        }
                                     }
                                 }
                             }
@@ -1648,22 +1678,53 @@ TH1* CXCanvas::FindHisto(TVirtualPad *pad)
 
     TIter it(apad->GetListOfPrimitives());
     while ((hh = (TObject*)it())) {
-        if ((hh->InheritsFrom(TH1::Class()))&& ((TString)hh->GetName()) != "hframe") {
-            //            cout << "FindHisto: Pad="<<apad->GetName()<<" "<<"hist: "<<hh->GetName()<<endl;
+        if ((hh->InheritsFrom(TH1::Class()))&& ((TString)hh->GetName()) != "hframe")
             return dynamic_cast<TH1*>(hh);
-        }
     }
-    //    cout << "FindHisto: Pad="<<apad->GetName()<<" "<<"hist: NULL"<<endl;
 
     return nullptr;
 }
 
-TGraph* CXCanvas::FindGraph()
+TGraph* CXCanvas::FindGraph(TVirtualPad *pad)
 {
     TObject* hh = nullptr;
-    TIter it(gROOT->GetSelectedPad()->GetListOfPrimitives());
+
+    TVirtualPad *apad = pad;
+    if(apad == nullptr) apad = gROOT->GetSelectedPad();
+    if(apad == nullptr) apad = gPad;
+
+    if(apad == nullptr) return nullptr;
+
+    TIter it(apad->GetListOfPrimitives());
     while ((hh = (TObject*)it())) {
-        if (hh->InheritsFrom("TGraph") && ((TString)hh->GetName()) != "hframe") return dynamic_cast<TGraph*>(hh);
+        if (hh->InheritsFrom("TGraph") && ((TString)hh->GetName()) != "hframe")
+            return dynamic_cast<TGraph*>(hh);
+    }
+
+    return nullptr;
+}
+
+TAxis* CXCanvas::GetAxis(TVirtualPad *pad, int _iaxis)
+{
+    TObject* hh = nullptr;
+
+    TVirtualPad *apad = pad;
+    if(apad == nullptr) apad = gROOT->GetSelectedPad();
+    if(apad == nullptr) apad = gPad;
+
+    if(apad == nullptr) return nullptr;
+
+    TIter it(apad->GetListOfPrimitives());
+    while ((hh = (TObject*)it())) {
+        if(hh->InheritsFrom(TGraph::Class())) {
+            if(_iaxis==0) return (dynamic_cast<TGraph*>(hh))->GetXaxis();
+            else return (dynamic_cast<TGraph*>(hh))->GetYaxis();
+        }
+        else if(hh->InheritsFrom(TH1::Class())) {
+            if(_iaxis==0) return (dynamic_cast<TH1*>(hh))->GetXaxis();
+            else if(_iaxis==1) return (dynamic_cast<TH1*>(hh))->GetYaxis();
+            else if(_iaxis==2) return (dynamic_cast<TH1*>(hh))->GetZaxis();
+        }
     }
 
     return nullptr;

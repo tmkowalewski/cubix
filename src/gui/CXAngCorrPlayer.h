@@ -52,6 +52,11 @@ class TGHSlider;
 class TVirtualPad;
 class TGLabel;
 class TGraph;
+class TGHProgressBar;
+class TGraphAsymmErrors;
+class TF2;
+class TGRadioButton;
+class TH1;
 
 class CXAngCorrPlayer : public  TGVerticalFrame
 {
@@ -67,26 +72,54 @@ private:
     TGNumberEntry *fNEMixing[2];
     TGHSlider *fSlider[2];
 
+    TGRadioButton *fAnglesButtons[2];
+
     TGLabel* fAksLabel = nullptr;
 
     TGCheckButton *fFixMixing[2];
+    TGNumberEntry *fNEMixingPoints = nullptr;
+    TGHProgressBar *fProgressBar = nullptr;
+    bool fMixingEvalInProcess = false;
+    bool fStopMixingEval = false;
+
+
+    TGNumberEntry *fExpAks[2][3];
+    TGNumberEntry *fExpQks[2][3];
+
+    TGLabel* fMixingLabel = nullptr;
+
 
     TVirtualPad *fAngCorrPads[4];
     TF1 *fTheoreticalDistribution = nullptr;
+    TF1 *fTheoreticalDistributionOnExp = nullptr;
 
     TGraph *fA2A4MixingGraph = nullptr;
     TGraph *fA2A4MixingTheoMarker = nullptr;
+
+    TGraph *fAngularDistributionGraph = nullptr;
+    TF1 *fAngularDistributionFunction = nullptr;
+    TH1 *fAngularDistributionFunction_err = nullptr;
+
+    TGraphAsymmErrors *fA2A4ExpMarker = nullptr;
+
+    TF1 *fChi2Func = nullptr;
+
+    TF2 *fChi2Func2D = nullptr;
+    TF2 *fChi2Func2D_errband = nullptr;
 
 public:
 
     CXAngCorrPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UInt_t h);
     ~CXAngCorrPlayer();
 
+    TVirtualPad *GetPad(int i){return fAngCorrPads[i];}
+
     CXMainWindow *GetMainWindow(){return fMainWindow;}
     void SetMainWindow(CXMainWindow *w);
 
     void NewInstance();
     void GetCurrentInstance();
+    void HandleButtons(int id=-1);
 
     template <typename T>
     T *GetElement(TVirtualPad *_pad, TString _namepattern="");
@@ -94,13 +127,33 @@ public:
     void DoSlider(Int_t _pos);
     void UpdateTheory();
 
+    void FitDistribution();
+
+    void UpdateData();
+    void FitMixing();
+    void FitMixing1D();
+    void FitMixing2D();
+
     void PlotMixingEvaluation();
+    void StopMixingEvaluation(){fStopMixingEval=true;}
+
+    void FitCorrectionFactors();
+
+    void SaveCorrectionFactors();
+    void SetQis(double _Q2, double _Q2low, double _Q2high, double _Q4, double _Q4low, double _Q4high);
+
+    void PlotTheoryOnDist();
 
 private:
 
     double Fk(int twoL1, int twoL1p, int twoIi, int twoI, int k);
     vector<double> Eval_Ak(int TwoJ1, int TwoJ2, int TwoJ3, double _mix12, double _mix23);
     double TheoreticalAngCorrFunction(double *x, double *p);
+    double ExpAngCorrFunction(double *x, double *p);
+
+    double EvalChi2(double *x, double *p);
+    double EvalChi2Deriv(double *x,double */*parameters*/);
+    double EvalChi2Deriv2(double *x,double */*parameters*/);
 
     ClassDef(CXAngCorrPlayer,0);
 };
