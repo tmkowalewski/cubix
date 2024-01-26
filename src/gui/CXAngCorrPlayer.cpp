@@ -157,12 +157,12 @@ CXAngCorrPlayer::CXAngCorrPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
     fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Fix mix 1/2: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
     fFixMixing[0] = new TGCheckButton(fHorizontalFrame);
-    fFixMixing[0]->SetState(kButtonUp);
+    fFixMixing[0]->SetState(kButtonDown);
     fHorizontalFrame->AddFrame(fFixMixing[0],new TGLayoutHints(kLHintsCenterY | kLHintsLeft ,1,3,0,0));
 
     fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Fix mix 2/3: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
     fFixMixing[1] = new TGCheckButton(fHorizontalFrame);
-    fFixMixing[1]->SetState(kButtonDown);
+    fFixMixing[1]->SetState(kButtonUp);
     fHorizontalFrame->AddFrame(fFixMixing[1],new TGLayoutHints(kLHintsCenterY | kLHintsLeft ,1,3,0,0));
 
     button = new TGTextButton(fHorizontalFrame, "  Plot  ");
@@ -274,6 +274,12 @@ CXAngCorrPlayer::CXAngCorrPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, 
 
         fHorizontalFrame->AddFrame(fExpQks[i][2],new TGLayoutHints(kLHintsCenterY | kLHintsLeft| kLHintsExpandX,1,5,0,0));
 
+        fFixQi[i] = new TGCheckButton(fHorizontalFrame,"",i);
+        fFixQi[i]->SetState(kButtonDown);
+        fFixQi[i]->Connect("Clicked()","CXAngCorrPlayer", this, "HandleButtons()");
+
+        fHorizontalFrame->AddFrame(fFixQi[i],new TGLayoutHints(kLHintsCenterY | kLHintsLeft ,1,1,0,0));
+
         fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsCenterY | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
     }
 
@@ -331,6 +337,14 @@ void CXAngCorrPlayer::HandleButtons(int id)
         else if(id==1) {
             fAnglesButtons[1]->SetState(kButtonDown);
             fAnglesButtons[0]->SetState(kButtonUp);
+        }
+    }
+    if(btn->InheritsFrom(TGCheckButton::Class())) {
+        if(btn->GetState()==kButtonUp) {
+            for(int i=0 ; i<3 ; i++) fExpQks[id][i]->SetState(false);
+        }
+        else {
+            for(int i=0 ; i<3 ; i++) fExpQks[id][i]->SetState(true);
         }
     }
 }
@@ -409,15 +423,22 @@ void CXAngCorrPlayer::FitCorrectionFactors()
         return;
     }
 
+    double min=0;
+    double max=180;
+    int deg=1;
+    if(fAnglesButtons[1]->GetState()==kButtonDown) {
+        min=-1;
+        max=1;
+        deg=0;
+    }
+
     delete fAngularDistributionFunction;
-    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, 0, 180, 5, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, min, max, 6, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fAngularDistributionFunction->FixParameter(5,deg);
 
     double mean;
-    if(fAnglesButtons[0]->GetState() == kButtonDown) mean = fAngularDistributionFunction->Eval(90);
-    else {
-        mean = fAngularDistributionFunction->Eval(0);
-        fAngularDistributionFunction->SetRange(-1,1);
-    }
+    if(deg) mean = fAngularDistributionFunction->Eval(90);
+    else mean = fAngularDistributionFunction->Eval(0);
 
     fAngularDistributionFunction->SetParNames("A0","A2","A4","Q2","Q4");
 
@@ -425,8 +446,8 @@ void CXAngCorrPlayer::FitCorrectionFactors()
     int TwoJ2 = fNESpins[1]->GetIntNumber();
     int TwoJ3 = fNESpins[2]->GetIntNumber();
 
-    double mix12 = fNEMixing[1]->GetNumber();
-    double mix23 = fNEMixing[0]->GetNumber();
+    double mix12 = fNEMixing[0]->GetNumber();
+    double mix23 = fNEMixing[1]->GetNumber();
 
     vector<double> Akks = Eval_Ak(TwoJ1,TwoJ2,TwoJ3,mix12,mix23);
     Float_t _A2 = 0.;
@@ -439,11 +460,13 @@ void CXAngCorrPlayer::FitCorrectionFactors()
     fAngularDistributionFunction->FixParameter(1,_A2);
     fAngularDistributionFunction->FixParameter(2,_A4);
 
-    fAngularDistributionFunction->SetParameter(3,1.);
+    if(fFixQi[0]->GetState()==kButtonUp) fAngularDistributionFunction->FixParameter(3,fExpQks[0][1]->GetNumber());
+    else fAngularDistributionFunction->SetParameter(3,fExpQks[0][1]->GetNumber());
     // fAngularDistributionFunction->SetParLimits(3,0.,10.);
 
-    fAngularDistributionFunction->SetParameter(4,1.);
-    // fAngularDistributionFunction->SetParLimits(4,0.,10.);
+    if(fFixQi[1]->GetState()==kButtonUp) fAngularDistributionFunction->FixParameter(4,fExpQks[1][1]->GetNumber());
+    else fAngularDistributionFunction->SetParameter(4,fExpQks[1][1]->GetNumber());
+    // fAngularDistributionFunction->SetParLimits(3,0.,10.);    // fAngularDistributionFunction->SetParLimits(4,0.,10.);
 
     TFitResultPtr r = fAngularDistributionGraph->Fit(fAngularDistributionFunction,"S0R");
 
@@ -479,12 +502,16 @@ void CXAngCorrPlayer::FitCorrectionFactors()
     fAngCorrPads[2]->Update();
     fAngCorrPads[2]->Modified();
 
-    fExpQks[0][0]->SetNumber(minQ2);
-    fExpQks[0][1]->SetNumber(fAngularDistributionFunction->GetParameter(3));
-    fExpQks[0][2]->SetNumber(maxQ2);
-    fExpQks[1][0]->SetNumber(minQ4);
-    fExpQks[1][1]->SetNumber(fAngularDistributionFunction->GetParameter(4));
-    fExpQks[1][2]->SetNumber(maxQ4);
+    if(fFixQi[0]->GetState()==kButtonDown) {
+        fExpQks[0][0]->SetNumber(minQ2);
+        fExpQks[0][1]->SetNumber(fAngularDistributionFunction->GetParameter(3));
+        fExpQks[0][2]->SetNumber(maxQ2);
+    }
+    if(fFixQi[1]->GetState()==kButtonDown) {
+        fExpQks[1][0]->SetNumber(minQ4);
+        fExpQks[1][1]->SetNumber(fAngularDistributionFunction->GetParameter(4));
+        fExpQks[1][2]->SetNumber(maxQ4);
+    }
 }
 
 void CXAngCorrPlayer::FitDistribution()
@@ -496,15 +523,22 @@ void CXAngCorrPlayer::FitDistribution()
         return;
     }
 
+    double min=0;
+    double max=180;
+    int deg=1;
+    if(fAnglesButtons[1]->GetState()==kButtonDown) {
+        min=-1;
+        max=1;
+        deg=0;
+    }
+
     delete fAngularDistributionFunction;
-    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, 0, 180, 5, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, min, max, 6, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fAngularDistributionFunction->FixParameter(5,deg);
 
     double mean;
-    if(fAnglesButtons[0]->GetState() == kButtonDown) mean = fAngularDistributionFunction->Eval(90);
-    else {
-        mean = fAngularDistributionFunction->Eval(0);
-        fAngularDistributionFunction->SetRange(-1,1);
-    }
+    if(deg) mean = fAngularDistributionFunction->Eval(90);
+    else mean = fAngularDistributionFunction->Eval(0);
 
     fAngularDistributionFunction->SetParNames("A0","A2","A4","Q2","Q4");
 
@@ -821,6 +855,7 @@ void CXAngCorrPlayer::FitMixing1D()
     }
     else {
         gbash_color->WarningMessage("could not find any value corresponding to Chi2min+1");
+        fMixingLabel->SetText("Mixing value: ?");
     }
 
     delete ftest;
@@ -937,6 +972,7 @@ void CXAngCorrPlayer::FitMixing2D()
     text->Draw();
     text->SetBit(TObject::kCannotPick);
 
+    fAngCorrPads[3]->SetLogy(0);
     fAngCorrPads[3]->SetLogz(1);
     fAngCorrPads[3]->Modified();
     fAngCorrPads[3]->Update();
@@ -986,14 +1022,33 @@ void CXAngCorrPlayer::UpdateData()
     fA2A4ExpMarker->SetName("A2A4ExpMarker");
     fA2A4ExpMarker->SetMarkerStyle(20);
     fA2A4ExpMarker->SetMarkerColor(kRed);
-    fA2A4ExpMarker->SetFillStyle(3001);
     fA2A4ExpMarker->SetFillColor(kRed);
+    fA2A4ExpMarker->SetFillColorAlpha(kRed,0.3);
+    fA2A4ExpMarker->SetFillStyle(1001);
 
     fA2A4ExpMarker->SetPoint(0,ExpA2,ExpA4);
     fA2A4ExpMarker->SetPointEXlow(0,ExpA2-fExpAks[0][0]->GetNumber());
     fA2A4ExpMarker->SetPointEXhigh(0,fExpAks[0][2]->GetNumber()-ExpA2);
     fA2A4ExpMarker->SetPointEYlow(0,ExpA4-fExpAks[1][0]->GetNumber());
     fA2A4ExpMarker->SetPointEYhigh(0,fExpAks[1][2]->GetNumber()-ExpA4);
+
+    double minx,maxx,miny,maxy;
+    minx = *min_element(fA2A4MixingGraph->GetX(), fA2A4MixingGraph->GetX()+fA2A4MixingGraph->GetN());
+    miny = *min_element(fA2A4MixingGraph->GetY(), fA2A4MixingGraph->GetY()+fA2A4MixingGraph->GetN());
+    maxx = *max_element(fA2A4MixingGraph->GetX(), fA2A4MixingGraph->GetX()+fA2A4MixingGraph->GetN());
+    maxy = *max_element(fA2A4MixingGraph->GetY(), fA2A4MixingGraph->GetY()+fA2A4MixingGraph->GetN());
+
+    minx = min(minx,fExpAks[0][0]->GetNumber());
+    maxx = max(maxx,fExpAks[0][2]->GetNumber());
+    miny = min(miny,fExpAks[1][0]->GetNumber());
+    maxy = max(maxy,fExpAks[1][2]->GetNumber());
+
+    double deltaX = (maxx-minx)*0.1;
+    double deltaY = (maxy-miny)*0.1;
+
+    TH1 *frame = GetElement<TH1>(fAngCorrPads[1],"hframe");
+    frame->GetYaxis()->SetRangeUser(miny-deltaY,maxy+deltaY);
+    frame->GetXaxis()->SetRangeUser(minx-deltaX,maxx+deltaX);
 
     fAngCorrPads[1]->cd();
     fA2A4ExpMarker->Draw("2");
@@ -1118,8 +1173,11 @@ double CXAngCorrPlayer::ExpAngCorrFunction(double *x, double *p)
     double func = 0.;
 
 #ifdef HAS_MATHMORE
-    double theta = x[0];
-    if(fAnglesButtons[0]->GetState()==kButtonDown) theta = x[0]*TMath::DegToRad();
+
+    bool deg = (TMath::Nint(p[5])==1);
+
+    double costheta = cos(x[0]*TMath::DegToRad());
+    if(!deg) costheta = x[0];
 
     double A0  = p[0];
     double A2  = p[1];
@@ -1128,7 +1186,7 @@ double CXAngCorrPlayer::ExpAngCorrFunction(double *x, double *p)
     double Q2  = p[3];
     double Q4  = p[4];
 
-    func = A0*(1+A2*Q2*ROOT::Math::legendre(2,cos(theta)) + A4*Q4*ROOT::Math::legendre(4,cos(theta)));
+    func = A0*(1+A2*Q2*ROOT::Math::legendre(2,costheta) + A4*Q4*ROOT::Math::legendre(4,costheta));
 #endif
 
     return func;
@@ -1257,13 +1315,19 @@ void CXAngCorrPlayer::PlotMixingEvaluation()
     fA2A4MixingGraph = new TGraph;
     fA2A4MixingGraph->SetName("A2A4MixingGraph");
     fA2A4MixingGraph->SetMarkerStyle(20);
-    if(TwoDMixing) fA2A4MixingGraph->SetMarkerStyle(1);
-    fA2A4MixingGraph->SetMarkerSize(0.5);
     fA2A4MixingGraph->SetLineColor(kGreen);
-    fA2A4MixingGraph->SetLineStyle(kDashed);
-    if(TwoDMixing) fA2A4MixingGraph->SetLineStyle(kDotted);
-    fA2A4MixingGraph->SetLineWidth(2);
-    if(TwoDMixing) fA2A4MixingGraph->SetLineWidth(1);
+
+    if(TwoDMixing) {
+        fA2A4MixingGraph->SetMarkerStyle(1);
+        fA2A4MixingGraph->SetLineStyle(kDotted);
+        fA2A4MixingGraph->SetLineWidth(1);
+        fA2A4MixingGraph->SetMarkerColorAlpha(kBlack,0.3);
+    }
+    else {
+        fA2A4MixingGraph->SetMarkerSize(0.5);
+        fA2A4MixingGraph->SetLineStyle(kSolid);
+        fA2A4MixingGraph->SetLineWidth(1);
+    }
 
     double deltapmin=-INFINITY;
     double deltapmax=INFINITY;
@@ -1377,6 +1441,8 @@ void CXAngCorrPlayer::PlotMixingEvaluation()
     fA2A4MixingGraph->SetBit(TObject::kCannotPick);
 
     fMixingEvalInProcess = false;
+
+    UpdateData();
 }
 
 void CXAngCorrPlayer::SaveCorrectionFactors()
@@ -1421,6 +1487,15 @@ void CXAngCorrPlayer::PlotTheoryOnDist()
     double mix12 = fNEMixing[0]->GetNumber();
     double mix23 = fNEMixing[1]->GetNumber();
 
+    double _Q2 = fExpQks[0][1]->GetNumber();
+    double _Q4 = fExpQks[1][1]->GetNumber();
+
+    vector<double> Akks = Eval_Ak(TwoJ1,TwoJ2,TwoJ3,mix12,mix23);
+    Float_t _A2 = 0.;
+    Float_t _A4 = 0.;
+    if(Akks.size()>=1) _A2 = Akks.at(0);
+    if(Akks.size()>=2) _A4 = Akks.at(1);
+
     delete fTheoreticalDistributionOnExp;
     double min=0;
     double max=180;
@@ -1431,8 +1506,8 @@ void CXAngCorrPlayer::PlotTheoryOnDist()
         deg=0;
     }
 
-    fTheoreticalDistributionOnExp = new TF1(Form("%s_TheoOnExp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::TheoreticalAngCorrFunction, min, max, 7, "CXAngCorrPlayer", "TheoreticalAngCorrFunction");
-    fTheoreticalDistributionOnExp->SetParameters(fAngularDistributionFunction->GetParameter(0),TwoJ1,TwoJ2,TwoJ3,mix12,mix23,deg);
+    fTheoreticalDistributionOnExp = new TF1(Form("%s_TheoOnExp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, min, max, 6, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fTheoreticalDistributionOnExp->SetParameters(fAngularDistributionFunction->GetParameter(0),_A2,_A4,_Q2,_Q4,deg);
 
     fTheoreticalDistributionOnExp->SetNpx(5000);
     fTheoreticalDistributionOnExp->SetLineColor(kRed);

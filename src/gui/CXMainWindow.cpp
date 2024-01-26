@@ -86,7 +86,7 @@ ULong_t CXgreen;
 ULong_t CXorange;
 
 CXMainWindow::CXMainWindow(const TGWindow *p, UInt_t w, UInt_t h) : TGMainFrame(p, w, h)
-{    
+{
     loadingFuture = std::async(std::launch::async, &CXMainWindow::load_tkn_db, this);
 
     Init();
@@ -104,11 +104,11 @@ void CXMainWindow::Init()
 //        gNDManager = new CXNDManager(this);
 
     auto *fHf = new TGHorizontalFrame(this,GetWidth(),GetHeight());
-    
+
     //------- Menu -----------
 
     //----------------Menu File--------------------
-    
+
     fMenuFile = new TGPopupMenu(gClient->GetRoot());
     fMenuFile->AddEntry("New Canvas", M_New_Canvas, nullptr , gClient->GetPicture("newcanvas.xpm"));
     fMenuFile->AddEntry("New multi-pad Canvas", M_New_MultiPad_Canvas, nullptr , gClient->GetPicture("multiple_pads.png"));
@@ -216,7 +216,7 @@ void CXMainWindow::Init()
     AddFrame(fline,new TGLayoutHints(kLHintsExpandX));
 
     //    //////////////////******************** partie gauche ********************////////////////////////////////
-    
+
     fTGCanvas = new TGCanvas(fHf, 10, 10, kFixedWidth);
     fHf->AddFrame(fTGCanvas, new TGLayoutHints(kLHintsLeft | kLHintsExpandY));
 
@@ -327,7 +327,7 @@ void CXMainWindow::Init()
     ToggleTab(IsFileListUtilityEnabled,fFileListTab,fFileList->GetName());
 
     //    //////////////////******************** partie droite ********************////////////////////////////////
-    
+
     fSplitter = new TGVFileSplitter(fHf,2,2);
     fSplitter->SetFrame(fTGCanvas, kTRUE);
     fHf->AddFrame(fSplitter, new TGLayoutHints(kLHintsLeft | kLHintsExpandY));
@@ -335,9 +335,9 @@ void CXMainWindow::Init()
 
     fVFRight = new TGVerticalFrame(fHf, 10, 10);
     fHf->AddFrame(fVFRight, new TGLayoutHints(kLHintsRight | kLHintsExpandX | kLHintsExpandY));
-    
+
     fListOfCanvases = new TList();
-    
+
     fCanvasTab = new TGTab(fVFRight);
     fCanvasTab->Connect("CloseTab(Int_t)", "CXMainWindow", this, "CloseCanvasTab(Int_t)");
     fCanvasTab->Connect("Selected(Int_t)", "CXMainWindow", this, "DoTab(Int_t)");
@@ -360,14 +360,14 @@ void CXMainWindow::Init()
     fStatusBar->SetParts(parts.data(),5);
     fStatusBar->Draw3DCorner(kFALSE);
     fVFRight->AddFrame(fStatusBar, new TGLayoutHints(kLHintsBottom | kLHintsLeft | kLHintsExpandX, 0, 0, 2, 0));
-    
+
     AddFrame(fHf, new TGLayoutHints(kLHintsRight | kLHintsExpandX | kLHintsExpandY));
 
     UpdateContextMenus();
 
     // What to clean up in destructor
     SetCleanup(kDeepCleanup);
-    
+
     // Set a name to the main frame
     SetWindowName("Cubix Spectra Player");
     SetIconPixmap("Cubix.png");
@@ -388,7 +388,7 @@ void CXMainWindow::Init()
 
     TH1::AddDirectory(kFALSE);
 
-    HandleMenu(M_AngCorrPlayer);
+    // HandleMenu(M_AngCorrPlayer);
 }
 
 CXMainWindow::~CXMainWindow() = default;
@@ -399,8 +399,7 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
 
     fSelectedPad = fCanvas->GetClickSelectedPad();
 
-    if(gPad && selected != nullptr)
-    {
+    if(gPad && selected != nullptr) {
         const char *text0, *text1, *text2, *text4;
         char text3[50];
         text0 = selected->ClassName();
@@ -410,13 +409,12 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
         text2 = selected->GetName();
         SetStatusText(text2,2);
 
-        if(fCanvas->GetCrosshair() == 1 && (selected->InheritsFrom("TFrame") || selected->InheritsFrom("TH1") || selected->InheritsFrom("CXCanvas") || selected->InheritsFrom("TPad")))
-        {
-            if (EventType == kButton2){
+        if(fCanvas->GetCrosshair() == 1 && (selected->InheritsFrom("TFrame") || selected->InheritsFrom("TH1") || selected->InheritsFrom("CXCanvas") || selected->InheritsFrom("TPad"))) {
+            if (EventType == kButton2) {
                 fRefX = gPad->AbsPixeltoX(EventX);
                 fRefY = gPad->AbsPixeltoY(EventY);
             }
-            if (EventType == kButton1){
+            if (EventType == kButton1) {
                 fRefX = 0;
                 fRefY = 0;
             }
@@ -442,7 +440,6 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
     if(EventType == kMouseMotion) {
         fCanvas->AbsPixeltoXY(EventX,EventY,fLastXPosition,fLastYPosition);
     }
-
     if(EventType == kKeyPress) {
         if((EKeySym)EventY==kKey_f && !fCTRL) {
             if(IsHist1DPlayerEnabled==false)
@@ -551,7 +548,7 @@ void CXMainWindow::CloseTab(TGTab *tab, Int_t tabnr)
     TGFrameElement *el = nullptr;
     if (tab->GetTabContainer(tabnr))
         el = (TGFrameElement *)tab->GetTabContainer(tabnr)->GetList()->First();
-    
+
     if (el && el->fFrame) {
         el->fFrame->Disconnect("ProcessedConfigure(Event_t*)");
         el->fFrame->SetFrameElement(nullptr);
@@ -576,7 +573,7 @@ void CXMainWindow::CloseTab(TGTab *tab, Int_t tabnr)
         delete el;
         tab->RemoveTab(tabnr);
     }
-    
+
     if(tab == fCanvasTab) fListOfCanvases->RemoveAt(tabnr);
 }
 
@@ -640,7 +637,7 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
             TabName.Append("_2");
         }
     }
-    
+
     TGCompositeFrame *atab = fCanvasTab->AddTab(TabName);
     fCanvasTab->GetTabTab(TabName)->ShowClose();
 
@@ -888,7 +885,7 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
 
 void CXMainWindow::SaveCanvasAs()
 {
-    
+
     const char* SaveAsTypes[] = {
         "PDF",          "*.pdf",
         "PostScript",   "*.ps",
@@ -907,7 +904,7 @@ void CXMainWindow::SaveCanvasAs()
         "All files",    "*",
         nullptr,        nullptr
     };
-    
+
     TString workdir = gSystem->WorkingDirectory();
     static TString dir(".");
     static Int_t typeidx = 0;
@@ -938,7 +935,7 @@ void CXMainWindow::DoRefresh()
 }
 
 void CXMainWindow::RefreshPads()
-{   
+{
     TList *pList = fCanvas->GetListOfPrimitives();
     TObjOptLink *lnk = nullptr;
     if (pList) lnk = (TObjOptLink*)pList->FirstLink();

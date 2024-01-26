@@ -464,6 +464,7 @@ void CXWorkspace::UpdateWSFile()
     file << "Efficiency function : " << fEfficiencyFuncFileName << endl;
     file << "Efficiency error    : " << fEfficiencyErrorFileName << endl;
 
+    file << endl;
     file << "AngCorr Qis         : " << fQAngCorrQiFileName << endl;
     file.close();
 
@@ -552,12 +553,12 @@ void CXWorkspace::SetAngCorrQis(double _Q2, double _Q2low, double _Q2high, doubl
         return;
     }
     ofstream outfile(filename);
-    outfile<< left << setw(5) << "#Qi" << setw(7) << "value" << setw(7) << "low" << setw(7) << "high" << endl;
-    outfile<< left << setw(5) << "Q2" << setw(7) << _Q2 << setw(7) << _Q2low << setw(7) << _Q2high << endl;
-    outfile<< left << setw(5) << "Q4" << setw(7) << _Q4 << setw(7) << _Q4low << setw(7) << _Q4high << endl;
+    outfile<< left << setw(5) << "#Qi" << setw(10) << "value" << setw(10) << "low" << setw(10) << "high" << endl;
+    outfile<< left << setw(5) << "Q2" << setw(10) << _Q2 << setw(10) << _Q2low << setw(10) << _Q2high << endl;
+    outfile<< left << setw(5) << "Q4" << setw(10) << _Q4 << setw(10) << _Q4low << setw(10) << _Q4high << endl;
     outfile.close();
 
-    fQAngCorrQiFileName = Form("%s_angcorr_qi.dat.err",fname.Data());
+    fQAngCorrQiFileName = Form("%s_angcorr_qi.dat",fname.Data());
 
     UpdateWSFile();
 }

@@ -86,6 +86,8 @@ private:
     TGNumberEntry *fExpAks[2][3];
     TGNumberEntry *fExpQks[2][3];
 
+    TGCheckButton *fFixQi[2];
+
     TGLabel* fMixingLabel = nullptr;
 
 
