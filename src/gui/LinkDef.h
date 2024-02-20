@@ -18,12 +18,15 @@
 #pragma link C++ class CXGuiToolbar+;
 #pragma link C++ class CXFileList+;
 #pragma link C++ class CXHist1DCalib+;
+#pragma link C++ class CXFitEfficiency+;
 #pragma link C++ class CXHist1DPlayer+;
 #pragma link C++ class CXHist2DPlayer+;
 #pragma link C++ class CXGFileBrowser+;
 #pragma link C++ class CXArrow+;
 #pragma link C++ class CXArrowBox+;
 #pragma link C++ class CXSavedList+;
+#pragma link C++ class CXWSManager+;
+#pragma link C++ class CXWorkspace+;
 #pragma link C++ class CXFit+;
 #pragma link C++ class CXBgdFit+;
 #pragma link C++ class CXGuiENSDFPlayer+;
@@ -31,4 +34,6 @@
 #pragma link C++ class CXGammaSearch+;
 #pragma link C++ class CXNucChart+;
 #pragma link C++ class CXNucleusBox+;
+#pragma link C++ class CXDialogBox+;
+#pragma link C++ class CXAngCorrPlayer+;
 #endif

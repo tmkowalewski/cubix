@@ -217,20 +217,32 @@ void CXFileList::DisplayFile(const TString &fname)
         }
         fCurrentFile = file;
         fFolders.push_back(file);
+
+        if(file->GetListOfKeys()->GetEntries()==1) {
+            TObject *o = ((TKey*)file->GetListOfKeys()->First())->ReadObj();
+            fMainWindow->DoDraw(o,fBrowser->GetDrawOption());
+        }
     }
     if(fname.EndsWith(".spe") || fname.EndsWith(".2dp")) {
         DisplayRadSpe(fname);
     }
+    if(fname.EndsWith(".cub")) {
+        int status = DisplayRadCube(fname);
+        if(status==0) fMainWindow->InitRadCubePlayer(fRadReader);
+    }
+
     fMain->Resize();
-    fContents->SetViewMode(EListViewMode::kLVList);
+    if(!fname.EndsWith(".cub")) fContents->SetViewMode(EListViewMode::kLVList);
 }
 
-void CXFileList::DisplayRadCube(const TString &fname)
+int CXFileList::DisplayRadCube(const TString &fname)
 {
     TGLVEntry *entry;
     fFolders.clear();
 
     fRadCubeMode = true;
+
+    TString DirName = gSystem->GetDirName(fname);
 
     Int_t Status=0;
 
@@ -253,7 +265,7 @@ void CXFileList::DisplayRadCube(const TString &fname)
     entry->SetPictures(gClient->GetPicture("about.xpm"),gClient->GetPicture("about.xpm"));
     fContents->AddItem(entry);
     entry->SetSubnames("No");
-    if(gSystem->IsFileInIncludePath(fConfFileName) && ReadConfFile()) {
+    if(!gSystem->AccessPathName(fConfFileName) && ReadConfFile(DirName)) {
         fConfFileLoaded = true;
         entry->SetSubnames("Yes");
     }
@@ -274,26 +286,26 @@ void CXFileList::DisplayRadCube(const TString &fname)
 
     // Read Cube
     Status += fRadReader->ReadCube(fCubeFileName);
-    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return;}
+    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return Status;}
 
     // Read LUT
     Status += fRadReader->ReadTabFile(fLUTFileName);
-    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return;}
+    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return Status;}
 
     // Read calibrations
     Status += fRadReader->ReadCalibs(fECalFileName, fEffFileName, fCompFactor);
 
     // Read Tot proj
     Status += fRadReader->ReadTotProj(fTotalProjFile);
-    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return;}
+    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return Status;}
 
     // Read Background
     Status += fRadReader->ReadBackground(fBackgroundFile);
-    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return;}
+    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return Status;}
 
     // Read 2D projection
     Status += fRadReader->Read2DProj(f2DProjName);
-    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return;}
+    if(Status>0) {gbash_color->WarningMessage("Errors occured in reading the cube, ignored");return Status;}
 
     if(Status>0){
         gbash_color->WarningMessage("Errors occured in reading the cube, ignored");
@@ -312,6 +324,8 @@ void CXFileList::DisplayRadCube(const TString &fname)
     fMain->Resize();
     fContents->SetViewMode(EListViewMode::kLVDetails);
     fContents->GetListView()->AdjustHeaders();
+
+    return Status;
 }
 
 void CXFileList::DisplayRadSpe(const TString &fname)
@@ -331,13 +345,8 @@ void CXFileList::DisplayRadSpe(const TString &fname)
 
     TH1 *hist = nullptr;
 
-    cout << endl;
-    cout << fname << " " << filanem << " " << fRadReader << endl;
-
     if(fname.EndsWith(".spe")) hist = fRadReader->GetHistFromSpeFile(filanem);
     else if(fname.EndsWith(".2dp")) hist = fRadReader->GetHistFrom2dpFile(filanem);
-
-    cout << hist << endl;
 
     if(hist) fMainWindow->DoDraw(hist,fBrowser->GetDrawOption());
 }
@@ -403,7 +412,7 @@ void CXFileList::DisplayObject(const TString& /*fname*/,const TString& name)
 
     TObject *CurrentFolder = fFolders.back();
 
-    if(name==".."){
+    if(name=="..") {
         fFolders.pop_back();
         obj=fFolders.back();
         fFolders.pop_back();
@@ -418,9 +427,8 @@ void CXFileList::DisplayObject(const TString& /*fname*/,const TString& name)
         return;
     }
 
-    if (obj)
-    {
-        if (!obj->IsFolder()){
+    if (obj) {
+        if (!obj->IsFolder()) {
 
             TString CanvasName = fMainWindow->GetCanvas()->GetName();
 
@@ -531,7 +539,7 @@ void CXFileList::CloseWindow()
     delete this;
 }
 
-Bool_t CXFileList::ReadConfFile()
+Bool_t CXFileList::ReadConfFile(const char *_dirname)
 {
     cout<<"\e[0;3;32m"<<endl;
     cout<<"***********************************"<<endl;
@@ -551,8 +559,7 @@ Bool_t CXFileList::ReadConfFile()
     string line;
     TString Buffer;
 
-    while(FileConf)
-    {
+    while(FileConf) {
         getline(FileConf,line);
         Buffer = line;
 
@@ -561,42 +568,49 @@ Bool_t CXFileList::ReadConfFile()
         if(Buffer.BeginsWith("CubeFileName")){
             TObjArray *loa=Buffer.Tokenize(" ");
             fCubeFileName = ((TString)loa->At(1)->GetName());
+            if(!fCubeFileName.BeginsWith("/")) gSystem->PrependPathName(_dirname,fCubeFileName);
             delete loa;
             gbash_color->InfoMessage("Cube Filename: " + fCubeFileName);
         }
         else if(Buffer.BeginsWith("2DProj")){
             TObjArray *loa=Buffer.Tokenize(" ");
             f2DProjName = ((TString)loa->At(1)->GetName());
+            if(!f2DProjName.BeginsWith("/")) gSystem->PrependPathName(_dirname,f2DProjName);
             delete loa;
             gbash_color->InfoMessage("2D projection file: " + f2DProjName);
         }
         else if(Buffer.BeginsWith("LUT")){
             TObjArray *loa=Buffer.Tokenize(" ");
             fLUTFileName = ((TString)loa->At(1)->GetName());
+            if(!fLUTFileName.BeginsWith("/")) gSystem->PrependPathName(_dirname,fLUTFileName);
             delete loa;
             gbash_color->InfoMessage("LUT file: " + fLUTFileName);
         }
         else if(Buffer.BeginsWith("CalFile")){
             TObjArray *loa=Buffer.Tokenize(" ");
             fECalFileName = ((TString)loa->At(1)->GetName());
+            if(!fECalFileName.BeginsWith("/")) gSystem->PrependPathName(_dirname,fECalFileName);
             delete loa;
             gbash_color->InfoMessage("Energy calibration file: " + fECalFileName);
         }
         else if(Buffer.BeginsWith("TotalProj")){
             TObjArray *loa=Buffer.Tokenize(" ");
             fTotalProjFile = ((TString)loa->At(1)->GetName());
+            if(!fTotalProjFile.BeginsWith("/")) gSystem->PrependPathName(_dirname,fTotalProjFile);
             delete loa;
             gbash_color->InfoMessage("Total projection file: " + fTotalProjFile);
         }
         else if(Buffer.BeginsWith("BackgroudFile")){
             TObjArray *loa=Buffer.Tokenize(" ");
             fBackgroundFile = ((TString)loa->At(1)->GetName());
+            if(!fBackgroundFile.BeginsWith("/")) gSystem->PrependPathName(_dirname,fBackgroundFile);
             delete loa;
             gbash_color->InfoMessage("BackgroudFile file: " + fBackgroundFile);
         }
         else if(Buffer.BeginsWith("EffFile")){
             TObjArray *loa=Buffer.Tokenize(" ");
             fEffFileName = ((TString)loa->At(1)->GetName());
+            if(!fEffFileName.BeginsWith("/")) gSystem->PrependPathName(_dirname,fEffFileName);
             delete loa;
             gbash_color->InfoMessage("Efficiency file: " + fEffFileName);
         }

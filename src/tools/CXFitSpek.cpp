@@ -804,6 +804,8 @@ void CXCFitSpek::GFderF(int id, double *xpar, double *deriv, double &deltay, dou
   return;
 }
 
+#include <iostream>
+
 // Salva i risultati in m_pRes e m_pErr
 void CXCFitSpek::GF_res()
 {

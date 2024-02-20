@@ -93,6 +93,19 @@ MESSAGE(STATUS "ROOT Version: ${ROOT_VERSION} ")
 INCLUDE_DIRECTORIES( ${ROOT_INCLUDE_DIR} )
 LINK_DIRECTORIES( ${ROOT_LIBRARY_DIR} )
 
+unset(MATHMORE_FOUND CACHE)
+unset(HAS_MATHMORE CACHE)
+
+find_library(MATHMORE_FOUND "mathmore")
+
+if(NOT MATHMORE_FOUND)
+    print(WARNING "Cubix compiled without mathmore, angular correlations tool will not be available !")
+    SET(HAS_MATHMORE OFF)
+else ()
+    MESSAGE(STATUS "mathmore lib has been found")
+    SET(HAS_MATHMORE On)
+endif()
+
 # ==================================================================
 # -------------------------- Link TkN ------------------------------
 # ==================================================================
@@ -221,6 +234,7 @@ add_subdirectory (src/gui)
 include_directories (src/gui)
 
 file(GLOB icons ${CMAKE_CURRENT_SOURCE_DIR}/icons/*)
+file(GLOB confs ${CMAKE_CURRENT_SOURCE_DIR}/conf/*)
 file(GLOB databases ${CMAKE_CURRENT_SOURCE_DIR}/databases)
 
 ### ==================================================================
@@ -252,4 +266,5 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/cubix-autocompletion.
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cubix_config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(FILES ${icons} DESTINATION icons COMPONENT icons)
+install(FILES ${confs} DESTINATION conf COMPONENT conf)
 install(DIRECTORY ${databases} DESTINATION ${CMAKE_INSTALL_PREFIX})

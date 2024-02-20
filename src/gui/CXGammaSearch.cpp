@@ -37,7 +37,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
-#include <fstream>
 
 #include "TString.h"
 #include "TSystem.h"
@@ -47,9 +46,9 @@
 #include "TGLabel.h"
 #include "TGButton.h"
 
-#if (OS_TYPE == OS_LINUX)
+// #if (OS_TYPE == OS_LINUX)
 #include "TGResourcePool.h"
-#endif
+// #endif
 
 #include "CXMainWindow.h"
 #include "CXSpreadIntensityMatrix.h"
@@ -185,6 +184,11 @@ CXGammaSearch::~CXGammaSearch()
 
 void CXGammaSearch::SetCalMode()
 {
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
     switch (fCurrentMode) {
     case M_With_Cascade: {
         if(fNGammas<=1)
@@ -207,6 +211,8 @@ void CXGammaSearch::SetCalMode()
         break;
     }
     }
+
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
 }
 
 void CXGammaSearch::FindGammaRays(Bool_t Bash)
@@ -242,6 +248,7 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
             tkn::tknucleus Nuc(iz,ia);
             fLevelScheme = Nuc.get_level_scheme();
             if(fLevelScheme->get_decays().size()==0) continue;
+            AnalysedGammaRays+=fLevelScheme->get_decays().size();
 
             vector<shared_ptr<tkn::tkdecay>> GoodGammas;
 
@@ -279,9 +286,12 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
 
                     double Energy = Link->get_energy();
 
-                    double ELevI = NucLevI->get_energy();
+                    double ELevI = NucLevI->get_energy(tkn::tkunit_manager::keV,true);
                     TString spinI = NucLevI->get_spin_parity_str();
-                    double ELevF = NucLevF->get_energy();
+                    TString offsetI="";
+                    if(NucLevI->is_energy_offset()) offsetI += NucLevI->get_offset_bandhead() + "+";
+
+                    double ELevF = NucLevF->get_energy(tkn::tkunit_manager::keV,true);
                     TString spinF = NucLevF->get_spin_parity_str();
 
                     agammatrans.NucName = Nuc.get_symbol();
@@ -291,10 +301,11 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
                     agammatrans.SpinI = spinI;
                     agammatrans.SpinF = spinF;
                     agammatrans.LifeTime = NucLevI->get_lifetime_str().data();
+                    agammatrans.Offset =offsetI ;
 
                     avect.push_back(agammatrans);
 
-                    TString GammaTitle = Form(" => %6.1f keV : %5s (%6.1f keV) --> %5s (%6.1f keV)%s",Energy,spinI.Data(),ELevI,spinF.Data(),ELevF, agammatrans.LifeTime.Data());
+                    TString GammaTitle = Form(" => %6.1f keV : %5s (%s%6.1f keV) --> %5s (%s%6.1f keV)%s",Energy,spinI.Data(),offsetI.Data(),ELevI,spinF.Data(),offsetI.Data(),ELevF, agammatrans.LifeTime.Data());
                     if(!Bash) PrintInListBox(GammaTitle.Data(),kPrint);
                 }
 
@@ -365,7 +376,7 @@ void CXGammaSearch::FindInDoubleCoincidence(Bool_t Bash)
                 GammaTransition GT = avec[j];
                 if(GT.EGamma == Mat_E[ig][0]) {
                     Flag[ig] = Mat_E[ig][0];
-                    TransitionName[ig] = Form(" %6.1f keV : %5s (%6.1f keV) --> %5s (%6.1f keV)%s ",GT.EGamma,GT.SpinI.Data(),GT.EI,GT.SpinF.Data(),GT.EF,GT.LifeTime.Data());
+                    TransitionName[ig] = Form(" %6.1f keV : %5s (%s%6.1f keV) --> %5s (%s%6.1f keV)%s ",GT.EGamma,GT.SpinI.Data(),GT.Offset.Data(),GT.EI,GT.SpinF.Data(),GT.Offset.Data(),GT.EF,GT.LifeTime.Data());
                     ETrans[ig] = GT.EGamma;
                     EI[ig] = GT.EI;
                     EF[ig] = GT.EF;
@@ -630,7 +641,7 @@ std::vector<int> CXGammaSearch::Sort_Index(std::vector<int> Index_Nuclei, std::v
 void CXGammaSearch::PrintInListBox(TString mess, Int_t Type)
 {
 
-#if (OS_TYPE == OS_LINUX)
+// #if (OS_TYPE == OS_LINUX)
     const TGFont *ufont;         // will reflect user font changes
     ufont = gClient->GetFont("-adobe-courier-medium-r-*-*-14-*-*-*-*-*-iso8859-1");
     // ufont = gClient->GetFont("-adobe-times-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
@@ -645,9 +656,9 @@ void CXGammaSearch::PrintInListBox(TString mess, Int_t Type)
     uGC = gClient->GetGC(&val, kTRUE);
 
     TGTextLBEntry *entry = new TGTextLBEntry(fResultsBox->GetContainer(), new TGString(mess), fResultsBox->GetNumberOfEntries()+1, uGC->GetGC(), ufont->GetFontStruct());
-#else
-    TGTextLBEntry *entry = new TGTextLBEntry(fResultsBox->GetContainer(), new TGString(mess), fResultsBox->GetNumberOfEntries()+1);
-#endif
+// #else
+//     TGTextLBEntry *entry = new TGTextLBEntry(fResultsBox->GetContainer(), new TGString(mess), fResultsBox->GetNumberOfEntries()+1);
+// #endif
 
     if(Type == kError)
         entry->SetBackgroundColor((Pixel_t)0xff0000);

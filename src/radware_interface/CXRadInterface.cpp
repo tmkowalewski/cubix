@@ -167,7 +167,6 @@ int read_tab_file(const TString &filnam, int *nclook, int *lookmin, int *lookmax
     memcpy(nclook,  cbuf,     4);
     memcpy(lookmin, cbuf + 4, 4);
     memcpy(lookmax, cbuf + 8, 4);
-
     if (*nclook < 2 || *nclook > dimlook) {
         file_error("read lookup-table from", filnam);
         fclose(file);

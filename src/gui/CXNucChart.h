@@ -49,6 +49,7 @@ class TH2D;
 class NucData;
 class TGTextEntry;
 class TRootEmbeddedCanvas;
+class TGCanvas;
 
 class CXNucChart: public TGTransientFrame
 {
@@ -78,6 +79,9 @@ private:
     TGComboBox *fPrintMode;
     TGComboBox *fDataSetMode;
 
+    TGGroupFrame *fLeftPart;
+    TGCanvas *fTGCanvas;
+
     Int_t fLastEventType;
     Int_t fLastEventX;
     Int_t fLastEventY;
@@ -85,8 +89,6 @@ private:
 
     Double_t fLastXPosition;
     Double_t fLastYPosition;
-
-    Bool_t fCTRL = false;
 
     TH2D *fNucChartHist;
 
@@ -115,7 +117,7 @@ public:
     virtual ~CXNucChart();
 
     void UpdateNucChart();
-    void PrintInListBox(TString mess, Int_t Type=-1);
+    int PrintInListBox(TString mess, Int_t Type=-1);
 
     void ProcessedKeyEvent(Event_t *event);
     void HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObject *selected);
@@ -127,6 +129,8 @@ public:
     void UpdateDataSet();
     static void SetPalette(Int_t Mode);
 
+    void DoRefresh(int _width);
+
 
 protected:
 
@@ -134,8 +138,8 @@ protected:
     void ShowMagicNumbers(bool On=true);
     void PlotBoxes();
 
-    TString PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> lev, TString NucName, bool print);
-    TString PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> lev, TString NucName, bool print);
+    TString PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> _levscheme, TString NucName, bool print);
+    TString PrintNucleusLevels(shared_ptr<tkn::tklevel_scheme> _levscheme, TString NucName, bool print);
 
     ClassDef(CXNucChart,0)
 

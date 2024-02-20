@@ -34,9 +34,6 @@
 #include "CXHist2DPlayer.h"
 
 #include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <sstream>
 
 #include "TGButton.h"
 #include "TGTextEntry.h"
@@ -71,14 +68,39 @@ CXHist2DPlayer::CXHist2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fGroupFrame->AddFrame(fSubGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, -10, -10, 0, 0));
 
     TGCompositeFrame *fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Gate on axis: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,10,0,0));
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "N projs: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,5,0,0));
+    fNProjections = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
+    fNProjections->Connect("ValueSet(Long_t)", "CXHist2DPlayer", this, "ChangeNProjections()");
+    fHorizontalFrame->AddFrame(fNProjections,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX ,1,3,5,5));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Gate on axis: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,10,2,2));
     fProjectionAxis = new TGComboBox(fHorizontalFrame);
-    fHorizontalFrame->AddFrame(fProjectionAxis,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX | kLHintsExpandY ,1,3,0,0));
     fProjectionAxis->AddEntry("X",0);
     fProjectionAxis->AddEntry("Y",1);
     fProjectionAxis->Select(0);
     fProjectionAxis->Connect("Selected(Int_t)", "CXHist2DPlayer", this, "UpdateProjection()");
-    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,5));
+    fProjectionAxis->SetHeight(20);
+    fHorizontalFrame->AddFrame(fProjectionAxis,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX, 1,3,0,0));
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+    fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Use FWHM: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,3,0,0,0));
+    fUseFWHM = new TGCheckButton(fHorizontalFrame);
+    fUseFWHM->SetState(kButtonUp);
+    fUseFWHM->Connect("Clicked()","CXHist2DPlayer", this, "ToggleFWHM()");
+    fHorizontalFrame->AddFrame(fUseFWHM,new TGLayoutHints(kLHintsLeft | kLHintsCenterY ,3,0,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Gate frac: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,0,0,0));
+    fFWHMGateFraction = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESRealOne, TGNumberFormat::kNEAPositive);
+    fHorizontalFrame->AddFrame(fFWHMGateFraction,new TGLayoutHints(kLHintsLeft | kLHintsCenterY | kLHintsExpandX ,3,3,0,0));
+
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Bgd frac: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,0,0,0));
+    fFWHMBackFraction = new TGNumberEntry(fHorizontalFrame, 2, 3, 0, TGNumberFormat::kNESRealOne, TGNumberFormat::kNEAPositive);
+    fHorizontalFrame->AddFrame(fFWHMBackFraction,new TGLayoutHints(kLHintsLeft | kLHintsCenterY | kLHintsExpandX ,3,3,0,0));
+
+    ToggleFWHM();
+
+    fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
     fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
     TGTextButton *GateButton = new TGTextButton(fHorizontalFrame, "Gate");
@@ -92,7 +114,7 @@ CXHist2DPlayer::CXHist2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fHorizontalFrame->AddFrame(BackgroundButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
 
     TGTextButton *ClearButton = new TGTextButton(fHorizontalFrame, "Clear");
-    ClearButton->SetTextColor(CXgreen);
+    ClearButton->SetTextColor(CXorange);
     ClearButton->Connect("Clicked()", "CXHist2DPlayer", this, "ClearGates()");
     fHorizontalFrame->AddFrame(ClearButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,2,0,0));
 
@@ -105,7 +127,7 @@ CXHist2DPlayer::CXHist2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
     TGTextButton *ProjectButton = new TGTextButton(fHorizontalFrame, "Project");
     ProjectButton->Connect("Clicked()", "CXHist2DPlayer", this, "Project()");
-    fHorizontalFrame->AddFrame(ProjectButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,5,10,0,0));
+    fHorizontalFrame->AddFrame(ProjectButton,new TGLayoutHints(kLHintsCenterY | kLHintsExpandX,2,10,0,0));
 
     fFixRange = new TGCheckButton(fHorizontalFrame, "Fix Range", 0);
     fFixRange->SetState(kButtonUp);
@@ -114,11 +136,18 @@ CXHist2DPlayer::CXHist2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
     fHorizontalFrame = new TGCompositeFrame(fSubGroupFrame, 60, 20, kHorizontalFrame);
-    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Rebin projection: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,20,0,0));
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Rebin projection: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,5,5,0,0));
     fRebinValue = new TGNumberEntry(fHorizontalFrame, 1, 3, 0, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive ,TGNumberFormat::kNELNoLimits);
     fHorizontalFrame->AddFrame(fRebinValue,new TGLayoutHints(kLHintsCenterY | kLHintsLeft  | kLHintsExpandX ,1,3,5,5));
 
+    fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Dynamic mode: "), new TGLayoutHints(kLHintsCenterY | kLHintsLeft,10,5,0,0));
+    fDynamicProj = new TGCheckButton(fHorizontalFrame, "", 0);
+    fDynamicProj->SetState(kButtonUp);
+    fHorizontalFrame->AddFrame(fDynamicProj,new TGLayoutHints(kLHintsLeft | kLHintsCenterY ,0,5,0,0));
+
     fSubGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
+
+
 
     fSubGroupFrame = new TGGroupFrame(MotherFrame, "Stored spectra", kVerticalFrame);
     fSubGroupFrame->SetTextColor(CXblue);
@@ -154,11 +183,8 @@ CXHist2DPlayer::CXHist2DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fMainWindow->GetSaveList()->AddListBox(fStoredSpectraBox);
 }
 
-CXHist2DPlayer::~CXHist2DPlayer(){
-}
-
-CXTH1Proj *CXHist2DPlayer::GetProj(){
-
+CXTH1Proj *CXHist2DPlayer::GetProj()
+{
     if(((TString)fMainWindow->GetCanvas()->GetName()).BeginsWith("GxG")){
         fMainWindow->SetSelectedPad(fMainWindow->GetCanvas()->GetPad(1));
         fMainWindow->GetCanvas()->SetSelectedPad((TPad*)fMainWindow->GetCanvas()->GetPad(1));
@@ -166,7 +192,7 @@ CXTH1Proj *CXHist2DPlayer::GetProj(){
         gPad = fMainWindow->GetCanvas()->GetSelectedPad();
     }
 
-    TH1 *hist = fMainWindow->GetHisto();
+    TH1 *hist = fMainWindow->GetHisto(fMainWindow->GetCanvas()->GetPad(1));
 
     if(hist && hist->InheritsFrom("CXTH1Proj")){
         return dynamic_cast<CXTH1Proj*>(hist);
@@ -177,9 +203,9 @@ CXTH1Proj *CXHist2DPlayer::GetProj(){
     }
 }
 
-void CXHist2DPlayer::Project(){
+void CXHist2DPlayer::Project()
+{
     fCurrentProj = GetProj();
-
     if(fCurrentProj){
         fCurrentProj->Project(fFixRange->GetState(), fRebinValue->GetIntNumber());
 
@@ -191,43 +217,47 @@ void CXHist2DPlayer::Project(){
     }
 }
 
-void CXHist2DPlayer::ApplyLastGate(){
+void CXHist2DPlayer::ApplyLastGate()
+{
     fCurrentProj = GetProj();
 
     ClearGates();
 
-    if(fCurrentProj){
-        TList *gates = fCurrentProj->GetGatesList();
-        gates->Clear();
-        for(int i=0 ; i<fMainWindow->GetSavedGatesList()->GetEntries() ; i++){
-            CXGateBox *box = (CXGateBox*)fMainWindow->GetSavedGatesList()->At(i)->Clone();
-            box->SetPad(fCurrentProj->fCurrentPad);
-            gates->Add(box);
-            box->Draw();
-        }
-        fCurrentProj->UpdateGates();
+    if(!fCurrentProj) return;
+
+    TList *gates = fCurrentProj->GetGatesList();
+    gates->Clear();
+    for(int i=0 ; i<fMainWindow->GetSavedGatesList()->GetEntries() ; i++){
+        CXGateBox *box = (CXGateBox*)fMainWindow->GetSavedGatesList()->At(i)->Clone();
+        box->SetPad(fCurrentProj->fCurrentPad);
+        gates->Add(box);
+        box->Draw();
     }
+    fCurrentProj->UpdateGates();
 }
 
-void CXHist2DPlayer::AddBackgd(){
+void CXHist2DPlayer::AddBackgd()
+{
     fCurrentProj = GetProj();
+    if(!fCurrentProj) return;
 
-    if(fCurrentProj)
-        fCurrentProj->AddBackgd();
+    fCurrentProj->AddBackgd();
 }
 
-void CXHist2DPlayer::AddGate(){
+void CXHist2DPlayer::AddGate()
+{
     fCurrentProj = GetProj();
+    if(!fCurrentProj) return;
 
-    if(fCurrentProj)
-        fCurrentProj->AddGate();
+    fCurrentProj->AddGate();
 }
 
-void CXHist2DPlayer::ClearGates(){
+void CXHist2DPlayer::ClearGates()
+{
     fCurrentProj = GetProj();
+    if(!fCurrentProj) return;
 
-    if(fCurrentProj)
-        fCurrentProj->ClearGates();
+    fCurrentProj->ClearGates();
 }
 
 void CXHist2DPlayer::SetMainWindow(CXMainWindow *w)
@@ -252,6 +282,14 @@ void CXHist2DPlayer::UpdateProjection()
     proj->UpdateProjection(fAxisProj);
 
     Project();
+}
+
+void CXHist2DPlayer::ChangeNProjections()
+{
+    fNProjs = fNProjections->GetIntNumber();
+    if(GetProj()) {
+        InitGG(GetProj()->GetTH2());
+    }
 }
 
 void CXHist2DPlayer::InitGG(TH2 *hist_in)
@@ -285,11 +323,11 @@ void CXHist2DPlayer::InitGG(TH2 *hist_in)
         return;
     }
 
-    CXTH1Proj *NewProj = new CXTH1Proj(*TotalProj);
+    CXTH1Proj *NewProj = new CXTH1Proj(*TotalProj, fNProjs);
     NewProj->SetMainWindow(fMainWindow);
     NewProj->SetPlayer(this);
     NewProj->SetTH2(hist);
-    fMainWindow->NewTab(1,2,"GxG");
+    fMainWindow->NewTab(1,fNProjs+1,"GxG");
 
     TVirtualPad *pad = fMainWindow->GetCanvas()->cd(1);
     NewProj->Draw("hist");
@@ -298,8 +336,10 @@ void CXHist2DPlayer::InitGG(TH2 *hist_in)
     pad->SetBit(TPad::kCannotMove);
     pad->GetFrame()->SetBit(TObject::kCannotPick);
 
-    pad = fMainWindow->GetCanvas()->GetPad(2);
-    NewProj->SetProjPad(dynamic_cast<TPad*>(pad));
+    for(int i=0 ; i<fNProjs ; i++) {
+        pad = fMainWindow->GetCanvas()->GetPad(i+2);
+        NewProj->SetProjPad(i,dynamic_cast<TPad*>(pad));
+    }
 
     gROOT->SetSelectedPad(fMainWindow->GetCanvas()->GetPad(1));
 }
@@ -307,6 +347,30 @@ void CXHist2DPlayer::InitGG(TH2 *hist_in)
 void CXHist2DPlayer::UpdateDrawOpt()
 {
     fMainWindow->GetSaveList()->SetListDrawOption(fDrawOpt->GetText());
+}
+
+
+void CXHist2DPlayer::ToggleFWHM()
+{
+    if(fUseFWHM->GetState() == kButtonUp) {
+        fFWHMGateFraction->SetState(0);
+        fFWHMBackFraction->SetState(0);
+    }
+    else {
+        fFWHMGateFraction->SetState(1);
+        fFWHMBackFraction->SetState(1);
+    }
+}
+
+bool CXHist2DPlayer::UseFWHM()
+{
+    if(!fMainWindow) return false;
+    if(!fMainWindow->GetWSManager()->GetActiveWorkspace() || !fMainWindow->GetWSManager()->GetActiveWorkspace()->fFWHMFunction) {
+        if(fUseFWHM->GetState()==kButtonDown) gbash_color->WarningMessage(Form("No FWHM function in the active workspace: %s -> remove FWHM option",fMainWindow->GetWSManager()->GetActiveWSName().Data()));
+        return false;
+    }
+    if(fUseFWHM->GetState()==kButtonUp) return false;
+    return true;
 }
 
 ClassImp(CXHist2DPlayer)

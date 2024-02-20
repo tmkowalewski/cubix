@@ -135,7 +135,8 @@ public:
    Int_t GetEnabledShortcuts() { return fEnabledShortcuts; }
 
    TH1* FindHisto(TVirtualPad *pad = nullptr);
-   TGraph* FindGraph();
+   TGraph* FindGraph(TVirtualPad *pad = nullptr);
+   TAxis* GetAxis(TVirtualPad *pad = nullptr, int _iaxis=0);
 
    void SaveHistToAsciiFile();
 

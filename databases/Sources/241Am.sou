@@ -1,0 +1,16 @@
+#Generated from http://www.nndc.bnl.gov/nudat3/indx_dec.jsp with conditions:
+#
+#Nucleus             = 241Am
+#T1/2                > 1y && < 1e10y
+#DecayMode           = Disabled
+#Radiation Type      = Gamma
+#Radiation energy    > 10keV && < 10000keV
+#Radiation intensity > 0.1% && < 100%
+#Ordering            = Z, A, T1/2, E
+#Output              = Formated File
+#Uncertainties	     = Standard style
+#
+Dec Mode	Daughter	Rad Ene.  	Unc       	Rad Int.  	Unc
+A       	237NP   	26.3446   	2.0E-4    	2.27      	0.12
+A       	237NP   	33.196    	0.001     	0.126     	0.003
+A       	237NP   	59.5409   	1.0E-4    	35.9      	0.4

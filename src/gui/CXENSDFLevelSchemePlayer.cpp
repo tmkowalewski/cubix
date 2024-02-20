@@ -162,9 +162,9 @@ shared_ptr<tklevel_scheme> CXENSDFLevelSchemePlayer::DrawArrows(TString ListOfNu
         Float_t YMax = 0;
 
         Float_t PadMax = gPad->GetUymax();
-        if(gPad->GetLogy())
-            PadMax = TMath::Power(10,gPad->GetUymax());
+        if(gPad->GetLogy()) PadMax = TMath::Power(10,gPad->GetUymax());
 
+        int itest=0;
         while(YMax>PadMax || YMax==0) {
             for(int i=0 ; i<fListOfLatex->GetEntries() ; i++) {
                 TLatex *l = (TLatex*)fListOfLatex->At(i);
@@ -179,22 +179,21 @@ shared_ptr<tklevel_scheme> CXENSDFLevelSchemePlayer::DrawArrows(TString ListOfNu
             gPad->Update();
             gPad->Modified();
 
-            for(int i=0 ; i<fListOfLatex->GetEntries() ; i++)
-            {
+            for(int i=0 ; i<fListOfLatex->GetEntries() ; i++) {
                 TLatex *l = (TLatex*)fListOfLatex->At(i);
                 if(gPad->GetListOfPrimitives()->FindObject(l) == nullptr) continue;
                 Float_t Y = l->GetY()-(gPad->AbsPixeltoY(l->GetBBox().fY+l->GetBBox().fWidth)-gPad->AbsPixeltoY(l->GetBBox().fY));
-                if(Y>YMax)
-                    YMax = Y;
+                if(Y>YMax) YMax = Y;
             }
 
             PadMax = gPad->GetUymax();
-            if(gPad->GetLogy())
-                PadMax = TMath::Power(10,gPad->GetUymax());
+            if(gPad->GetLogy()) PadMax = TMath::Power(10,gPad->GetUymax());
+
+            itest++;
+            if(itest>10) break;
         }
 
-        if(YMax<fCurrentHist->GetBinContent(fCurrentHist->GetMaximumBin()))
-            fCurrentHist->GetYaxis()->UnZoom();
+        if(YMax<fCurrentHist->GetBinContent(fCurrentHist->GetMaximumBin())) fCurrentHist->GetYaxis()->UnZoom();
 
         gPad->Update();
         gPad->Modified();
@@ -210,9 +209,16 @@ shared_ptr<tklevel_scheme> CXENSDFLevelSchemePlayer::DrawArrowsForNuc(TString Nu
     if(!gmanager->known_nucleus(NucName.Data())) return nullptr;
     tknucleus nuc(NucName);
 
+    if(!fMainWindow->is_db_loaded()) {
+        fMainWindow->pause_db_loading(true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     auto levscheme = nuc.get_level_scheme();
+
     if(!levscheme) return nullptr;
     levscheme->select_dataset(DataSet.Data());
+
+    if(!fMainWindow->is_db_loaded()) fMainWindow->pause_db_loading(false);
 
     auto decays = levscheme->get_decays<tkgammadecay>();
     for(const auto &dec: decays) {
@@ -240,9 +246,14 @@ void CXENSDFLevelSchemePlayer::DrawArrow(TH1 *hist, const std::shared_ptr<tkn::t
         if((Strengh<fMinStrenght || Strengh>fMaxStrenght)) return;
     }
 
-    double ELevI = level_from->get_energy();
-    double ELevF = level_to->get_energy();
+    double ELevI = level_from->get_energy(tkn::tkunit_manager::keV,true);
+    TString offsetI="";
+    if(level_from->is_energy_offset()) offsetI += level_from->get_offset_bandhead() + "+";
+    double ELevF = level_to->get_energy(tkn::tkunit_manager::keV,true);
+    TString offsetF="";
+    if(level_from->is_energy_offset()) offsetF += level_from->get_offset_bandhead() + "+";
 
+    if(fGuiLSPlayer->UseELevels() && level_from->is_energy_offset()) return;
     if(fGuiLSPlayer->UseELevels() && (ELevI<fMinELevel || ELevI>fMaxELevel)) return;
 
     double spinI = level_from->get_spin_parity()->get_spin().get_value();
@@ -321,7 +332,7 @@ void CXENSDFLevelSchemePlayer::DrawArrow(TH1 *hist, const std::shared_ptr<tkn::t
     Bool_t AdvancedTitle = fGuiLSPlayer->IsFullTitleMode();
 
     TString SIL = level_from->get_spin_parity_str();
-    TString ILE = Form("%.1f",ELevI);
+    TString ILE = Form("%s%.1f",offsetI.Data(),ELevI);
 
     ToolTip.Append(Form("%s (%s keV)",SIL.Data(),ILE.Data()));
     if(AdvancedTitle) GammaTitle.Append(Form(" : %s",SIL.Data()));
@@ -330,7 +341,7 @@ void CXENSDFLevelSchemePlayer::DrawArrow(TH1 *hist, const std::shared_ptr<tkn::t
     if(AdvancedTitle) GammaTitle.Append("#rightarrow ");
 
     TString SFL = level_to->get_spin_parity_str();
-    TString FLE = Form("%.1f",ELevF);
+    TString FLE = Form("%s%.1f",offsetF.Data(),ELevF);
 
     ToolTip.Append(Form("%s (%s keV)",SFL.Data(),FLE.Data()));
     if(AdvancedTitle) GammaTitle.Append(Form("%s",SFL.Data()));

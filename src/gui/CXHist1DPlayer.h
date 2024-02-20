@@ -53,6 +53,7 @@ class CXArrow;
 class CXHist1DPlayer;
 class CXFit;
 class CXBgdFit;
+class CXWorkspace;
 
 class CXHist1DPlayer : public  TGVerticalFrame
 {
@@ -60,23 +61,26 @@ class CXHist1DPlayer : public  TGVerticalFrame
 
 public:
     TGCheckButton *fUseLT, *fUseRT;
-    TGCheckButton *fFixFWHM, *fFixLT, *fFixRT, *fFixMean, *fFixAmpli;
+    TGCheckButton *fFixFWHM, *fFWHMFromWS, *fFixLT, *fFixRT, *fFixMean, *fFixAmpli;
     TGCheckButton *fBckStep, *fBckPol1, *fBckExp;
     TGCheckButton *fBckPol1_Bgd, *fBckExp_Bgd;
+    TGNumberEntry *fFWHMSigma;
     TGNumberEntry *fNE_FWHM[3];
     TGNumberEntry *fNE_LT[3];
     TGNumberEntry *fNE_RT[3];
     TGTextEntry   *fFitOptions;
 
-    Bool_t fUseStep = true;
-    Bool_t fUsePol1 = false;
-    Bool_t fUseExp = false;
+    bool fUseStep = true;
+    bool fUsePol1 = false;
+    bool fUseExp = false;
+    bool fUseFWHM = false;
+    double fFWHMSigmaValue = 2.;
 
-    Bool_t fUseBgdPol1 = false;
-    Bool_t fUseBgdExp = false;
+    bool fUseBgdPol1 = false;
+    bool fUseBgdExp = false;
 
-    Bool_t DoNewFit = false;
-    Bool_t DoNewBgdFit = false;
+    bool DoNewFit = false;
+    bool DoNewBgdFit = false;
 
 private:
 
@@ -142,6 +146,8 @@ public:
     const char *GetAlgorithm() {return fAlgorithm->GetSelectedEntry()->GetTitle();}
     Double_t GetTolerance() {return fTolenrance->GetNumber();}
     Int_t GetPrintLevel() {return fPrintLevel->GetNumber();}
+
+    void SaveFit();
 
     ClassDef(CXHist1DPlayer,0);
 };

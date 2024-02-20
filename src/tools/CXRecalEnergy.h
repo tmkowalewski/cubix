@@ -35,19 +35,9 @@
 #define CXRecalEnergy_h
 
 #include <ctime>
-#include <csignal>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <iomanip>
 #include <string>
-#include <stdlib.h>
-#include <cmath>
 #include <memory.h>
-
 #include <vector>
-#include <algorithm>
-#include <functional>
 
 #include "TString.h"
 #include "TF1.h"
@@ -59,19 +49,21 @@ using namespace std;
 
 struct Fitted
 {
-    Fitted() : NSubPeaks(0), BgdOff(0), BgdSlope(0), BgFrom(0), BgTo(0), area(0), ampli(0), posi(0), errposi(0), fw05(0), fw01(0), fwhm(0), tailL(0), tailR(0), Lambda(0), Rho(0), S(0), erefindex(-1), eref(0), good(false) {;}
+    Fitted() : NSubPeaks(0), BgdOff(0), BgdSlope(0), BgFrom(0), BgTo(0), area(0), errarea(0), ampli(0), posi(0), errposi(0), fw05(0), fw01(0), fwhm(0), tailL(0), tailR(0), Lambda(0), Rho(0), S(0), erefindex(-1), eref(0), good(false) {;}
     int NSubPeaks;
     double BgdOff;
     double BgdSlope;
     double BgFrom;
     double BgTo;
     double area;
+    double errarea;
     double ampli;
     double posi;
     double errposi;
     double fw05;
     double fw01;
     double fwhm;
+    double errfwhm;
     double tailL;
     double tailR;
     double Lambda;
@@ -128,6 +120,7 @@ public:
     virtual ~CXRecalEnergy(){}
 
     void StartCalib();
+    void FitEfficiency();
 
     TString fSpectraFolderName;
     TString fSourceName;
@@ -140,23 +133,28 @@ public:
     TF1          *fCalibFunction = nullptr;
     TGraphErrors *fCalibGraph = nullptr;
     TGraphErrors *fResidueGraph = nullptr;
+    TGraphErrors *fFWHMGraph = nullptr;
+    TH1          *fCalibConfidenceIntervall = nullptr;
+
+    TGraphErrors *fEfficiencyGraph = nullptr;
 
 public:
 
     void SetDataFromHistTH1(TH1 *hist, Int_t Id=0);
     void SetFileName(TString FileName){specName = FileName;}
 
-    void SetChannelOffset(int Off){specOffset = Off;} //channel offset to subtract to the position of the peaks [0]
-    void SetGlobalChannelLimits(int ChFrom, int ChTo){specFromDef = ChFrom; specToDef = ChTo; nlim.clear();} //limit the search to this range in channels
+    void SetChannelOffset(int Off){specOffset = Off*hGain;} //channel offset to subtract to the position of the peaks [0]
+    void SetGlobalChannelLimits(int ChFrom, int ChTo){specFromDef = ChFrom*hGain; specToDef = ChTo*hGain; nlim.clear();} //limit the search to this range in channels
 
     void SetSource(TString SourceName){fSourceName = SourceName; AnalyseSources();}
     void AnalyseSources();
-    void AddPeak(double EPeak){Energies.push_back(EPeak);} //add this energy to the list of lines (can be given more than once)
+    void AddPeak(double EPeak, double error=0.){Energies.push_back(EPeak),Energies_unc.push_back(error);} //add this energy to the list of lines (can be given more than once)
+    void AddEfficiencyPeak(array<double,4> _effarray) {Intensities.push_back(_effarray);}
     Int_t GetNEnergies(){return Energies.size();}
     vector< double > GetEnergies(){return Energies;}
     void RemoveClosestPeakTo(double EPeak){Delendae.push_back(EPeak);} //remove the line closest to this energy from the list of lines
     void SetRefPeak(double EPeak){refEner = EPeak;} //energy (keV) of the reference peak for extended printouts
-    void SetGlobalPeaksLimits(float DefFWHM, float DefAmpli){specFWHMdef = DefFWHM; specAMPLdef = DefAmpli;} //default fwhm and minmum amplitude for the peaksearch [10 5]
+    void SetGlobalPeaksLimits(float DefFWHM, float DefAmpli){specFWHMdef = DefFWHM*hGain; specAMPLdef = DefAmpli;} //default fwhm and minmum amplitude for the peaksearch [10 5]
 
     void UseFlatBackGround(){fFlatBg = true; fAffineBg = false;} // Use a flat function background to fit the peaks
     void UseAffineBackGround(){fAffineBg = true; fFlatBg = false;} // Use a affine function background to fit the peaks
@@ -180,7 +178,7 @@ public:
     Float_t GetOffset(){return offset1;}
     Float_t GetSlope(){return slope1*hGain;}
 
-    Double_t PolynomialFunc(Double_t*xx,Double_t*pp);
+    Double_t PolynomialFunc(Double_t*x, Double_t*p);
 
 public:
 
@@ -199,7 +197,10 @@ public:
 
     vector<double> specPeaks;
     vector<double> Energies;
+    vector<double> Energies_unc;
     vector<double> Delendae;
+
+    vector<array<double,4>> Intensities;
 
     double eBhead;      // band head
     double eBstep;      // delta
@@ -240,9 +241,11 @@ public:
     double offset1, slope1;               // should be generalized to polynomials
     double offset2, slope2, curv2;
 
-    float hGain;
+    float hGain=1;
 
     int  Verbosity;  // &1 PeakFit  &2 CalibPeaks   &4 CalibSort
+
+    bool fDoEffScale = false;
 
     // functions of ReadATCA
     void    initialize();
@@ -254,9 +257,11 @@ public:
     int     xP_Next2(float *yVal, int yLen);
     int     FitPeaks(int verbose);
     Int_t   EROOTCalibration();
+    Int_t   ROOTEffFit();
     double  TCalibration();   // shift of the largest peak from its reference position (to be done)
     bool    InvertMatrix3(const double m[9], double invOut[9]);
     double  Calibrated(double x);
+    void    DoEfficiencyScale(bool _on) {fDoEffScale = _on;}
 
     clock_t startTime, stopTime;
 

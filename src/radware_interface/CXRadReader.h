@@ -35,8 +35,6 @@
 #define CXRadReader_H
 
 #include <vector>
-#include <array>
-#include <signal.h>
 
 #include "TString.h"
 

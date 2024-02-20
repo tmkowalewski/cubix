@@ -34,15 +34,17 @@
 #ifndef CXFit_H
 #define CXFit_H
 
-#include "TObject.h"
-
+#include <sstream>
 #include <vector>
+
+#include "TObject.h"
 
 class CXHist1DPlayer;
 class TVirtualPad;
 class TH1;
 class TF1;
 class CXArrow;
+class CXWorkspace;
 
 class CXFit : public TObject
 {
@@ -61,8 +63,12 @@ private:
     std::vector<Double_t> fEnergies;
     std::vector<Double_t> fBackgd;
 
+    CXWorkspace *fWorkspace = nullptr;
+
+    std::ostringstream fsavedStream;
+
 public:
-    CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player);
+    CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
     ~CXFit();
 
     void AddArrow(Double_t Energy);
@@ -76,6 +82,8 @@ public:
     Double_t Residue(Double_t*xx,Double_t*pp);
 
     void Clear(TVirtualPad *pad = nullptr);
+
+    TString Save();
 
     ClassDef(CXFit,0);
 };

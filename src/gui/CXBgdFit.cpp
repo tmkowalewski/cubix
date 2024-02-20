@@ -35,7 +35,6 @@
 
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <sstream>
 
 #include "TF1.h"
@@ -48,14 +47,17 @@
 #include "CXArrow.h"
 #include "CXMainWindow.h"
 #include "CXBashColor.h"
+#include "CXWSManager.h"
 
 using namespace std;
 
-CXBgdFit::CXBgdFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player) : TObject()
+CXBgdFit::CXBgdFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace) : TObject()
 {
     fHistogram = hist;
     fPad = pad;
     fPlayer = player;
+
+    fWorkspace = _workspace;
 
     fListOfArrows = new TList;
     fListOfArrows->SetOwner();
@@ -165,6 +167,7 @@ void CXBgdFit::Clear(TVirtualPad *pad)
 void CXBgdFit::Fit()
 {
     if(fListOfArrows->GetEntries()<4 || (fListOfArrows->GetEntries()%2) !=0) {
+        gbash_color->WarningMessage("At least two pairs of arrows are needed to define the background to fit (two before and two after the peak)");
         return;
     }
 
@@ -235,8 +238,7 @@ void CXBgdFit::Fit()
     TFitResultPtr r = HistoToFit->Fit(fBackFunction,FitOpt.Data(),FitOpt.Data());
     ostringstream text;
 
-    cout<<r<<endl;
-    if(r==-1) {
+    if(r.Get() == nullptr) {
         gbash_color->WarningMessage("Oups... Error in fitting histogram");
         return;
     }
@@ -244,20 +246,33 @@ void CXBgdFit::Fit()
     text << "Fit results :";
     cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kPrint);text.str("");
     text << "Status: ";
-    if(r->Status()==0)
+    if(r->IsValid())
         text << " Successeful" << endl;
     else
         text << " Failed" << endl;
     cout<<text.str();
-    if(r->Status()==0)
+    if(r->IsValid())
         fPlayer->PrintInListBox(text.str(),kPrint);
     else
         fPlayer->PrintInListBox(text.str(),kError);
     text.str("");
 
-    Float_t Area = fHistogram->Integral(fHistogram->GetXaxis()->FindBin(fBackgd.front()),fHistogram->GetXaxis()->FindBin(fBackgd.back()));
-    Float_t BgdArea = fBackFunction->Integral(fBackgd.front(),fBackgd.back(),1e-6);
-    Float_t CorrArea = Area-BgdArea;
+    double Area = fHistogram->Integral(fHistogram->GetXaxis()->FindBin(fBackgd.front()),fHistogram->GetXaxis()->FindBin(fBackgd.back()));
+    double BgdArea = fBackFunction->Integral(fBackgd.front(),fBackgd.back(),1e-6)/fHistogram->GetBinWidth(1);
+    double CorrArea = Area-BgdArea;
+    double CorrAreaErr  = sqrt(4*Area + 4*BgdArea);
+
+    double Mean = fHistogram->GetXaxis()->GetBinCenter(fHistogram->GetMaximumBin());
+
+    Double_t Area_eff = 0.;
+    Double_t Area_eff_err = 0.;
+    if(fWorkspace && fWorkspace->fEfficiencyFunction) {
+        double eff = fWorkspace->fEfficiencyFunction->Eval(Mean);
+        Area_eff = CorrArea * eff;
+        double error = 0.;
+        if(fWorkspace->fEfficiencyErrors) error = fWorkspace->fEfficiencyErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(Mean));
+        Area_eff_err = Area_eff * sqrt(CorrAreaErr*CorrAreaErr/(CorrArea*CorrArea) + error*error/(eff*eff));
+    }
 
     text<<left<<setw(11)<<"Integral"<<": "<<setprecision(7)<<setw(10)<<Area<<" ("<<setprecision(7)<<setw(10)<<sqrt(Area)<<")";
     cout<<text.str()<<endl;
@@ -273,6 +288,17 @@ void CXBgdFit::Fit()
     cout<<text.str()<<endl;
     fPlayer->PrintInListBox(text.str(),kInfo);
     text.str("");
+
+    if(Area_eff>0.) {
+        text<<left<<setw(11)<<"Mean"<<": "<<setprecision(7)<<setw(10)<<Mean;
+        cout<<text.str()<<endl;
+        fPlayer->PrintInListBox(text.str(),kInfo);
+        text.str("");
+        text<<left<<setw(11)<<Form("%s area",fWorkspace->GetName())<<": "<<setprecision(7)<<setw(10)<<Area_eff<<" ("<<setprecision(7)<<setw(10)<<Area_eff_err<<")";
+        cout<<text.str()<<endl;
+        fPlayer->PrintInListBox(text.str(),kInfo);
+        text.str("");
+    }
 
     fBackFunction->Draw("same");
 

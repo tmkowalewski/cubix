@@ -116,13 +116,13 @@ public:
     void SetMainWindow(CXMainWindow *w){fMainWindow = w;}
 private:
 
-    void DisplayRadCube(const TString &fname);
+    int DisplayRadCube(const TString &fname);
     void DisplayRadSpe(const TString &fname);
 
     void DisplayObject(const TString& fname,const TString& name);
     void DisplayList(TList *list);
 
-    Bool_t ReadConfFile();
+    Bool_t ReadConfFile(const char *_dirname=".");
 
     ClassDef(CXFileList,0)
 };

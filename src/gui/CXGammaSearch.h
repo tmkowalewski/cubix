@@ -58,6 +58,7 @@ struct GammaTransition{
     TString SpinF;
     TString NucName;
     TString LifeTime;
+    TString Offset;
 };
 
 class CXGammaSearch: public TGTransientFrame

@@ -42,6 +42,7 @@
 #include "TObjArray.h"
 
 #include "CXBashColor.h"
+#include "CXProgressBar.h"
 
 CXRadReader::CXRadReader()
 {
@@ -749,6 +750,9 @@ int CXRadReader::Project2D(vector< pair<float, float> > gates)
     /* spec[4][] = square of statistical uncertainty */
     /* spec[5][] = square of statistical plus systematic uncertainties */
 
+    gbash_color->InfoMessage("2D Projection:");
+    for(auto &gate: gates) cout << " -- E [" << gate.first << " -  " << gate.second << "]" << endl;
+
     xxgd.old_name_gat = xxgd.name_gat;
 
     /* copy data from 2D projection */
@@ -822,6 +826,11 @@ int CXRadReader::Project2D(vector< pair<float, float> > gates)
 
 int CXRadReader::Project3D(vector< pair<float, float> > gatesX, vector< pair<float, float> > gatesY)
 {
+    gbash_color->InfoMessage("3D Projection:");
+    for(auto &gate: gatesX) cout << " -- E [" << gate.first << " -  " << gate.second << "]" << endl;
+    cout << " AND " << endl;
+    for(auto &gate: gatesY) cout << " -- E [" << gate.first << " -  " << gate.second << "]" << endl;
+
     xxgd.old_name_gat = xxgd.name_gat;
 
     /* copy data from 2D projection */
@@ -879,13 +888,25 @@ int CXRadReader::Project3D(vector< pair<float, float> > gatesX, vector< pair<flo
         if (xxgd.spec[5][i] < 1.0f) xxgd.spec[5][i] = 1.0f;
     }
 
-    TString Name = Form("RadCube_%s/%s", NameX.Data(), NameY.Data());
-
+    delete fGatedSpectrum;
+    fGatedSpectrum = dynamic_cast<TH1*>(hTotalProj->Clone());
     fGatedSpectrum->Reset();
-    fGatedSpectrum->SetNameTitle(Name,Name);
+    fGatedSpectrum->SetXTitle("Energy (keV)");
+    fGatedSpectrum->SetYTitle(Form("Counts (%g keV/bin)",fGatedSpectrum->GetBinWidth(1)));
+    fGatedSpectrum->GetXaxis()->SetTitleOffset(1.2);
+    fGatedSpectrum->GetYaxis()->SetTitleOffset(0.8);
+    fGatedSpectrum->SetStats();
+    fGatedSpectrum->SetNameTitle(xxgd.name_gat,xxgd.name_gat);
 
+    delete fGatedSpectrumNoBG;
+    fGatedSpectrumNoBG = dynamic_cast<TH1*>(hTotalProj->Clone());
     fGatedSpectrumNoBG->Reset();
-    fGatedSpectrumNoBG->SetNameTitle(Form("%s_NoBG",Name.Data()),Form("%s_NoBG",Name.Data()));
+    fGatedSpectrumNoBG->SetXTitle("Energy (keV)");
+    fGatedSpectrumNoBG->SetYTitle(Form("Counts (%g keV/bin)",fGatedSpectrum->GetBinWidth(1)));
+    fGatedSpectrum->GetXaxis()->SetTitleOffset(1.2);
+    fGatedSpectrum->GetYaxis()->SetTitleOffset(0.8);
+    fGatedSpectrum->SetStats();
+    fGatedSpectrumNoBG->SetNameTitle(Form("%s_NoBG",xxgd.name_gat.Data()),Form("%s_NoBG",xxgd.name_gat.Data()));
 
     for (int i = 0; i < xxgd.numchs; ++i) {
         fGatedSpectrum->SetBinContent(i+1,xxgd.spec[0][i] * xxgd.ewid_sp[0]);
@@ -907,6 +928,8 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
     unsigned char lobyte[RW_MAXCH+6];
     unsigned short overflows[RW_MAXCH][2], numoverflows;
     int overflowaddr;
+
+    CXProgressBar progress(gd3d->nummc);
 
     /* malloc the 2D projection space */
     if (!(data2d=(uint *)malloc(4*(length+8)*length))) {
@@ -933,6 +956,8 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
         printf("Projecting cube to 1D...\n");
     else if(Mode==2)
         printf("Projecting cube to 2D...\n");
+    else if(Mode==3)
+        printf("Projecting cube to 1D and 2D...\n");
     else
         return 1;
 
@@ -940,12 +965,13 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
         for (iz=0; iz<length; iz+=8) {
             for (iy=0; iy<=iz; iy+=8) {
                 for (ix=0; ix<=iy; ix+=8) {
+                    progress+=2;
                     j = LUMC3D(ix,iy,iz);
                     getmc3d(j,mc);
                     getmc3d(j+1,&mc[256]);
-                    if ((j&511)==0) {
-                        cout << Form("\rx y z: %4d %4d %4d",ix,iy,iz);
-                    }
+//                    if ((j&511)==0) {
+//                        cout << Form("\rx y z: %4d %4d %4d",ix,iy,iz);
+//                    }
                     for (i=0; i<512; i++) {
                         *(data2d + (iy+ay[i])*length + ix+ax[i]) += mc[i];
                         *(data2d + (iz+az[i])*length + ix+ax[i]) += mc[i];
@@ -955,7 +981,6 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
             }
         }
     }
-
     else if (gd3d->cubetype==1) {  /* compressed 1/2 cube */
         j = 0;
         for (iz=0; iz<length; iz+=8) {
@@ -967,9 +992,10 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
                     } else {
                         memset(&mc[256], 0, 1024);
                     }
-                    if ((j&511)==0) {
-                        cout << Form("\rx y z: %4d %4d %4d",ix,iy,iz);
-                    }
+                    progress+=2;
+//                    if ((j&511)==0) {
+//                        cout << Form("\rx y z: %4d %4d %4d",ix,iy,iz);
+//                    }
                     for (i=0; i<512; i++)
                         *(data2d + (iz+ay[i])*length + iy+ax[i]) += mc[i];
                 }
@@ -992,9 +1018,10 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
                         for (i=0; i<512; i++)
                             swap2(&mc2[i]);
                     }
-                    if (((j++)&255)==0) {
-                        cout << Form("\rx y z: %4d %4d %4d",ix,iy,iz);
-                    }
+                    progress+=1;
+//                    if (((j++)&255)==0) {
+//                        cout << Form("\rx y z: %4d %4d %4d",ix,iy,iz);
+//                    }
                     for (i=0; i<512; i++) {
                         *(data2d + (iy+ay[i])*length + ix+ax[i]) += mc2[i];
                         *(data2d + (iz+az[i])*length + ix+ax[i]) += mc2[i];
@@ -1004,13 +1031,13 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
             }
         }
     }
-
     else if (gd3d->cubetype==3) {  /* uncompressed 1/2 cube */
         j = 1024;
         k = 1 + ((length*(length+1)/2 * (length+6) + 1023) / 1024);
         k = k * 1024;
         for (iz=0; iz<length; iz++) {
-            cout << Form("\r z: %4d ", iz);
+            progress++;
+//            cout << Form("\r z: %4d ", iz);
             for (iy=0; iy<=iz; iy++) {
                 fseek(gd3d->CubeFile3d, ((long)j), SEEK_SET);
                 if (!fread(lobyte,length+6,1,gd3d->CubeFile3d)) {
@@ -1045,8 +1072,8 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
 
     FILE *file;
 
-    if(Mode == 2) {
-        TString nameout = FileName.ReplaceAll(".cub",".2dp");
+    if(Mode == 2 || Mode == 3) {
+        TString nameout = FileName.Copy().ReplaceAll(".cub",".2dp");
 
         file=fopen(nameout,"w+");
 
@@ -1065,8 +1092,8 @@ Int_t CXRadReader::AutoBuildProj(TString FileName, Int_t Mode)
         }
         fclose(file);
     }
-    if(Mode == 1) {
-        TString nameout = FileName.ReplaceAll(".cub",".spe");
+    if(Mode == 1 || Mode == 3) {
+        TString nameout = FileName.Copy().ReplaceAll(".cub",".spe");
 
         for (y=0; y<length; y++) {
             data1d[y] = 0.0;

@@ -32,7 +32,7 @@
  ********************************************************************************/
 
 #include <iostream>
-#include <iomanip>
+#include <fstream>
 
 #include "TRint.h"
 #include "TString.h"
@@ -51,6 +51,9 @@ using namespace std;
 
 void print_splash_screen();
 
+TString CXWorkspace="";
+TString Default_WS="None";
+
 CXMainWindow *fCXMainWindow;
 
 class TInterruptHandler : public TSignalHandler {
@@ -66,6 +69,49 @@ class TInterruptHandler : public TSignalHandler {
           return kTRUE;
       }
 };
+
+bool ReadCubixrc()
+{
+    TString confile=gSystem->ExpandPathName("${HOME}/.cubixrc");
+
+    // if not in home, use the installed one
+    if(gSystem->AccessPathName(confile.Data())) {
+        confile = gSystem->ExpandPathName(Form("%s/conf/cubixrc",getenv("CUBIX_SYS")));
+        if(gSystem->AccessPathName(confile.Data())) {
+            return false;
+        }
+    }
+
+    ifstream file(confile.Data());
+    TString line;
+    while(line.ReadLine(file)) {
+        if(line.BeginsWith("*")) continue;
+        if(line.BeginsWith("#")) continue;
+        line.ReplaceAll("\t"," ");
+        TObjArray *arr = line.Tokenize(" ");
+        TString Key = arr->First()->GetName();
+        if(Key.EqualTo("CXWorkspace",TString::kIgnoreCase) && arr->GetEntries()==2) {
+            CXWorkspace = gSystem->ExpandPathName(arr->Last()->GetName());
+        }
+        if(Key.EqualTo("Default_WS",TString::kIgnoreCase) && arr->GetEntries()==2) {
+            Default_WS = arr->Last()->GetName();
+        }
+        delete arr;
+    }
+
+    if(CXWorkspace !="" || Default_WS != "None") {
+        glog << tkn::info << "Loading cubix configuration from: " << confile.Data() << tkn::do_endl;
+        if(CXWorkspace !="") glog << tkn::info << "Cubix Workspace directory -> " << CXWorkspace.Data() << tkn::do_endl;
+        if(Default_WS != "None") glog << tkn::info << "Default workspace loaded  -> " << Default_WS << tkn::do_endl;
+    }
+
+    return true;
+}
+
+void Terminate()
+{
+    cout << "totototototo" << endl;
+}
 
 int main(int argc, char **argv)
 {
@@ -99,9 +145,16 @@ int main(int argc, char **argv)
     TApplication::NeedGraphicsLibs();
     gApplication->InitializeGraphics();
 
-    fCXMainWindow = new CXMainWindow(gClient->GetRoot(), 1300, 600 );
-    if(!gSystem->AccessPathName(file)) fCXMainWindow->OpenFile(file);
+    ReadCubixrc();
 
+    fCXMainWindow = new CXMainWindow(gClient->GetRoot(), 1500, 700 );
+    gApplication->Connect("Terminate(Int_t)", "CXMainWindow", fCXMainWindow, "CloseWindow()");
+
+    if(CXWorkspace !="") fCXMainWindow->SetWorkSpaceDirectory(CXWorkspace);
+    if(Default_WS != "None") fCXMainWindow->LoadWorkSpace(Default_WS);
+
+    if(!gSystem->AccessPathName(file)) fCXMainWindow->OpenFile(file);
+    
     Cubix_App->Run();
 
     if (fCXMainWindow) fCXMainWindow->CloseWindow();

@@ -62,6 +62,11 @@ private:
     TGTextEntry *fSources = nullptr;
     CXMainWindow *fMainWindow = nullptr;
 
+    TGNumberEntry *fSourceEnergyRangeMin = nullptr;
+    TGNumberEntry *fSourceEnergyRangeMax = nullptr;
+    TGNumberEntry *fSourceIntensityRangeMin = nullptr;
+    TGNumberEntry *fSourceIntensityRangeMax = nullptr;
+
     TGNumberEntry *fRangeMin = nullptr;
     TGNumberEntry *fRangeMax = nullptr;
     TGNumberEntry *fFWHMSPEntry = nullptr;
@@ -77,13 +82,18 @@ private:
 
     TList *fListOfObjects = nullptr;
 
-    TString fSourcesFolder;
-
-    vector< Double_t > fEnergies;
+    vector< pair<double,double> > fEnergies;
+    vector<array<double, 4>> fIntensities;
     Double_t fERef=0.;
 
     CXRecalEnergy *fRecalEnergy = nullptr;
     TCanvas *fCalibCanvas = nullptr;
+    TF1 *fCalibFunction = nullptr;
+
+    TCanvas *fFWHMCanvas = nullptr;
+    TGraph *fFWHMGraph = nullptr;
+    TF1 *fFWHMFunction = nullptr;
+    TH1 *fFWHMConfidenceIntervall = nullptr;
 
 public:
 
@@ -93,18 +103,26 @@ public:
     CXMainWindow *GetMainWindow(){return fMainWindow;}
     void SetMainWindow(CXMainWindow *w);
 
+    void ShowSources();
     void UpdateSources();
     void UpdateText();
     void CleanCalib();
     void GetCurrentRange();
 
-    void HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObject* selected);
-    void HandleMyButton();
+    void CloseCanvas();
 
+    TH1 *CheckFitProperties();
     void Calibrate();
+    void ApplyCalibration(TH1 *_hist=nullptr, TF1 *_func=nullptr);
+
+    void FWHMCalib();
+    void BuildFWHMGraph();
 
     double DinoFct(double*xx,double*pp);
     TF1 *GetDinoFct(TString Name, double min, double max, int Npar);
+
+    void SaveECal();
+    void SaveFWHM();
 
     ClassDef(CXHist1DCalib,0);
 };
