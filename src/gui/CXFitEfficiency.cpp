@@ -65,7 +65,7 @@ CXFitEfficiency::CXFitEfficiency(const TGCompositeFrame *MotherFrame, UInt_t w, 
     AddFrame(fGroupFrame, new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 3, 3, 0, 0));
 
     fGroupFrame->AddFrame(new TGLabel(fGroupFrame,"Input data"), new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 0, 0, 5, 0));
-    fSources = new TGTextEntry(fGroupFrame, "152Eu");
+    fSources = new TGTextEntry(fGroupFrame, "");
     fSources->SetToolTipText("List of sources (files in $CUBIX_SYS/dataBase/Sources)");
     fSources->Connect("TextChanged(const char *)", "CXFitEfficiency", this, "UpdateText()");
     fSources->Connect("ReturnPressed()", "CXFitEfficiency", this, "UpdateSources()");

@@ -816,6 +816,14 @@ void CXAngCorrPlayer::FitMixing1D()
 
     gbash_color->InfoMessage("Fit Mixing:");
 
+    bool ok = false;
+
+    if(!(isnan(mindelta) || isnan(maxdelta))) {
+        gbash_color->InfoMessage("Mixing estimation based on Chi2min+1 evaluation:");
+        fMixingLabel->SetText(Form("Mixing value: %.3g [%.3g ; %.3g]",BestDelta,mindelta,maxdelta));
+        cout << Form("Mixing value: %.3g [%.3g ; %.3g]",BestDelta,mindelta,maxdelta) << endl;
+        ok = true;
+    }
     if(ftest->GetMaximum()>0.) {
 
         double mindeltaerr=0., maxdeltaerr=0.;
@@ -844,16 +852,12 @@ void CXAngCorrPlayer::FitMixing1D()
         gbash_color->InfoMessage("Mixing estimation based on experimental error bars:");
         fMixingLabel->SetText(Form("Mixing value: %.3g [%.3g ; %.3g]",BestDelta,mindeltaerr,maxdeltaerr));
         cout << Form("Mixing value: %.3g [%.3g ; %.3g]",BestDelta,mindeltaerr,maxdeltaerr) << endl;
+        ok = true;
     }
     else {
         gbash_color->WarningMessage("Experimental point not on the curve, uncertainties estimated using the Chi2+1 values");
     }
-    if(!(isnan(mindelta) || isnan(maxdelta))) {
-        gbash_color->InfoMessage("Mixing estimation based on Chi2min+1 evaluation:");
-        fMixingLabel->SetText(Form("Mixing value: %.3g [%.3g ; %.3g]",BestDelta,mindelta,maxdelta));
-        cout << Form("Mixing value: %.3g [%.3g ; %.3g]",BestDelta,mindelta,maxdelta) << endl;
-    }
-    else {
+    if(!ok) {
         gbash_color->WarningMessage("could not find any value corresponding to Chi2min+1");
         fMixingLabel->SetText("Mixing value: ?");
     }
