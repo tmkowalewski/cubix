@@ -83,6 +83,13 @@ endif()
 # ------------------------- Find ROOT ------------------------------
 # ==================================================================
 
+unset(HAS_ROOT_CONFIG CACHE)
+EXECUTE_PROCESS(COMMAND which root-config OUTPUT_VARIABLE HAS_ROOT_CONFIG OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+if(NOT HAS_ROOT_CONFIG)
+    message(FATAL_ERROR "root-config not found, make sure root is loaded in your environment")
+endif()
+
 find_package(ROOT 6.20 CONFIG REQUIRED)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_INSTALL_PREFIX}/lib)
 
@@ -93,17 +100,15 @@ MESSAGE(STATUS "ROOT Version: ${ROOT_VERSION} ")
 INCLUDE_DIRECTORIES( ${ROOT_INCLUDE_DIR} )
 LINK_DIRECTORIES( ${ROOT_LIBRARY_DIR} )
 
-unset(MATHMORE_FOUND CACHE)
 unset(HAS_MATHMORE CACHE)
+EXECUTE_PROCESS(COMMAND root-config --has-mathmore OUTPUT_VARIABLE HAS_MATHMORE OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-find_library(MATHMORE_FOUND "mathmore")
-
-if(NOT MATHMORE_FOUND)
-    print(WARNING "Cubix compiled without mathmore, angular correlations tool will not be available !")
-    SET(HAS_MATHMORE OFF)
-else ()
+if(${HAS_MATHMORE})
     MESSAGE(STATUS "mathmore lib has been found")
     SET(HAS_MATHMORE On)
+else ()
+    print(WARNING "Cubix compiled without mathmore, angular correlations tool will not be available !")
+    SET(HAS_MATHMORE OFF)
 endif()
 
 # ==================================================================
