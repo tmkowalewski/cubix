@@ -33,6 +33,9 @@
 
 #include "CXMainWindow.h"
 
+#include <thread>
+#include <chrono>
+
 #include "TStyle.h"
 #include "TG3DLine.h"
 #include "TApplication.h"
