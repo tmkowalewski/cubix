@@ -1315,12 +1315,11 @@ void CXCanvas::UndrawObject(TObject *obj)
     if (obj->InheritsFrom(TF1::Class())) {
         TH1* hh = nullptr;
         if ((hh = FindHisto())) hh->GetListOfFunctions()->Remove(obj);
-    } else GetListOfPrimitives()->Remove(obj);
-
+    } else gPad->GetCanvas()->GetListOfPrimitives()->Remove(obj);
 
     bool firsthist=true;
-    for(int i=0 ; i<fPrimitives->GetEntries() ; i++){
-        TObject *o = fPrimitives->At(i);
+    for(int i=0 ; i<gPad->GetCanvas()->GetListOfPrimitives()->GetEntries() ; i++){
+        TObject *o = gPad->GetCanvas()->GetListOfPrimitives()->At(i);
         if(o->InheritsFrom("TH1")){
             TH1 *h = dynamic_cast<TH1*>(o);
             if(((TString)h->GetDrawOption()).Contains("same") && firsthist)
@@ -1340,14 +1339,25 @@ void CXCanvas::Paste()
         Modified();
         Update();
         TString option = gDrawOptions;
-        if (gCopyObject->InheritsFrom("TH1") && (FindHisto() || FindGraph() )) option += " same";
-        if (gCopyObject->InheritsFrom("TGraph") && (FindHisto() || FindGraph() )) option += "a";
+
+        if(gCopyObject->InheritsFrom(TH1::Class())) {
+            option.ReplaceAll("same","");
+            if((FindHisto() || FindGraph() )) option += " same";
+        }
+        if(gCopyObject->InheritsFrom(TGraph::Class())) {
+            option.ReplaceAll("a","");
+            if((FindHisto() || FindGraph() )) option += " a";
+        }
 
         gCopyObject->Draw(option.Data());
+
         Modified();
         Update();
         gPad->GetFrame()->SetBit(TObject::kCannotPick);
         gCopyObject = nullptr;
+    }
+    else {
+        cout << "no object to paste" << endl;
     }
 }
 
