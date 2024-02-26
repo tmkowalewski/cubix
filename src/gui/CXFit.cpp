@@ -442,7 +442,7 @@ void CXFit::Fit()
         Double_t Area_eff_err = 0.;
         if(fWorkspace && fWorkspace->fEfficiencyFunction) {
             double eff = fWorkspace->fEfficiencyFunction->Eval(Mean);
-            Area_eff = Area * eff;
+            Area_eff = Area / eff;
             double error = 0.;
             if(fWorkspace->fEfficiencyErrors) error = fWorkspace->fEfficiencyErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(Mean));
             Area_eff_err = Area_eff * sqrt(AreaErr*AreaErr/(Area*Area) + error*error/(eff*eff));
