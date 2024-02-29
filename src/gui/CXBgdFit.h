@@ -69,6 +69,8 @@ public:
     void Update();
     void Fit();
 
+    TVirtualPad *GetPad() {return fPad;}
+
     Double_t FuncBackground(Double_t*xx,Double_t*pp);
 
     void Clear(TVirtualPad *pad = nullptr);
