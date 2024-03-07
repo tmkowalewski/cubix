@@ -368,12 +368,11 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
 
     if(gROOT->GetSelectedPad()) {
         TString PadName = gROOT->GetSelectedPad()->GetName();
-        TObjArray *arr = PadName.Tokenize("_");
-        int padnum = atoi(arr->Last()->GetName());
-        if(padnum>1) {
-            fCurrentProjPad = padnum-2;
-            if( fCurrentProjPad >= fProjPad.size() ) {
-                cout << PadName << " " << padnum << " " << fCurrentProjPad << " " << fProjPad.size() << endl;
+        if((PadName.BeginsWith("GxG") || PadName.BeginsWith("Rad")) && PadName.CountChar('_') == 2) {
+            TObjArray *arr = PadName.Tokenize("_");
+            int padnum = atoi(arr->Last()->GetName());
+            if(padnum>1 && (padnum-2)<fProjPad.size() ) {
+                fCurrentProjPad = padnum-2;
             }
         }
     }
