@@ -129,7 +129,7 @@ void CXGateBox::Update()
 
     fAssociatedHist = GetHisto();
 
-    if(fAssociatedHist && fIsButtonReleased) {
+    if(fAssociatedHist) {
 
         Float_t X1 = TMath::Min(fCentroid-fWidth,fCentroid+fWidth);
         Float_t X2 = TMath::Max(fCentroid-fWidth,fCentroid+fWidth);

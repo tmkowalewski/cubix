@@ -168,7 +168,7 @@ CXNucChart::CXNucChart(const TGWindow *p, const TGWindow *main, UInt_t w, UInt_t
     TGVFileSplitter *fSplitter = new TGVFileSplitter(Global,2,2);
     fSplitter->SetFrame(fTGCanvas, kTRUE);
     Global->AddFrame(fSplitter, new TGLayoutHints(kLHintsLeft | kLHintsExpandY));
-    fSplitter->Connect("LayoutHeader(TGFrame *)", "CXNucChart", this, "DoRefresh()");
+    // fSplitter->Connect("LayoutHeader(TGFrame *)", "CXNucChart", this, "DoRefresh(int)");
 
     //Canvas Panel
 

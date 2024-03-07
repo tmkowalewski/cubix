@@ -40,7 +40,7 @@
 #include "TSystem.h"
 #include "TFile.h"
 #include "TKey.h"
-#include "TPad.h"
+#include "TVirtualPad.h"
 #include "CXGFileBrowser.h"
 #include "TGListTree.h"
 #include "TClass.h"
@@ -219,8 +219,12 @@ void CXFileList::DisplayFile(const TString &fname)
         fFolders.push_back(file);
 
         if(file->GetListOfKeys()->GetEntries()==1) {
-            TObject *o = ((TKey*)file->GetListOfKeys()->First())->ReadObj();
-            fMainWindow->DoDraw(o,fBrowser->GetDrawOption());
+
+            TString CanvasName = fMainWindow->GetCanvas()->GetName();
+            if(!(CanvasName.BeginsWith("GxG") || CanvasName.BeginsWith("RadGG") || CanvasName.BeginsWith("RadCube")) ){
+                TObject *o = ((TKey*)file->GetListOfKeys()->First())->ReadObj();
+                fMainWindow->DoDraw(o,fBrowser->GetDrawOption());
+            }
         }
     }
     if(fname.EndsWith(".spe") || fname.EndsWith(".2dp")) {

@@ -1417,8 +1417,8 @@ void CXMainWindow::ProcessedKeyEvent(Event_t *event)
 
     if(gPad && ((TString)gPad->GetCanvas()->GetCanvas()->GetName()) != "NuclearChartCanvas") SetPalette();
 
-//    gVirtualX->LookupString(event, input, sizeof(input), keysym);
-//    std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << " " << input << std::endl;
+   // gVirtualX->LookupString(event, input, sizeof(input), keysym);
+   // std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << " -> " << input << std::endl;
 
     if(event->fState & kKeyControlMask) fCTRL = true;
     else fCTRL = false;
