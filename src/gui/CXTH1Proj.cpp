@@ -222,6 +222,11 @@ void CXTH1Proj::Project(Bool_t FixRange, int _rebin_value)
     if(!fprojok) return;
     fprojok = false;
 
+    if( fCurrentProjPad >= fProjPad.size() ) {
+        gbash_color->WarningMessage(Form("Trying to access to proj pad number %d while size is %ld",fCurrentProjPad, fProjPad.size() ) );
+        return;
+    }
+
     array<Float_t,2> SavedRange{};
     if( FixRange ){
         if(fMainWindow->GetHisto(fProjPad.at(fCurrentProjPad))){
@@ -367,6 +372,9 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
         int padnum = atoi(arr->Last()->GetName());
         if(padnum>1) {
             fCurrentProjPad = padnum-2;
+            if( fCurrentProjPad >= fProjPad.size() ) {
+                cout << PadName << " " << padnum << " " << fCurrentProjPad << " " << fProjPad.size() << endl;
+            }
         }
     }
 
