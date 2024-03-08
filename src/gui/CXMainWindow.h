@@ -195,6 +195,9 @@ protected:
 
     TList *fListOfSavedGates = nullptr;
 
+    double fSavedRangeXMin=0.;
+    double fSavedRangeXMax=0.;
+
 public:
 
     CXGammaSearch   *fGammaSearchWindow = nullptr;

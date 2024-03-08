@@ -485,6 +485,22 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
         if((EKeySym)EventY==kKey_r && !fCTRL && selected && (selected->InheritsFrom(CXArrowBox::Class()))) {
             ((CXArrowBox*)selected)->Clean();
         }
+        if((EKeySym)EventY==kKey_z) {
+            // save range
+            TFrame *frame = gPad->GetFrame();
+            fSavedRangeXMin = frame->GetX1();
+            fSavedRangeXMax = frame->GetX2();
+            gbash_color->InfoMessage(Form("Saved range: [ %d ; %d ]",(int)fSavedRangeXMin,(int)fSavedRangeXMax));
+        }
+        if((EKeySym)EventY==kKey_Z) {
+            // apply save range
+            TH1 *hist = GetHisto();
+            if(hist && (fSavedRangeXMin != fSavedRangeXMax)) {
+                hist->GetXaxis()->SetRangeUser(fSavedRangeXMin,fSavedRangeXMax);
+                gPad->Modified();
+                gPad->Update();
+            }
+        }
     }
 
     /// Don't work with the touch pad

@@ -1415,6 +1415,8 @@ void CXCanvas::InitInfos()
     AddShortcutsInfo("<ctrl> g", "set/unset grid on X and Y axes");
     AddShortcutsInfo("<Maj>  C", "set/unset CrossHair (wheel click to measure distances)");
     AddShortcutsInfo("<ctrl> u", "update canvas");
+    AddShortcutsInfo("z",   "Save the current x-axis range");
+    AddShortcutsInfo("Z",   "Apply the saved x-axis range");
     AddShortcutsInfo("F12", "unzoom");
     AddShortcutsInfo("F9",  "set/unset log scale on X axis");
     AddShortcutsInfo("F10", "set/unset log scale on Y axis");
