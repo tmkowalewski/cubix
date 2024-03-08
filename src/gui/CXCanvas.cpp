@@ -801,26 +801,13 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
         break;
 
     case kKeyDown:
-        //       Info("HandleInput","Key down: %d %d",px,py);
         break;
 
     case kKeyUp:
-        //       Info("HandleInput","Key up: %d %d",px,py);
         break;
-    case kArrowKeyRelease:
 
+    case kArrowKeyPress:
         event = kKeyPress;
-
-        if(px<fLastX)
-            py = kKey_Left;
-        else if(px>fLastX)
-            py = kKey_Right;
-        else if(py<fLastY)
-            py = kKey_Up;
-        else if(py>fLastY)
-            py = kKey_Down;
-
-        /* fall through */
 
     case kKeyPress:
         if (!fSelectedPad || !fSelected) return;
@@ -854,6 +841,11 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
         gPad = pad;
         if (fSelected && fSelected->InheritsFrom(TAxis::Class())) fSelected->ExecuteEvent(event, px, py);
         else if (fSelected && fSelected->InheritsFrom(TH2::Class())) DynamicZoom(sign, px, py);
+
+        {
+            TH1 *hist = FindHisto();
+            if(hist && hist->GetDimension()==1) DynamicZoom1D(hist->GetYaxis(),sign);
+        }
 
         RunAutoExec();
 
@@ -899,33 +891,15 @@ void CXCanvas::ZoomSelected(TH2* TheHisto)
 }
 
 //________________________________________________________________
-void CXCanvas::DynamicZoomTH1(Int_t Sign, Int_t px, Int_t)
+void CXCanvas::DynamicZoom1D(TAxis *axis, Int_t Sign)
 {
-    // Zoom in or out of histogram with mouse wheel
+    // Zoom in or out of histogram on Y axis with mouse wheel
 
-    if (!fSelected) return;
-    TH1* TheHisto = (TH1*) FindHisto();//fSelected;
+    TFrame *frame = gPad->GetFrame();
+    double min = frame->GetY1();
+    double max = frame->GetY2();
 
-    Double_t percent = 0.15 - Sign * 0.05;
-
-    Int_t dX = 0;
-
-    px = AbsPixeltoX(px);
-
-    TAxis* ax = TheHisto->GetXaxis();
-    Int_t NbinsXtmp = ax->GetNbins();
-    Int_t X0tmp = ax->GetFirst();
-    Int_t X1tmp = ax->GetLast();
-    Int_t step = TMath::Min(TMath::Max(1, (Int_t)(percent * (X1tmp - X0tmp))), NbinsXtmp / 2);
-    step *= Sign;
-    X0tmp = TMath::Min(TMath::Max(X0tmp + step, 1), X1tmp - step);
-    X1tmp = TMath::Max(TMath::Min(X1tmp - step, NbinsXtmp), X0tmp);
-    if (X0tmp >= X1tmp) X0tmp = X1tmp - 1;
-    if (Sign > 0) dX = (Int_t)(X0tmp + (X1tmp - X0tmp) * 0.5 - ax->FindBin(px));
-    if ((X0tmp - dX) < 0) ax->SetRange(0, X1tmp - X0tmp);
-    else if ((X1tmp - dX) > ax->GetNbins()) ax->SetRange(ax->GetNbins() - (X1tmp - X0tmp), ax->GetNbins());
-    else ax->SetRange(X0tmp - dX, X1tmp - dX);
-
+    axis->SetRangeUser(min - Sign*0.1*min, max + Sign*0.1*max);
 
     Modified();
     Update();
@@ -1016,6 +990,27 @@ Bool_t CXCanvas::HandleKey(Int_t px, Int_t py)
     bool CTRL = fMainWindow->IsCtrlOn();
     bool SHIFT = fMainWindow->IsShiftOn();
 
+    if(fkey_Left) py = kKey_Left;
+    if(fkey_Right) py = kKey_Right;
+    if(fkey_Up) py = kKey_Up;
+    if(fkey_Down) py = kKey_Down;
+
+    if(fkey_Left || fkey_Right || fkey_Up || fkey_Down) {
+        TH1 *hist = FindHisto();
+        TAxis *axis = nullptr;
+        if(hist) {
+            if(fkey_Left || fkey_Right) {
+                axis = hist->GetXaxis();
+                if(fkey_Left) MoveAxis(axis, -1);
+                else MoveAxis(axis, 1);
+            }
+            else {
+                axis = hist->GetYaxis();
+                if(fkey_Down) MoveAxis(axis, -1);
+                else MoveAxis(axis, 1);
+            }
+        }
+    }
 
     if( CurrentHist1D && !fSelectedHisto && SHIFT ) {
         fSelectedHisto = dynamic_cast<TH1*>(fSelected);
@@ -1211,27 +1206,6 @@ Bool_t CXCanvas::HandleKey(Int_t px, Int_t py)
                 }
             }
             break;
-
-        case kKey_Left:
-            if (fSelected->InheritsFrom(TAxis::Class()) && ((TString)fSelected->GetName()) == "xaxis")    MoveAxis(FindHisto()->GetXaxis(), -1);
-            else if (fSelected->InheritsFrom(TH1::Class())) MoveAxis(FindHisto()->GetXaxis(), -1);
-            break;
-
-        case kKey_Down:
-            if (fSelected->InheritsFrom(TAxis::Class()) && ((TString)fSelected->GetName()) == "yaxis")    MoveAxis(dynamic_cast<TAxis*>(fSelected), -1);
-            else if (fSelected->InheritsFrom(TH1::Class())) MoveAxis(FindHisto()->GetYaxis(), -1);
-            break;
-
-        case kKey_Right:
-            if (fSelected->InheritsFrom(TAxis::Class()) && ((TString)fSelected->GetName()) == "xaxis")    MoveAxis(dynamic_cast<TAxis*>(fSelected), 1);
-            else if (fSelected->InheritsFrom(TH1::Class())) MoveAxis(FindHisto()->GetXaxis(), 1);
-            break;
-
-        case kKey_Up:
-            if (fSelected->InheritsFrom(TAxis::Class()) && ((TString)fSelected->GetName()) == "yaxis")    MoveAxis(dynamic_cast<TAxis*>(fSelected), 1);
-            else if (fSelected->InheritsFrom(TH1::Class())) MoveAxis(FindHisto()->GetYaxis(), 1);
-            break;
-
         case kKey_C:
             SetCrosshair(!GetCrosshair());
             gPad->Modified();
@@ -1373,19 +1347,22 @@ void CXCanvas::MoveAxis(TAxis* ax, Int_t sign)
     Int_t first = ax->GetFirst();
     Int_t last  = ax->GetLast();
 
-    if(!FindHisto()->InheritsFrom("TH2"))
-        ax->UnZoom();
+    // if(!FindHisto()->InheritsFrom("TH2"))
+    //     ax->UnZoom();
 
+    Int_t drange = last - first;
     Int_t dX = (last - first) / 10;
     if (dX == 0) dX++;
 
-    if ((last + 2 < nBins) && (sign > 0)) {
-        ax->SetRange(first + dX, last + dX);
+    if (sign > 0) {
+        if((last + dX)>=nBins) ax->SetRange(nBins - drange, nBins);
+        else ax->SetRange(first + dX, last + dX);
         Modified();
         Update();
     }
-    if ((first - 2 >= 0) && (sign < 0)) {
-        ax->SetRange(first - dX, last - dX);
+    if (sign < 0) {
+        if((first - dX)<=1) ax->SetRange(1, 1+drange);
+        else ax->SetRange(first - dX, last - dX);
         Modified();
         Update();
     }
@@ -1903,6 +1880,17 @@ void CXCanvas::EventProcessed(Event_t *ev, Window_t)
     default:
         evType.Form("Unknown");
         break;
+    }
+
+    fkey_Left = false;fkey_Right = false;fkey_Down = false;fkey_Up = false;
+    if(ev->fType == kGKeyPress) {
+        char input[10];
+        UInt_t keysym;
+        gVirtualX->LookupString(ev, input, sizeof(input), keysym);
+        if(keysym == kKey_Left) fkey_Left = true;
+        else if(keysym == kKey_Right) fkey_Right = true;
+        else if(keysym == kKey_Down) fkey_Down = true;
+        else if(keysym == kKey_Up) fkey_Up = true;
     }
 }
 ClassImp(CXCanvas)

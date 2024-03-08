@@ -60,6 +60,11 @@ protected:
    Double_t XbinPixel, YbinPixel;   //! size of bins in pixels
    Int_t Xf1, Xl1, Yf1, Yl1;  //! last modification to axis limits
 
+   Bool_t fkey_Left = false;
+   Bool_t fkey_Right = false;
+   Bool_t fkey_Down = false;
+   Bool_t fkey_Up = false;
+
    Bool_t   moved1D = false;
    Bool_t   moved2D = false;
    Bool_t   button1double = false;
@@ -151,7 +156,7 @@ protected:
    virtual Bool_t HandleKey(Int_t px, Int_t py);
 
    void DynamicZoom(Int_t Sign, Int_t px, Int_t py);
-   void DynamicZoomTH1(Int_t Sign, Int_t px, Int_t py);
+   void DynamicZoom1D(TAxis *axis, Int_t Sign);
    void RunAutoExec();
    void DrawEventStatus(Int_t event, Int_t px, Int_t py, TObject* selected);
    void ZoomSelected(TH2* TheHisto);
