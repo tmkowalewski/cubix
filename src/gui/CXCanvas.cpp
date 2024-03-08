@@ -841,8 +841,7 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
         gPad = pad;
         if (fSelected && fSelected->InheritsFrom(TAxis::Class())) fSelected->ExecuteEvent(event, px, py);
         else if (fSelected && fSelected->InheritsFrom(TH2::Class())) DynamicZoom(sign, px, py);
-
-        {
+        else {
             TH1 *hist = FindHisto();
             if(hist && hist->GetDimension()==1) DynamicZoom1D(hist->GetYaxis(),sign);
         }
@@ -898,11 +897,10 @@ void CXCanvas::DynamicZoom1D(TAxis *axis, Int_t Sign)
     TFrame *frame = gPad->GetFrame();
     double min = frame->GetY1();
     double max = frame->GetY2();
+    axis->SetRangeUser(min + Sign*0.1*min, max - Sign*0.1*max);
 
-    axis->SetRangeUser(min - Sign*0.1*min, max + Sign*0.1*max);
-
-    Modified();
-    Update();
+    gPad->Modified();
+    gPad->Update();
 }
 
 //________________________________________________________________
