@@ -542,14 +542,20 @@ void CXHist1DPlayer::ClearFits()
 
     for(int i=0 ; i<fListOfFitObjects->GetEntries() ; i++) {
         CXFit *fit = (CXFit*)fListOfFitObjects->At(i);
-        fit->Clear(pad);
+        if(pad == fit->GetPad()) {
+            fit->Clear(pad);
+            fListOfFitObjects->Remove(fit);
+            i--;
+        }
     }
     for(int i=0 ; i<fListOfBgdFitObjects->GetEntries() ; i++) {
         CXBgdFit *fit = (CXBgdFit*)fListOfBgdFitObjects->At(i);
-        fit->Clear(pad);
+        if(pad == fit->GetPad()) {
+            fit->Clear(pad);
+            fListOfBgdFitObjects->Remove(fit);
+            i--;
+        }
     }
-    fListOfFitObjects->Clear();
-    fListOfBgdFitObjects->Clear();
 
     DoNewFit = false;
     DoNewBgdFit = false;

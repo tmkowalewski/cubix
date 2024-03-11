@@ -36,6 +36,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <algorithm>
 
 #include "TMath.h"
 #include "TF1.h"
@@ -306,7 +307,7 @@ void CXFit::Fit()
                 double error = fWorkspace->fFWHMErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(fEnergies[i]));
                 double sigma = fPlayer->fFWHMSigma->GetNumber();
                 fFitFunction->SetParameter(4+i*6+2, FWHM);
-                fFitFunction->SetParLimits(4+i*6+2, FWHM-error*sigma, FWHM+error*sigma);
+                fFitFunction->SetParLimits(4+i*6+2, std::max(0.,FWHM-error*sigma) , FWHM+error*sigma);
             }
         }
         else {

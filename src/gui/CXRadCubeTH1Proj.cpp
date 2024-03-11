@@ -263,6 +263,11 @@ void CXRadCubeTH1Proj::Project(Bool_t FixRange,Bool_t BGSubtract, Int_t Rebin)
     if(!fprojok) return;
     fprojok = false;
 
+    if( fCurrentProjPad >= fProjPad.size() ) {
+        gbash_color->WarningMessage(Form("Trying to access to proj pad number %d while size is %ld",fCurrentProjPad, fProjPad.size() ) );
+        return;
+    }
+
     Float_t SavedRange[2];
     if(!fMainWindow->GetHisto(fProjPad.at(fCurrentProjPad))) FixRange = false;
     if( FixRange ) {

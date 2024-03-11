@@ -222,6 +222,11 @@ void CXTH1Proj::Project(Bool_t FixRange, int _rebin_value)
     if(!fprojok) return;
     fprojok = false;
 
+    if( fCurrentProjPad >= fProjPad.size() ) {
+        gbash_color->WarningMessage(Form("Trying to access to proj pad number %d while size is %ld",fCurrentProjPad, fProjPad.size() ) );
+        return;
+    }
+
     array<Float_t,2> SavedRange{};
     if( FixRange ){
         if(fMainWindow->GetHisto(fProjPad.at(fCurrentProjPad))){
@@ -363,10 +368,12 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
 
     if(gROOT->GetSelectedPad()) {
         TString PadName = gROOT->GetSelectedPad()->GetName();
-        TObjArray *arr = PadName.Tokenize("_");
-        int padnum = atoi(arr->Last()->GetName());
-        if(padnum>1) {
-            fCurrentProjPad = padnum-2;
+        if((PadName.BeginsWith("GxG") || PadName.BeginsWith("Rad")) && PadName.CountChar('_') == 2) {
+            TObjArray *arr = PadName.Tokenize("_");
+            int padnum = atoi(arr->Last()->GetName());
+            if(padnum>1 && (padnum-2)<fProjPad.size() ) {
+                fCurrentProjPad = padnum-2;
+            }
         }
     }
 

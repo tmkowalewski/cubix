@@ -49,7 +49,7 @@ endfunction()
 # ==================================================================
 
 set(Cubix_VERSION_MAJOR "1")
-set(Cubix_VERSION_MINOR "1")
+set(Cubix_VERSION_MINOR "2")
 set(Cubix_VERSION "${Cubix_VERSION_MAJOR}.${Cubix_VERSION_MINOR}")
 
 # ==================================================================

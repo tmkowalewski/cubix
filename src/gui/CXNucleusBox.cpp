@@ -96,13 +96,15 @@ CXNucleusBox::CXNucleusBox(shared_ptr<tkn::tknucleus> nuc, Double_t size, Int_t 
         }
     }
     else if(mode == CXNucChart::M_2ndIsomer ) {
-        if(isomers.size()>1)
-            withlt = false;
-        else {
+        if(isomers.size()>1) {
             LifeTime = isomers.at(1)->get_lifetime();
             LifeTimeStr = isomers.at(1)->get_lifetime_str();
         }
+        else {
+            withlt = false;
+        }
     }
+
     if(mode == CXNucChart::M_1rstExcitedState) {
         auto level_scheme = nuc->get_level_scheme();
         if(level_scheme->get_levels().size()>1) E1rst = level_scheme->get_levels().at(1)->get_energy();

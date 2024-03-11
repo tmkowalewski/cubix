@@ -81,6 +81,8 @@ public:
     Double_t PeakFunction(Double_t*xx,Double_t*pp);
     Double_t Residue(Double_t*xx,Double_t*pp);
 
+    TVirtualPad *GetPad() {return fPad;}
+
     void Clear(TVirtualPad *pad = nullptr);
 
     TString Save();
