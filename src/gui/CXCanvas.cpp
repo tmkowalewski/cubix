@@ -1355,14 +1355,14 @@ void CXCanvas::MoveAxis(TAxis* ax, Int_t sign)
     if (sign > 0) {
         if((last + dX)>=nBins) ax->SetRange(nBins - drange, nBins);
         else ax->SetRange(first + dX, last + dX);
-        Modified();
-        Update();
+        gPad->Modified();
+        gPad->Update();
     }
     if (sign < 0) {
         if((first - dX)<=1) ax->SetRange(1, 1+drange);
         else ax->SetRange(first - dX, last - dX);
-        Modified();
-        Update();
+        gPad->Modified();
+        gPad->Update();
     }
 }
 
