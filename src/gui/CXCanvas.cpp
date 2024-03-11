@@ -843,7 +843,7 @@ void CXCanvas::HandleInput(EEventType event, Int_t px, Int_t py)
         else if (fSelected && fSelected->InheritsFrom(TH2::Class())) DynamicZoom(sign, px, py);
         else {
             TH1 *hist = FindHisto();
-            if(hist && hist->GetDimension()==1) DynamicZoom1D(hist->GetYaxis(),sign);
+            if(!fSelectedHisto && hist && hist->GetDimension()==1) DynamicZoom1D(hist->GetYaxis(),sign);
         }
 
         RunAutoExec();
