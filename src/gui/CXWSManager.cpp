@@ -502,7 +502,10 @@ void CXWorkspace::SetEfficiency(TGraph *_graph, TF1 *_func, TH1 *_error)
         outfile<<"# N points : "<< _graph->GetN() <<endl;
         outfile<<"# X value     Y value       X error       Y error" <<endl;
         for(int ipoint = 0 ; ipoint < _graph->GetN() ; ipoint++) {
-            outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+            if(_graph->InheritsFrom(TGraphErrors::Class()))
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+            else
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << 0. << setw(14) << 0. <<endl;
         }
         outfile.close();
 
@@ -578,7 +581,10 @@ void CXWorkspace::SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error, TGraph
         outfile<<"# N points : "<< _graph->GetN() <<endl;
         outfile<<"# X value     Y value       X error       Y error" <<endl;
         for(int ipoint = 0 ; ipoint < _graph->GetN() ; ipoint++) {
-            outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+            if(_graph->InheritsFrom(TGraphErrors::Class()))
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+            else
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << 0. << setw(14) << 0. <<endl;
         }
         outfile.close();
 
@@ -621,8 +627,11 @@ void CXWorkspace::SetCalibration(TGraph *_graph, TF1 *_func, TH1 *_error, TGraph
         outfile<<"# Y axis : "<< _residue->GetYaxis()->GetTitle() <<endl;
         outfile<<"# N points : "<< _residue->GetN() <<endl;
         outfile<<"# X value     Y value       X error       Y error" <<endl;
-        for(int ipoint = 0 ; ipoint < _residue->GetN() ; ipoint++) {
-            outfile << left << setw(14) << _residue->GetX()[ipoint] << setw(14) << _residue->GetY()[ipoint] << setw(14) << _residue->GetEX()[ipoint] << setw(14) << _residue->GetEY()[ipoint] <<endl;
+        for(int ipoint = 0 ; ipoint < _graph->GetN() ; ipoint++) {
+            if(_graph->InheritsFrom(TGraphErrors::Class()))
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+            else
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << 0. << setw(14) << 0. <<endl;
         }
         outfile.close();
 
@@ -647,7 +656,10 @@ void CXWorkspace::SetFWHM(TGraph *_graph, TF1 *_func, TH1 *_error)
         outfile<<"# N points : "<< _graph->GetN() <<endl;
         outfile<<"# X value     Y value       X error       Y error" <<endl;
         for(int ipoint = 0 ; ipoint < _graph->GetN() ; ipoint++) {
-            outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+            if(_graph->InheritsFrom(TGraphErrors::Class()))
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << _graph->GetEX()[ipoint] << setw(14) << _graph->GetEY()[ipoint] <<endl;
+            else
+                outfile << left << setw(14) << _graph->GetX()[ipoint] << setw(14) << _graph->GetY()[ipoint] << setw(14) << 0. << setw(14) << 0. <<endl;
         }
         outfile.close();
 
