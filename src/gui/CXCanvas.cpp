@@ -1307,9 +1307,9 @@ void CXCanvas::UndrawObject(TObject *obj)
 void CXCanvas::Paste()
 {
     if (gCopyObject) {
-        cd();
-        Modified();
-        Update();
+        gPad->cd();
+        gPad->Modified();
+        gPad->Update();
         TString option = gDrawOptions;
 
         if(gCopyObject->InheritsFrom(TH1::Class())) {
@@ -1323,8 +1323,8 @@ void CXCanvas::Paste()
 
         gCopyObject->Draw(option.Data());
 
-        Modified();
-        Update();
+        gPad->Modified();
+        gPad->Update();
         gPad->GetFrame()->SetBit(TObject::kCannotPick);
         gCopyObject = nullptr;
     }
