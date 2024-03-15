@@ -684,7 +684,7 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
     fCanvas->Connect("ProcessedEvent(Int_t, Int_t, Int_t, TObject*)", "CXMainWindow", this, "HandleMovement(Int_t,Int_t,Int_t, TObject*)");
 
     if(px*py>1) {
-        fCanvas->SetUniqueID(666);
+        if(!TabName.BeginsWith("MultiPad")) fCanvas->SetUniqueID(666);
         fCanvas->cd();
         fCanvas->Divide(px,py,0.001,0.001);
         fCanvas->Update();
