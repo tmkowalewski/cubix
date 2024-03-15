@@ -1615,6 +1615,14 @@ void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
         else
             hist->Draw(DrawOpt);
     }
+    else if(obj->InheritsFrom(TGraph::Class())) {
+        if(DrawOpt=="" || DrawOpt.Contains("hist") || DrawOpt.Contains("same")) {
+            gbash_color->WarningMessage("For TGraph, use adapted draw option: A -> plot axis, P -> points, L -> line... refer to ROOT draw options.");
+            gbash_color->WarningMessage("  => Default draw options for TGraph used: AP");
+            DrawOpt = "AP";
+        }
+        obj->Draw(DrawOpt);
+    }
     else
         obj->Draw(DrawOpt);
 
