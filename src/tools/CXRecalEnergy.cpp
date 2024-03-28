@@ -42,6 +42,7 @@
 #include "TFitResult.h"
 #include "Math/MinimizerOptions.h"
 #include "TVirtualFitter.h"
+#include "TCanvas.h"
 
 #include "CXRecalEnergy.h"
 #include "CXFitFunctions.h"
@@ -1347,8 +1348,13 @@ Int_t CXRecalEnergy::EROOTCalibration()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fCalibConfidenceIntervall);
         fCalibConfidenceIntervall->SetLineWidth(0);
         fCalibConfidenceIntervall->SetFillColor(kBlue);
-        fCalibConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
-        fCalibConfidenceIntervall->SetFillStyle(1001);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fCalibConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
+            fCalibConfidenceIntervall->SetFillStyle(1001);
+        }
+        else {
+            fCalibConfidenceIntervall->SetFillStyle(3003);
+        }
         fCalibConfidenceIntervall->SetStats(false);
         fCalibConfidenceIntervall->SetDirectory(nullptr);
     }
@@ -1521,7 +1527,7 @@ Int_t CXRecalEnergy::ROOTEffFit()
             double intensity_scaled = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.)/scale;
             double intensity_scaled_err = intensity_scaled*(2*sqrt(Peaks[np].area)/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2) +scale_err/scale);
 
-            fEfficiencyGraph->AddPoint(Energies[Peaks[np].erefindex],intensity_scaled);
+            fEfficiencyGraph->SetPoint(fEfficiencyGraph->GetN(),Energies[Peaks[np].erefindex],intensity_scaled);
             fEfficiencyGraph->SetPointError(fEfficiencyGraph->GetN()-1,Peaks[np].errposi/hGain,intensity_scaled_err);
 
             cout<<setw(15) << Energies[Peaks[np].erefindex] << setw(15) << Peaks[np].errposi << setw(15) << Intensities.at(Peaks[np].erefindex).at(2) << setw(15) << Peaks[np].area  << setw(15) << 2*sqrt(Peaks[np].area) << setw(15) << intensity <<endl;

@@ -776,8 +776,13 @@ void CXHist1DCalib::FWHMCalib()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fFWHMConfidenceIntervall);
         fFWHMConfidenceIntervall->SetLineWidth(0);
         fFWHMConfidenceIntervall->SetFillColor(kBlue);
-        fFWHMConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
-        fFWHMConfidenceIntervall->SetFillStyle(1001);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fFWHMConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
+            fFWHMConfidenceIntervall->SetFillStyle(1001);
+        }
+        else {
+            fFWHMConfidenceIntervall->SetFillStyle(3003);
+        }
         fFWHMConfidenceIntervall->SetStats(false);
         fFWHMConfidenceIntervall->SetDirectory(nullptr);
         fFWHMConfidenceIntervall->GetXaxis()->SetTitle(fFWHMGraph->GetXaxis()->GetTitle());
