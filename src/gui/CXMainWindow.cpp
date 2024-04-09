@@ -362,6 +362,7 @@ void CXMainWindow::Init()
     fStatusBar = new TGStatusBar(fVFRight,50,10,kHorizontalFrame);
     fStatusBar->SetParts(parts.data(),5);
     fStatusBar->Draw3DCorner(kFALSE);
+    fStatusBar->SetLayoutBroken(true);
     fVFRight->AddFrame(fStatusBar, new TGLayoutHints(kLHintsBottom | kLHintsLeft | kLHintsExpandX, 0, 0, 2, 0));
 
     AddFrame(fHf, new TGLayoutHints(kLHintsRight | kLHintsExpandX | kLHintsExpandY));
@@ -380,6 +381,10 @@ void CXMainWindow::Init()
     Layout();
     Resize(GetDefaultSize());
     MapWindow();
+
+    // To remove a remanent display of the editor...
+    ToggleTab(IsEditorEnabled,fEditorTab,"Editor");
+    ToggleTab(IsEditorEnabled,fEditorTab,"Editor");
 
     gSystem->ProcessEvents();
 
@@ -891,7 +896,8 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
 
         fMainTab->SetTab(name);
 
-        Layout();
+        fMainTab->MapSubwindows();
+        fMainTab->Layout();
     }
     else {
         fMainTab->SetTab(name);

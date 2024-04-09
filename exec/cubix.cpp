@@ -110,7 +110,6 @@ bool ReadCubixrc()
 
 void Terminate()
 {
-    cout << "totototototo" << endl;
 }
 
 int main(int argc, char **argv)
@@ -123,6 +122,8 @@ int main(int argc, char **argv)
     gEnv->SetValue("X11.UseXft","yes");
     gEnv->SetValue("Canvas.ShowGuideLines","false");
     gEnv->SetValue("Unix.*.Root.UseTTFonts","true");
+    gEnv->SetValue("Browser.Name","TRootBrowser");
+    gEnv->SetValue("Canvas.Name","TRootCanvas");
 
     glog.set_warnings(false);
 
