@@ -118,7 +118,7 @@ int main(int argc, char **argv)
         cout<<"Environment variable: CUBIX_SYS needs to be define ==> EXIT"<<endl;
         return 1;
     }
-    gEnv->SetValue("Gui.IconPath",Form("%s/icons:%s/icons",getenv("ROOTSYS"),getenv("CUBIX_SYS")));
+    gEnv->SetValue("Gui.IconPath",Form("%s/icons:%s/share/root/icons:%s/icons",getenv("ROOTSYS"),getenv("ROOTSYS"),getenv("CUBIX_SYS")));
     gEnv->SetValue("X11.UseXft","yes");
     gEnv->SetValue("Canvas.ShowGuideLines","false");
     gEnv->SetValue("Unix.*.Root.UseTTFonts","true");
