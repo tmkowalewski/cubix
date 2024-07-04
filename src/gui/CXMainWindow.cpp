@@ -896,7 +896,7 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
 
         fMainTab->SetTab(name);
 
-        fMainTab->MapSubwindows();
+        // fMainTab->MapSubwindows();
         fMainTab->Layout();
     }
     else {
