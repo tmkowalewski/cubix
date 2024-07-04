@@ -1282,7 +1282,7 @@ Int_t CXRecalEnergy::EROOTCalibration()
     fCalibFunction->FixParameter(0,fCalibOrder);
     for(int i=0 ; i<=fCalibOrder ; i++) fCalibFunction->SetParName(i+1,Form("a%d",i));
     fCalibFunction->SetParameter(1,0.);
-    if(fNoOffset) fCalibFunction->FixParameter(0,0);
+    if(fNoOffset) fCalibFunction->FixParameter(1,0);
     fCalibFunction->SetParameter(2,bestSlope);
     for(int i=2 ; i<=fCalibOrder ; i++) fCalibFunction->SetParameter(i+1,0);
 

@@ -494,8 +494,8 @@ void CXHist1DCalib::Calibrate()
         int prec = cout.precision();
         cout<< left << scientific << setprecision(6);
         cout<< hist->GetName()<<": ";
-        cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(0);
-        for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i)*TMath::Power(fRecalEnergy->hGain,i);
+        cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
+        for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1)*TMath::Power(fRecalEnergy->hGain,i);
         cout<<endl;
         cout.precision(prec);
         cout << fixed;
