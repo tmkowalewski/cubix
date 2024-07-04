@@ -266,7 +266,7 @@ void CXHist1DCalib::UpdateSources()
 
     fSources->SetTextColor(CXblack);
 
-    gbash_color->InfoMessage("Energies used for calibration: ");
+    if(fVerboseLevel->GetNumber()!=0) gbash_color->InfoMessage("Energies used for calibration: ");
 
     bool err=false;
 
@@ -275,23 +275,27 @@ void CXHist1DCalib::UpdateSources()
         TString SourceName =  arr->At(i)->GetName();
         CXGammaSource source(SourceName);
         if(source.is_known()) {
-            if(source.is_source()) gbash_color->InfoMessage(Form("Loading source: %s",SourceName.Data()));
-            else gbash_color->InfoMessage(Form("Loading calibration dataset: %s",SourceName.Data()));
+            if(fVerboseLevel->GetNumber()!=0) {
+                if(source.is_source()) gbash_color->InfoMessage(Form("Loading source: %s",SourceName.Data()));
+                else gbash_color->InfoMessage(Form("Loading calibration dataset: %s",SourceName.Data()));
+            }
             for(auto &dec: source.get_decays()) {
                 if(dec.energy.get_value()<fSourceEnergyRangeMin->GetNumber() || dec.energy.get_value()>fSourceEnergyRangeMax->GetNumber()) continue;
                 if(source.is_source() && (dec.intensity.get_value()<fSourceIntensityRangeMin->GetNumber() || dec.intensity.get_value()>fSourceIntensityRangeMax->GetNumber())) continue;
                 fEnergies.push_back({dec.energy.get_value(), dec.energy.get_error()});
                 fIntensities.push_back({dec.energy.get_value(), dec.energy.get_error(),dec.intensity.get_value(), dec.intensity.get_error()});
                 if(dec.is_ref) fERef = dec.energy.get_value();
-                if(source.is_source()) cout << left << " --> E: " << setw(9) << dec.energy.get_value() << "(" << setw(6) << dec.energy.get_error() << ") keV ; I: " << setw(6) << dec.intensity.get_value() << "(" << setw(6) << dec.intensity.get_error() << ")" << endl;
-                else cout << left << " --> E: " << setw(9) << dec.energy.get_value() << " keV" << endl;
+                if(fVerboseLevel->GetNumber()!=0) {
+                    if(source.is_source()) cout << left << " --> E: " << setw(9) << dec.energy.get_value() << "(" << setw(6) << dec.energy.get_error() << ") keV ; I: " << setw(6) << dec.intensity.get_value() << "(" << setw(6) << dec.intensity.get_error() << ")" << endl;
+                    else cout << left << " --> E: " << setw(9) << dec.energy.get_value() << " keV" << endl;
+                }
             }
         }
         else if(((TString)arr->At(i)->GetName()) == "-ener" && i<arr->GetEntries()-1) {
             TString manualvalue = ((TString)arr->At(i+1)->GetName());
             if(manualvalue.IsFloat()) {
                 fEnergies.push_back({manualvalue.Atof(),0.});
-                cout << "Value: " << arr->At(i+1)->GetName() << " (keV) manually added." << endl;
+                if(fVerboseLevel->GetNumber()!=0) cout << "Value: " << arr->At(i+1)->GetName() << " (keV) manually added." << endl;
                 i++;
                 continue;
             }
@@ -395,11 +399,11 @@ void CXHist1DCalib::UpdateSources()
 
     if(fERef==0.) fERef = fEnergies.back().first;
 
-    if(fEnergies.size() && fERef>0.) {
+    if(fEnergies.size() && fERef>0. && fVerboseLevel->GetNumber()!=0) {
         gbash_color->InfoMessage(Form("Reference energy for printouts: %.3f keV",fERef));
     }
 
-    cout<<endl;
+    if(fVerboseLevel->GetNumber()!=0) cout<<endl;
 }
 
 void CXHist1DCalib::CleanCalib()
@@ -448,7 +452,7 @@ TH1 *CXHist1DCalib::CheckFitProperties()
 
     if(fERef>0.) fRecalEnergy->SetRefPeak(fERef);
 
-//    fRecalEnergy->SetGain(1.);                          // scaling factor for the slope [1]
+    //    fRecalEnergy->SetGain(1.);                          // scaling factor for the slope [1]
     //    fRecalEnergy->SetChannelOffset(0);                  // channel offset to subtract to the position of the peaks [0]
     fRecalEnergy->SetVerbosityLevel(fVerboseLevel->GetNumber()-1);                 // verbosity -1=noprint 0=fit_details, 1=calib_details, 2=more_calib_details [-1]
 
