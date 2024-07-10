@@ -46,6 +46,7 @@ class TGTextEntry;
 class CXMainWindow;
 class TGNumberEntry;
 class TF1;
+class TH2;
 class TGComboBox;
 class TGCheckButton;
 class CXCanvas;
@@ -111,8 +112,9 @@ public:
 
     void CloseCanvas();
 
-    TH1 *CheckFitProperties();
+    bool CheckFitProperties(TH1 *_hist);
     void Calibrate();
+    void Calibrate2D(TH2 *hist);
     void ApplyCalibration(TH1 *_hist=nullptr, TF1 *_func=nullptr);
 
     void FWHMCalib();

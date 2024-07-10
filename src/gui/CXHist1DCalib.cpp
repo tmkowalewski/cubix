@@ -424,19 +424,17 @@ void CXHist1DCalib::GetCurrentRange()
     fRangeMax->SetNumber(hist->GetXaxis()->GetBinLowEdge(hist->GetXaxis()->GetLast()));
 }
 
-TH1 *CXHist1DCalib::CheckFitProperties()
+bool CXHist1DCalib::CheckFitProperties(TH1 *hist)
 {
     UpdateSources();
 
-    TH1 *hist = fMainWindow->GetCanvas()->FindHisto(fMainWindow->GetCanvas());
-
     if(hist == nullptr || hist->GetDimension()>1) {
         gbash_color->WarningMessage("No 1D histogram in the current pad, ignored ");
-        return nullptr;
+        return false;
     }
     if(fEnergies.size()==0) {
         gbash_color->WarningMessage("No source defined, ignored ");
-        return nullptr;
+        return false;
     }
 
     if(fRangeMin->GetNumber()<hist->GetXaxis()->GetBinLowEdge(1))
@@ -471,16 +469,67 @@ TH1 *CXHist1DCalib::CheckFitProperties()
     fRecalEnergy->SetGlobalChannelLimits(fRangeMin->GetNumber(),fRangeMax->GetNumber());      // limit the search to this range in channels
     fRecalEnergy->SetGlobalPeaksLimits(fFWHMSPEntry->GetNumber(),fThresholdSPEntry->GetNumber());   // default fwhm and minmum amplitude for the peaksearch [15 5]
 
-    return hist;
+    return true;
+}
+
+void CXHist1DCalib::Calibrate2D(TH2 *hist)
+{
+    if(hist->GetNbinsY()>100) {
+        gbash_color->WarningMessage("Too many channels on Y axis for an auto calibration of all Y bins");
+        return;
+    }
+    if(hist->GetYaxis()->GetBinWidth(1)!=1) {
+        gbash_color->WarningMessage("Auto TH2 calib can only be done on histogram with Y bins width = 1");
+        return;
+    }
+
+    for(int i=1 ; i<=hist->GetNbinsY() ; i++) {
+
+        TH1 *proj = hist->ProjectionX("_px",i,i);
+
+        bool ok = CheckFitProperties(proj);
+
+        if(!ok) {
+            gbash_color->WarningMessage("No histogram found for energy calibration, ignored");
+            return;
+        }
+
+        if(!fEnergies.size()) {
+            gbash_color->WarningMessage("No source with energies defined, ignored");
+            return;
+        }
+
+        fRecalEnergy->StartCalib();
+
+        vector < Fitted > FitResults = fRecalEnergy->GetFitResults();
+
+        if(fVerboseLevel->GetNumber()==0 && fRecalEnergy->fCalibFunction) {
+            int prec = cout.precision();
+            cout<< left << scientific << setprecision(6);
+            cout<< Form("%s_%d: ",hist->GetName(),i-1);
+            cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
+            for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1)*TMath::Power(fRecalEnergy->hGain,i);
+            cout<<endl;
+            cout.precision(prec);
+            cout << fixed;
+        }
+    }
 }
 
 void CXHist1DCalib::Calibrate()
 {
     CleanCalib();
 
-    TH1 *hist = CheckFitProperties();
+    TH1 *hist = fMainWindow->GetCanvas()->FindHisto(fMainWindow->GetCanvas());
 
-    if(hist == nullptr) {
+    if(hist->GetDimension()==2) {
+        Calibrate2D(dynamic_cast<TH2*>(hist));
+        return;
+    }
+
+    bool ok = CheckFitProperties(hist);
+
+    if(!ok) {
         gbash_color->WarningMessage("No histogram found for energy calibration, ignored");
         return;
     }
@@ -618,9 +667,11 @@ void CXHist1DCalib::BuildFWHMGraph()
 {
     CleanCalib();
 
-    TH1 *hist = CheckFitProperties();
+    TH1 *hist = fMainWindow->GetCanvas()->FindHisto(fMainWindow->GetCanvas());
 
-    if(hist == nullptr) {
+    bool ok = CheckFitProperties(hist);
+
+    if(!ok) {
         gbash_color->WarningMessage("No histogram found for energy calibration, ignored");
         return;
     }
