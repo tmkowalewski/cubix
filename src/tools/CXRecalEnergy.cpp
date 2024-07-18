@@ -43,6 +43,7 @@
 #include "Math/MinimizerOptions.h"
 #include "TVirtualFitter.h"
 #include "TCanvas.h"
+#include "TROOT.h"
 
 #include "CXRecalEnergy.h"
 #include "CXFitFunctions.h"
@@ -144,6 +145,13 @@ void CXRecalEnergy::Reset()
     tshift=0;
     hGain=1;
     Verbosity=-1;
+
+    delete fCalibFunction;
+    delete fCalibGraph;
+    delete fResidueGraph;
+    fCalibFunction = nullptr;
+    fCalibGraph = nullptr;
+    fResidueGraph = nullptr;
 }
 
 ///******************************************************************************************///
@@ -1348,7 +1356,8 @@ Int_t CXRecalEnergy::EROOTCalibration()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fCalibConfidenceIntervall);
         fCalibConfidenceIntervall->SetLineWidth(0);
         fCalibConfidenceIntervall->SetFillColor(kBlue);
-        if(gPad->GetCanvas()->SupportAlpha()) {
+        TCanvas *c = (TCanvas*)gROOT->GetListOfCanvases()->First();
+        if(c && c->SupportAlpha()) {
             fCalibConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
             fCalibConfidenceIntervall->SetFillStyle(1001);
         }

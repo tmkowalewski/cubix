@@ -379,7 +379,7 @@ void CXHist1DCalib::UpdateSources()
         }
         if(diff<1.) {
             fERef = closest;
-            gbash_color->InfoMessage(Form("Value: %g (keV) manually used as reference.",fERef));
+            if(fVerboseLevel->GetNumber()!=0) gbash_color->InfoMessage(Form("Value: %g (keV) manually used as reference.",fERef));
         }
         else {
             err = true;
@@ -503,12 +503,23 @@ void CXHist1DCalib::Calibrate2D(TH2 *hist)
 
         vector < Fitted > FitResults = fRecalEnergy->GetFitResults();
 
-        if(fVerboseLevel->GetNumber()==0 && fRecalEnergy->fCalibFunction) {
+        if(fVerboseLevel->GetNumber()==0) {
             int prec = cout.precision();
             cout<< left << scientific << setprecision(6);
             cout<< Form("%s_%d: ",hist->GetName(),i-1);
-            cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
-            for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1)*TMath::Power(fRecalEnergy->hGain,i);
+            if(fRecalEnergy->fCalibFunction) {
+                cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
+                for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) {
+                    cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1);
+                }
+            }
+            else {
+                cout << setw(14) << 0.;
+                for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) {
+                    cout << setw(14) << 0.;
+                }
+                cout << " => Fit failed";
+            }
             cout<<endl;
             cout.precision(prec);
             cout << fixed;
@@ -543,12 +554,21 @@ void CXHist1DCalib::Calibrate()
 
     vector < Fitted > FitResults = fRecalEnergy->GetFitResults();
 
-    if(fVerboseLevel->GetNumber()==0 && fRecalEnergy->fCalibFunction) {
+    if(fVerboseLevel->GetNumber()==0) {
         int prec = cout.precision();
         cout<< left << scientific << setprecision(6);
         cout<< hist->GetName()<<": ";
-        cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
-        for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1)*TMath::Power(fRecalEnergy->hGain,i);
+        if(fRecalEnergy->fCalibFunction) {
+            cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
+            for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1);
+        }
+        else {
+            cout << setw(14) << 0.;
+            for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) {
+                cout << setw(14) << 0.;
+            }
+            cout << " => Fit failed";
+        }
         cout<<endl;
         cout.precision(prec);
         cout << fixed;
@@ -647,6 +667,7 @@ void CXHist1DCalib::Calibrate()
             fCalibCanvas->Divide(1,2,0.0001,0.0001);
         }
         fCalibCanvas->cd(1);
+
         fRecalEnergy->fCalibGraph->Draw("ape");
         fRecalEnergy->fCalibFunction->Draw("same");
         if(fRecalEnergy->fCalibConfidenceIntervall) fRecalEnergy->fCalibConfidenceIntervall->Draw("e3 same");
@@ -654,8 +675,11 @@ void CXHist1DCalib::Calibrate()
         fCalibCanvas->cd(2);
         fRecalEnergy->fResidueGraph->Draw("ape");
 
+        gErrorIgnoreLevel=kFatal;
         fCalibCanvas->Update();
         fCalibCanvas->Modified();
+        gErrorIgnoreLevel=kPrint;
+
         fCalibCanvas->RaiseWindow();
     }
 
