@@ -19,7 +19,14 @@ file(GLOB headers ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 list(REMOVE_ITEM headers ${CMAKE_CURRENT_SOURCE_DIR}/LinkDef.h)
 
 include(GenerateROOTLibrary)
-GENERATE_ROOT_DICTIONARY(${PROJECT_NAME} LINKDEF LinkDef.h HEADERS ${headers} SOURCES ${sources} DEPENDENCIES cubix::CubixTools cubix::CubixRadwareInterface ROOT::Gui ROOT::Spectrum ROOT::Ged tkn::tkphysics)
+
+if(HAS_COCOA)
+    print("    ...Linking cocoa wrapper")
+    list(APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/CocoaWrapper.mm)
+    set(COCOA_LINK "-framework Cocoa")
+endif()
+
+GENERATE_ROOT_DICTIONARY(${PROJECT_NAME} LINKDEF LinkDef.h HEADERS ${headers} SOURCES ${sources} DEPENDENCIES ${COCOA_LINK} cubix::CubixTools cubix::CubixRadwareInterface ROOT::Gui ROOT::Spectrum ROOT::Ged tkn::tkphysics)
 
 add_library(cubix::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 

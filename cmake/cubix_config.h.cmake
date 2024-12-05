@@ -21,6 +21,7 @@
 
 #define OS_TYPE @CMAKE_OS_TYPE@
 
+#define USE_COCOA @CMAKE_USE_COCOA@
 
 /////////////////////////////
 ////// Define OPTIONS ///////

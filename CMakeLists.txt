@@ -172,6 +172,15 @@ if ( APPLE )
     set(CMAKE_OS_TYPE 3)
 endif()
 
+execute_process(
+    COMMAND root-config --has-cocoa
+    OUTPUT_VARIABLE HAS_COCOA
+)
+
+if(HAS_COCOA)
+    set(CMAKE_USE_COCOA 1)
+endif()
+
 # built the congiguration file
 configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cubix_config.h.cmake"
