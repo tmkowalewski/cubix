@@ -21,12 +21,11 @@
 
 #define OS_TYPE @CMAKE_OS_TYPE@
 
-#define USE_COCOA @CMAKE_USE_COCOA@
-
 /////////////////////////////
 ////// Define OPTIONS ///////
 /////////////////////////////
 
 #cmakedefine HAS_MATHMORE
+#cmakedefine USE_COCOA
 
 #endif

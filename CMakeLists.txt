@@ -111,15 +111,15 @@ else ()
     SET(HAS_MATHMORE OFF)
 endif()
 
-
+unset(HAS_COCOA CACHE)
 execute_process(COMMAND root-config --has-cocoa OUTPUT_VARIABLE HAS_COCOA OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if(${HAS_COCOA})
     MESSAGE(STATUS "Mac graphics system Cocoa is used")
-    SET(CMAKE_USE_COCOA On)
-else ()
-    print(WARNING "Standard X11 unix graphics system is used")
-    SET(CMAKE_USE_COCOA OFF)
+    SET(USE_COCOA On)
+else()
+    print(STATUS "Standard X11 unix graphics system is used")
+    SET(USE_COCOA OFF)
 endif()
 
 
