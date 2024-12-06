@@ -111,6 +111,18 @@ else ()
     SET(HAS_MATHMORE OFF)
 endif()
 
+
+execute_process(COMMAND root-config --has-cocoa OUTPUT_VARIABLE HAS_COCOA OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+if(${HAS_COCOA})
+    MESSAGE(STATUS "Mac graphics system Cocoa is used")
+    SET(CMAKE_USE_COCOA On)
+else ()
+    print(WARNING "Standard X11 unix graphics system is used")
+    SET(CMAKE_USE_COCOA OFF)
+endif()
+
+
 # ==================================================================
 # -------------------------- Link TkN ------------------------------
 # ==================================================================
@@ -170,15 +182,6 @@ if ( WIN32 )
 endif()
 if ( APPLE )
     set(CMAKE_OS_TYPE 3)
-endif()
-
-execute_process(
-    COMMAND root-config --has-cocoa
-    OUTPUT_VARIABLE HAS_COCOA
-)
-
-if(HAS_COCOA)
-    set(CMAKE_USE_COCOA 1)
 endif()
 
 # built the congiguration file
