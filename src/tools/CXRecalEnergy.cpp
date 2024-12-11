@@ -233,6 +233,9 @@ void CXRecalEnergy::StartCalib()
         //        }
         //        chi2 = (nused-1) ? chi2/(nused-1) : 0;
 
+        if(iref>=0) f_ref_fw05 = fCalibFunction->Eval(Peaks[iref].fw05)-fCalibFunction->GetParameter(1)/hGain;
+        else f_ref_fw05 = 0.;
+
         if(Verbosity>=0) {
             cout<<right<<fixed;
             if(iref>=0) {

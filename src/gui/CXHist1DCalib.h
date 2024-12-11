@@ -89,7 +89,9 @@ private:
 
     CXRecalEnergy *fRecalEnergy = nullptr;
     TCanvas *fCalibCanvas = nullptr;
+    TCanvas *fCalib2DCanvas = nullptr;
     TF1 *fCalibFunction = nullptr;
+    TGraph *fCalib2DGraph = nullptr;
 
     TCanvas *fFWHMCanvas = nullptr;
     TGraph *fFWHMGraph = nullptr;

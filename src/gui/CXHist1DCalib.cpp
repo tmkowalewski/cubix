@@ -483,6 +483,13 @@ void CXHist1DCalib::Calibrate2D(TH2 *hist)
         return;
     }
 
+    delete fCalib2DGraph;
+    fCalib2DGraph = new TGraph;
+    fCalib2DGraph->SetNameTitle("Calibrate2D","Calibrate2D");
+    fCalib2DGraph->SetMarkerStyle(20);
+    fCalib2DGraph->GetXaxis()->SetTitle("Channel id");
+    fCalib2DGraph->GetYaxis()->SetTitle("FWHM (keV)");
+
     for(int i=1 ; i<=hist->GetNbinsY() ; i++) {
 
         TH1 *proj = hist->ProjectionX("_px",i,i);
@@ -500,8 +507,7 @@ void CXHist1DCalib::Calibrate2D(TH2 *hist)
         }
 
         fRecalEnergy->StartCalib();
-
-        vector < Fitted > FitResults = fRecalEnergy->GetFitResults();
+        fCalib2DGraph->SetPoint(fCalib2DGraph->GetN(),i-1,fRecalEnergy->f_ref_fw05);
 
         if(fVerboseLevel->GetNumber()==0) {
             int prec = cout.precision();
@@ -525,6 +531,31 @@ void CXHist1DCalib::Calibrate2D(TH2 *hist)
             cout << fixed;
         }
     }
+
+    if(fCalib2DCanvas && fCalib2DCanvas->GetCanvasImp()) {
+        fCalib2DCanvas->cd();
+    }
+    else {
+        if(fCalib2DCanvas) {
+            for(int i=0 ; i<gROOT->GetListOfCanvases()->GetEntries() ; i++) {
+                if(((TString)gROOT->GetListOfCanvases()->At(i)->GetTitle()).EqualTo("Calibration 2D Results")) {
+                    gROOT->GetListOfCanvases()->RemoveAt(i);
+                    i--;
+                }
+            }
+        }
+        fCalib2DCanvas = new TCanvas("Calibration2DResults","Calibration 2D Results");
+    }
+    fCalib2DGraph->Draw("ape");
+
+    gErrorIgnoreLevel=kFatal;
+    fCalib2DCanvas->Update();
+    fCalib2DCanvas->Modified();
+    gErrorIgnoreLevel=kPrint;
+
+    fCalib2DCanvas->RaiseWindow();
+
+    fMainWindow->GetCanvas()->cd();
 }
 
 void CXHist1DCalib::Calibrate()
