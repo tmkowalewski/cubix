@@ -49,8 +49,10 @@ endfunction()
 # ==================================================================
 
 set(Cubix_VERSION_MAJOR "1")
-set(Cubix_VERSION_MINOR "2")
+set(Cubix_VERSION_MINOR "3")
 set(Cubix_VERSION "${Cubix_VERSION_MAJOR}.${Cubix_VERSION_MINOR}")
+
+print(NOTICE "Cubix version: ${Cubix_VERSION}")
 
 # ==================================================================
 # -------------------- Compilation options -------------------------
@@ -110,6 +112,18 @@ else ()
     print(WARNING "Cubix compiled without mathmore, angular correlations tool will not be available !")
     SET(HAS_MATHMORE OFF)
 endif()
+
+unset(HAS_COCOA CACHE)
+execute_process(COMMAND root-config --has-cocoa OUTPUT_VARIABLE HAS_COCOA OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+if(${HAS_COCOA})
+    MESSAGE(STATUS "Mac graphics system Cocoa is used")
+    SET(USE_COCOA On)
+else()
+    print(STATUS "Standard X11 unix graphics system is used")
+    SET(USE_COCOA OFF)
+endif()
+
 
 # ==================================================================
 # -------------------------- Link TkN ------------------------------

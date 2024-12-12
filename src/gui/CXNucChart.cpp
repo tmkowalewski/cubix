@@ -1015,12 +1015,17 @@ TString CXNucChart::PrintNucleusGammas(shared_ptr<tkn::tklevel_scheme> _levschem
 
                 double Energy = dec-> get_energy();
                 auto NucLevI = dec->get_level_from();
+                TString offsetI="";
+                if(NucLevI->is_energy_offset()) offsetI += NucLevI->get_offset_bandhead() + "+";
+
                 auto NucLevF = dec->get_level_to();
+                TString offsetF="";
+                if(NucLevF->is_energy_offset()) offsetF += NucLevF->get_offset_bandhead() + "+";
 
                 TString spinI_s = NucLevI->get_spin_parity_str();
                 TString spinF_s = NucLevF->get_spin_parity_str();
 
-                if(!levels.count(Energy)) levels[Energy] = Form("!%-7g %s (%g) -> %s (%g)",Energy,spinI_s.Data(),NucLevI->get_energy(), spinF_s.Data(), NucLevF->get_energy());
+                if(!levels.count(Energy)) levels[Energy] = Form("!%-7g %s (%s%g) -> %s (%s%g)",Energy,spinI_s.Data(),offsetI.Data(),NucLevI->get_energy(tkn::tkunit_manager::keV,true), spinF_s.Data(), offsetF.Data(),NucLevF->get_energy(tkn::tkunit_manager::keV,true));
             }
         }
     }

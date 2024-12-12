@@ -46,6 +46,7 @@ class TGTextEntry;
 class CXMainWindow;
 class TGNumberEntry;
 class TF1;
+class TH2;
 class TGComboBox;
 class TGCheckButton;
 class CXCanvas;
@@ -88,7 +89,9 @@ private:
 
     CXRecalEnergy *fRecalEnergy = nullptr;
     TCanvas *fCalibCanvas = nullptr;
+    TCanvas *fCalib2DCanvas = nullptr;
     TF1 *fCalibFunction = nullptr;
+    TGraph *fCalib2DGraph = nullptr;
 
     TCanvas *fFWHMCanvas = nullptr;
     TGraph *fFWHMGraph = nullptr;
@@ -111,8 +114,9 @@ public:
 
     void CloseCanvas();
 
-    TH1 *CheckFitProperties();
+    bool CheckFitProperties(TH1 *_hist);
     void Calibrate();
+    void Calibrate2D(TH2 *hist);
     void ApplyCalibration(TH1 *_hist=nullptr, TF1 *_func=nullptr);
 
     void FWHMCalib();

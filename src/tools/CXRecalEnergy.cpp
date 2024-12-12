@@ -42,6 +42,8 @@
 #include "TFitResult.h"
 #include "Math/MinimizerOptions.h"
 #include "TVirtualFitter.h"
+#include "TCanvas.h"
+#include "TROOT.h"
 
 #include "CXRecalEnergy.h"
 #include "CXFitFunctions.h"
@@ -143,6 +145,13 @@ void CXRecalEnergy::Reset()
     tshift=0;
     hGain=1;
     Verbosity=-1;
+
+    delete fCalibFunction;
+    delete fCalibGraph;
+    delete fResidueGraph;
+    fCalibFunction = nullptr;
+    fCalibGraph = nullptr;
+    fResidueGraph = nullptr;
 }
 
 ///******************************************************************************************///
@@ -223,6 +232,9 @@ void CXRecalEnergy::StartCalib()
         //            }
         //        }
         //        chi2 = (nused-1) ? chi2/(nused-1) : 0;
+
+        if(iref>=0) f_ref_fw05 = fCalibFunction->Eval(Peaks[iref].fw05)-fCalibFunction->GetParameter(1)/hGain;
+        else f_ref_fw05 = 0.;
 
         if(Verbosity>=0) {
             cout<<right<<fixed;
@@ -1281,7 +1293,7 @@ Int_t CXRecalEnergy::EROOTCalibration()
     fCalibFunction->FixParameter(0,fCalibOrder);
     for(int i=0 ; i<=fCalibOrder ; i++) fCalibFunction->SetParName(i+1,Form("a%d",i));
     fCalibFunction->SetParameter(1,0.);
-    if(fNoOffset) fCalibFunction->FixParameter(0,0);
+    if(fNoOffset) fCalibFunction->FixParameter(1,0);
     fCalibFunction->SetParameter(2,bestSlope);
     for(int i=2 ; i<=fCalibOrder ; i++) fCalibFunction->SetParameter(i+1,0);
 
@@ -1347,8 +1359,14 @@ Int_t CXRecalEnergy::EROOTCalibration()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fCalibConfidenceIntervall);
         fCalibConfidenceIntervall->SetLineWidth(0);
         fCalibConfidenceIntervall->SetFillColor(kBlue);
-        fCalibConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
-        fCalibConfidenceIntervall->SetFillStyle(1001);
+        TCanvas *c = (TCanvas*)gROOT->GetListOfCanvases()->First();
+        if(c && c->SupportAlpha()) {
+            fCalibConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
+            fCalibConfidenceIntervall->SetFillStyle(1001);
+        }
+        else {
+            fCalibConfidenceIntervall->SetFillStyle(3003);
+        }
         fCalibConfidenceIntervall->SetStats(false);
         fCalibConfidenceIntervall->SetDirectory(nullptr);
     }
@@ -1521,7 +1539,7 @@ Int_t CXRecalEnergy::ROOTEffFit()
             double intensity_scaled = Peaks[np].area / (Intensities.at(Peaks[np].erefindex).at(2)/100.)/scale;
             double intensity_scaled_err = intensity_scaled*(2*sqrt(Peaks[np].area)/Peaks[np].area + Intensities.at(Peaks[np].erefindex).at(3)/Intensities.at(Peaks[np].erefindex).at(2) +scale_err/scale);
 
-            fEfficiencyGraph->AddPoint(Energies[Peaks[np].erefindex],intensity_scaled);
+            fEfficiencyGraph->SetPoint(fEfficiencyGraph->GetN(),Energies[Peaks[np].erefindex],intensity_scaled);
             fEfficiencyGraph->SetPointError(fEfficiencyGraph->GetN()-1,Peaks[np].errposi/hGain,intensity_scaled_err);
 
             cout<<setw(15) << Energies[Peaks[np].erefindex] << setw(15) << Peaks[np].errposi << setw(15) << Intensities.at(Peaks[np].erefindex).at(2) << setw(15) << Peaks[np].area  << setw(15) << 2*sqrt(Peaks[np].area) << setw(15) << intensity <<endl;

@@ -247,6 +247,8 @@ public:
 
     bool fDoEffScale = false;
 
+    float f_ref_fw05=0.;
+
     // functions of ReadATCA
     void    initialize();
     int     PeakSearch1(float * data, int chA, int chB, float fwhm, float minAmpl, std::vector<double>&vPeaks);

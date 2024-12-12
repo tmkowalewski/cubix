@@ -720,8 +720,13 @@ void CXFitEfficiency::DoFit()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fEfficiencyConfidenceIntervall);
         fEfficiencyConfidenceIntervall->SetLineWidth(0);
         fEfficiencyConfidenceIntervall->SetFillColor(kBlue);
-        fEfficiencyConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
-        fEfficiencyConfidenceIntervall->SetFillStyle(1001);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fEfficiencyConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
+            fEfficiencyConfidenceIntervall->SetFillStyle(1001);
+        }
+        else {
+            fEfficiencyConfidenceIntervall->SetFillStyle(3003);
+        }
         fEfficiencyConfidenceIntervall->SetStats(false);
         fEfficiencyConfidenceIntervall->SetDirectory(nullptr);
         fEfficiencyConfidenceIntervall->GetXaxis()->SetTitle(fEfficiencyGraph->GetXaxis()->GetTitle());
@@ -838,8 +843,13 @@ void CXFitEfficiency::AutoFit()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fEfficiencyConfidenceIntervall);
         fEfficiencyConfidenceIntervall->SetLineWidth(0);
         fEfficiencyConfidenceIntervall->SetFillColor(kBlue);
-        fEfficiencyConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
-        fEfficiencyConfidenceIntervall->SetFillStyle(1001);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fEfficiencyConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
+            fEfficiencyConfidenceIntervall->SetFillStyle(1001);
+        }
+        else {
+            fEfficiencyConfidenceIntervall->SetFillStyle(3003);
+        }        fEfficiencyConfidenceIntervall->SetFillStyle(1001);
         fEfficiencyConfidenceIntervall->SetStats(false);
         fEfficiencyConfidenceIntervall->SetDirectory(nullptr);
     }

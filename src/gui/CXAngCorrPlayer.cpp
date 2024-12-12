@@ -488,8 +488,13 @@ void CXAngCorrPlayer::FitCorrectionFactors()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fAngularDistributionFunction_err);
         fAngularDistributionFunction_err->SetLineWidth(0);
         fAngularDistributionFunction_err->SetFillColor(kBlue);
-        fAngularDistributionFunction_err->SetFillColorAlpha(kBlue,0.1);
-        fAngularDistributionFunction_err->SetFillStyle(1001);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fAngularDistributionFunction_err->SetFillColorAlpha(kBlue,0.1);
+            fAngularDistributionFunction_err->SetFillStyle(1001);
+        }
+        else {
+            fAngularDistributionFunction_err->SetFillStyle(3003);
+        }
         fAngularDistributionFunction_err->SetStats(false);
         fAngularDistributionFunction_err->SetDirectory(nullptr);
     }
@@ -601,8 +606,13 @@ void CXAngCorrPlayer::FitDistribution()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fAngularDistributionFunction_err);
         fAngularDistributionFunction_err->SetLineWidth(0);
         fAngularDistributionFunction_err->SetFillColor(kBlue);
-        fAngularDistributionFunction_err->SetFillColorAlpha(kBlue,0.1);
-        fAngularDistributionFunction_err->SetFillStyle(1001);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fAngularDistributionFunction_err->SetFillColorAlpha(kBlue,0.1);
+            fAngularDistributionFunction_err->SetFillStyle(1001);
+        }
+        else {
+            fAngularDistributionFunction_err->SetFillStyle(3003);
+        }
         fAngularDistributionFunction_err->SetStats(false);
         fAngularDistributionFunction_err->SetDirectory(nullptr);
     }
@@ -771,7 +781,7 @@ void CXAngCorrPlayer::FitMixing1D()
         gr->SetName(Form("A2A4BestChi2Marker_%d",col));
         gr->SetMarkerStyle(20);
         gr->SetMarkerColor(col);
-        gr->AddPoint(_A2,_A4);
+        gr->SetPoint(gr->GetN(),_A2,_A4);
 
         fAngCorrPads[1]->cd();
         gr->Draw("p");
@@ -963,7 +973,7 @@ void CXAngCorrPlayer::FitMixing2D()
     TGraph *gr = new TGraph;
     gr->SetMarkerStyle(20);
     gr->SetMarkerColor(kMagenta);
-    gr->AddPoint(atandelta1min,atandelta2min);
+    gr->SetPoint(gr->GetN(),atandelta1min,atandelta2min);
     gr->Draw("p");
     gr->SetBit(TObject::kCannotPick);
 
@@ -992,7 +1002,7 @@ void CXAngCorrPlayer::FitMixing2D()
     gr->SetName("A2A4BestChi2Marker");
     gr->SetMarkerStyle(20);
     gr->SetMarkerColor(kMagenta);
-    gr->AddPoint(_A2,_A4);
+    gr->SetPoint(gr->GetN(),_A2,_A4);
 
     fAngCorrPads[1]->cd();
     gr->Draw("p");
@@ -1027,9 +1037,13 @@ void CXAngCorrPlayer::UpdateData()
     fA2A4ExpMarker->SetMarkerStyle(20);
     fA2A4ExpMarker->SetMarkerColor(kRed);
     fA2A4ExpMarker->SetFillColor(kRed);
-    fA2A4ExpMarker->SetFillColorAlpha(kRed,0.3);
-    fA2A4ExpMarker->SetFillStyle(1001);
-
+    if(gPad->GetCanvas()->SupportAlpha()) {
+        fA2A4ExpMarker->SetFillColorAlpha(kRed,0.3);
+        fA2A4ExpMarker->SetFillStyle(1001);
+    }
+    else {
+        fA2A4ExpMarker->SetFillStyle(3003);
+    }
     fA2A4ExpMarker->SetPoint(0,ExpA2,ExpA4);
     fA2A4ExpMarker->SetPointEXlow(0,ExpA2-fExpAks[0][0]->GetNumber());
     fA2A4ExpMarker->SetPointEXhigh(0,fExpAks[0][2]->GetNumber()-ExpA2);
@@ -1325,7 +1339,12 @@ void CXAngCorrPlayer::PlotMixingEvaluation()
         fA2A4MixingGraph->SetMarkerStyle(1);
         fA2A4MixingGraph->SetLineStyle(kDotted);
         fA2A4MixingGraph->SetLineWidth(1);
-        fA2A4MixingGraph->SetMarkerColorAlpha(kBlack,0.3);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fA2A4MixingGraph->SetMarkerColorAlpha(kBlack,0.3);
+        }
+        else {
+            fA2A4MixingGraph->SetFillStyle(3003);
+        }
     }
     else {
         fA2A4MixingGraph->SetMarkerSize(0.5);
@@ -1435,7 +1454,7 @@ void CXAngCorrPlayer::PlotMixingEvaluation()
     fA2A4MixingTheoMarker->SetName("A2A4MixingTheoMarker");
     fA2A4MixingTheoMarker->SetMarkerStyle(20);
     fA2A4MixingTheoMarker->SetMarkerColor(kGreen);
-    fA2A4MixingTheoMarker->AddPoint(_A2,_A4);
+    fA2A4MixingTheoMarker->SetPoint(fA2A4MixingTheoMarker->GetN(),_A2,_A4);
     fA2A4MixingTheoMarker->Draw("p");
 
     fAngCorrPads[1]->Modified();

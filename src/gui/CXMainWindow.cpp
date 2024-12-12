@@ -78,6 +78,10 @@
 #include "CXBashColor.h"
 #include "CXDialogBox.h"
 
+#ifdef USE_COCOA
+#include "CocoaWrapper.h"
+#endif
+
 #include "tkmanager.h"
 
 using namespace std;
@@ -103,8 +107,8 @@ void CXMainWindow::Init()
     gClient->GetColorByName("green",CXgreen);
     gClient->GetColorByName("orange",CXorange);
 
-//    if(gNDManager == nullptr)
-//        gNDManager = new CXNDManager(this);
+    auto ccs = {"#5790fc","#f89c20","#e42536","#964a8b","#9c9ca1","#7021dd","#1845fb","#ff5e02","#c91f16","#c849a9","#adad7d","#86c8dd","#578dff","#656364"};
+    for(auto &col: ccs) fColorWheel.emplace_back(TColor::GetColor(col));
 
     auto *fHf = new TGHorizontalFrame(this,GetWidth(),GetHeight());
 
@@ -362,6 +366,7 @@ void CXMainWindow::Init()
     fStatusBar = new TGStatusBar(fVFRight,50,10,kHorizontalFrame);
     fStatusBar->SetParts(parts.data(),5);
     fStatusBar->Draw3DCorner(kFALSE);
+    fStatusBar->SetLayoutBroken(true);
     fVFRight->AddFrame(fStatusBar, new TGLayoutHints(kLHintsBottom | kLHintsLeft | kLHintsExpandX, 0, 0, 2, 0));
 
     AddFrame(fHf, new TGLayoutHints(kLHintsRight | kLHintsExpandX | kLHintsExpandY));
@@ -373,13 +378,17 @@ void CXMainWindow::Init()
 
     // Set a name to the main frame
     SetWindowName("Cubix Spectra Player");
-    SetIconPixmap("Cubix.png");
+    SetIconPixmap("logo_minimal.png");
     SetIconName("Cubix");
 
     MapSubwindows();
     Layout();
     Resize(GetDefaultSize());
     MapWindow();
+
+    // To remove a remanent display of the editor...
+    ToggleTab(IsEditorEnabled,fEditorTab,"Editor");
+    ToggleTab(IsEditorEnabled,fEditorTab,"Editor");
 
     gSystem->ProcessEvents();
 
@@ -444,6 +453,30 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
         fCanvas->AbsPixeltoXY(EventX,EventY,fLastXPosition,fLastYPosition);
     }
     if(EventType == kKeyPress) {
+
+        // c
+        if((EKeySym)EventY==kKey_c && !fCTRL) {
+            if(selected && selected->InheritsFrom(TH1::Class())) {
+                int current_color = ((TH1*)selected)->GetLineColor();
+
+                auto it = std::find(fColorWheel.begin(), fColorWheel.end(), current_color);
+                if (it == fColorWheel.end()) {
+                    ((TH1*)selected)->SetLineColor(*fColorWheel.begin());
+                }
+                else {
+                    int position = (std::distance(fColorWheel.begin(), it)+1)%fColorWheel.size();
+                    ((TH1*)selected)->SetLineColor(fColorWheel.at(position));
+                }
+
+                gPad->Modified();
+                gPad->Update();
+            }
+            else {
+                fHist1DPlayer->ClearFits();
+                fHist1DPlayer->PeakSearchClear();
+            }
+        }
+
         if((EKeySym)EventY==kKey_f && !fCTRL) {
             if(IsHist1DPlayerEnabled==false)
                 ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());
@@ -462,10 +495,6 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
 
             fHist1DPlayer->PeakSearchClear();
             fHist1DPlayer->PeakSearch();
-        }
-        if((EKeySym)EventY==kKey_c && !fCTRL) {
-            fHist1DPlayer->ClearFits();
-            fHist1DPlayer->PeakSearchClear();
         }
         if((EKeySym)EventY==kKey_a && fCTRL) {
             if(IsHist1DCalibPlayerEnabled==false)
@@ -673,7 +702,7 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
     fListOfCanvases->Add(fCanvas);
     fCanvas->ToggleToolBar();
     fRootCanvas->AdoptCanvas(fCanvas);
-//    fRootCanvas->GetContainer()->Connect("ProcessedEvent(Event_t*)", "CXMainWindow", this, "ProcessedKeyEvent(Event_t*)");
+    //    fRootCanvas->GetContainer()->Connect("ProcessedEvent(Event_t*)", "CXMainWindow", this, "ProcessedKeyEvent(Event_t*)");
     fRootCanvas->GetClient()->Connect("ProcessedEvent(Event_t *, Window_t)", "CXMainWindow",this, "ProcessedKeyEvent(Event_t*)");
 
     fCanvas->SetRightMargin(0.03);
@@ -825,7 +854,7 @@ void CXMainWindow::HandleMenu(Int_t id)
         break;
     case M_GammaSearch:
         if(fGammaSearchWindow == nullptr) {
-//            wait();
+            //            wait();
             fGammaSearchWindow = new CXGammaSearch(gClient->GetRoot(),gClient->GetRoot(),1200,500, this);
         }
         else
@@ -833,7 +862,7 @@ void CXMainWindow::HandleMenu(Int_t id)
         break;
     case M_NucChart:
         if(fNucChartWindow == nullptr) {
-//            wait();
+            //            wait();
             fNucChartWindow = new CXNucChart(gClient->GetRoot(),gClient->GetRoot(),1200,550, this);
         }
         else
@@ -891,7 +920,8 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
 
         fMainTab->SetTab(name);
 
-        Layout();
+        // fMainTab->MapSubwindows();
+        fMainTab->Layout();
     }
     else {
         fMainTab->SetTab(name);
@@ -899,6 +929,10 @@ void CXMainWindow::ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char *
     }
 
     Enable = !Enable;
+
+#ifdef USE_COCOA
+    setDockIcon(Form("%s/icons/logo_minimal.png",getenv("CUBIX_SYS")));
+#endif
 }
 
 
@@ -1433,8 +1467,8 @@ void CXMainWindow::ProcessedKeyEvent(Event_t *event)
 
     if(gPad && ((TString)gPad->GetCanvas()->GetCanvas()->GetName()) != "NuclearChartCanvas") SetPalette();
 
-   // gVirtualX->LookupString(event, input, sizeof(input), keysym);
-   // std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << " -> " << input << std::endl;
+    // gVirtualX->LookupString(event, input, sizeof(input), keysym);
+    // std::cout << "event : " << event->fCode << " " << event->fState <<" ; "<< event->fType  << "; " << keysym << " -> " << input << std::endl;
 
     if(event->fState & kKeyControlMask) fCTRL = true;
     else fCTRL = false;

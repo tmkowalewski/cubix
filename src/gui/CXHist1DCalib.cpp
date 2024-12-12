@@ -266,7 +266,7 @@ void CXHist1DCalib::UpdateSources()
 
     fSources->SetTextColor(CXblack);
 
-    gbash_color->InfoMessage("Energies used for calibration: ");
+    if(fVerboseLevel->GetNumber()!=0) gbash_color->InfoMessage("Energies used for calibration: ");
 
     bool err=false;
 
@@ -275,23 +275,27 @@ void CXHist1DCalib::UpdateSources()
         TString SourceName =  arr->At(i)->GetName();
         CXGammaSource source(SourceName);
         if(source.is_known()) {
-            if(source.is_source()) gbash_color->InfoMessage(Form("Loading source: %s",SourceName.Data()));
-            else gbash_color->InfoMessage(Form("Loading calibration dataset: %s",SourceName.Data()));
+            if(fVerboseLevel->GetNumber()!=0) {
+                if(source.is_source()) gbash_color->InfoMessage(Form("Loading source: %s",SourceName.Data()));
+                else gbash_color->InfoMessage(Form("Loading calibration dataset: %s",SourceName.Data()));
+            }
             for(auto &dec: source.get_decays()) {
                 if(dec.energy.get_value()<fSourceEnergyRangeMin->GetNumber() || dec.energy.get_value()>fSourceEnergyRangeMax->GetNumber()) continue;
                 if(source.is_source() && (dec.intensity.get_value()<fSourceIntensityRangeMin->GetNumber() || dec.intensity.get_value()>fSourceIntensityRangeMax->GetNumber())) continue;
                 fEnergies.push_back({dec.energy.get_value(), dec.energy.get_error()});
                 fIntensities.push_back({dec.energy.get_value(), dec.energy.get_error(),dec.intensity.get_value(), dec.intensity.get_error()});
                 if(dec.is_ref) fERef = dec.energy.get_value();
-                if(source.is_source()) cout << left << " --> E: " << setw(9) << dec.energy.get_value() << "(" << setw(6) << dec.energy.get_error() << ") keV ; I: " << setw(6) << dec.intensity.get_value() << "(" << setw(6) << dec.intensity.get_error() << ")" << endl;
-                else cout << left << " --> E: " << setw(9) << dec.energy.get_value() << " keV" << endl;
+                if(fVerboseLevel->GetNumber()!=0) {
+                    if(source.is_source()) cout << left << " --> E: " << setw(9) << dec.energy.get_value() << "(" << setw(6) << dec.energy.get_error() << ") keV ; I: " << setw(6) << dec.intensity.get_value() << "(" << setw(6) << dec.intensity.get_error() << ")" << endl;
+                    else cout << left << " --> E: " << setw(9) << dec.energy.get_value() << " keV" << endl;
+                }
             }
         }
         else if(((TString)arr->At(i)->GetName()) == "-ener" && i<arr->GetEntries()-1) {
             TString manualvalue = ((TString)arr->At(i+1)->GetName());
             if(manualvalue.IsFloat()) {
                 fEnergies.push_back({manualvalue.Atof(),0.});
-                cout << "Value: " << arr->At(i+1)->GetName() << " (keV) manually added." << endl;
+                if(fVerboseLevel->GetNumber()!=0) cout << "Value: " << arr->At(i+1)->GetName() << " (keV) manually added." << endl;
                 i++;
                 continue;
             }
@@ -375,7 +379,7 @@ void CXHist1DCalib::UpdateSources()
         }
         if(diff<1.) {
             fERef = closest;
-            gbash_color->InfoMessage(Form("Value: %g (keV) manually used as reference.",fERef));
+            if(fVerboseLevel->GetNumber()!=0) gbash_color->InfoMessage(Form("Value: %g (keV) manually used as reference.",fERef));
         }
         else {
             err = true;
@@ -395,11 +399,11 @@ void CXHist1DCalib::UpdateSources()
 
     if(fERef==0.) fERef = fEnergies.back().first;
 
-    if(fEnergies.size() && fERef>0.) {
+    if(fEnergies.size() && fERef>0. && fVerboseLevel->GetNumber()!=0) {
         gbash_color->InfoMessage(Form("Reference energy for printouts: %.3f keV",fERef));
     }
 
-    cout<<endl;
+    if(fVerboseLevel->GetNumber()!=0) cout<<endl;
 }
 
 void CXHist1DCalib::CleanCalib()
@@ -420,19 +424,17 @@ void CXHist1DCalib::GetCurrentRange()
     fRangeMax->SetNumber(hist->GetXaxis()->GetBinLowEdge(hist->GetXaxis()->GetLast()));
 }
 
-TH1 *CXHist1DCalib::CheckFitProperties()
+bool CXHist1DCalib::CheckFitProperties(TH1 *hist)
 {
     UpdateSources();
 
-    TH1 *hist = fMainWindow->GetCanvas()->FindHisto(fMainWindow->GetCanvas());
-
     if(hist == nullptr || hist->GetDimension()>1) {
         gbash_color->WarningMessage("No 1D histogram in the current pad, ignored ");
-        return nullptr;
+        return false;
     }
     if(fEnergies.size()==0) {
         gbash_color->WarningMessage("No source defined, ignored ");
-        return nullptr;
+        return false;
     }
 
     if(fRangeMin->GetNumber()<hist->GetXaxis()->GetBinLowEdge(1))
@@ -448,7 +450,7 @@ TH1 *CXHist1DCalib::CheckFitProperties()
 
     if(fERef>0.) fRecalEnergy->SetRefPeak(fERef);
 
-//    fRecalEnergy->SetGain(1.);                          // scaling factor for the slope [1]
+    //    fRecalEnergy->SetGain(1.);                          // scaling factor for the slope [1]
     //    fRecalEnergy->SetChannelOffset(0);                  // channel offset to subtract to the position of the peaks [0]
     fRecalEnergy->SetVerbosityLevel(fVerboseLevel->GetNumber()-1);                 // verbosity -1=noprint 0=fit_details, 1=calib_details, 2=more_calib_details [-1]
 
@@ -467,16 +469,109 @@ TH1 *CXHist1DCalib::CheckFitProperties()
     fRecalEnergy->SetGlobalChannelLimits(fRangeMin->GetNumber(),fRangeMax->GetNumber());      // limit the search to this range in channels
     fRecalEnergy->SetGlobalPeaksLimits(fFWHMSPEntry->GetNumber(),fThresholdSPEntry->GetNumber());   // default fwhm and minmum amplitude for the peaksearch [15 5]
 
-    return hist;
+    return true;
+}
+
+void CXHist1DCalib::Calibrate2D(TH2 *hist)
+{
+    if(hist->GetNbinsY()>100) {
+        gbash_color->WarningMessage("Too many channels on Y axis for an auto calibration of all Y bins");
+        return;
+    }
+    if(hist->GetYaxis()->GetBinWidth(1)!=1) {
+        gbash_color->WarningMessage("Auto TH2 calib can only be done on histogram with Y bins width = 1");
+        return;
+    }
+
+    delete fCalib2DGraph;
+    fCalib2DGraph = new TGraph;
+    fCalib2DGraph->SetNameTitle("Calibrate2D","Calibrate2D");
+    fCalib2DGraph->SetMarkerStyle(20);
+    fCalib2DGraph->GetXaxis()->SetTitle("Channel id");
+    fCalib2DGraph->GetYaxis()->SetTitle("FWHM (keV)");
+
+    for(int i=1 ; i<=hist->GetNbinsY() ; i++) {
+
+        TH1 *proj = hist->ProjectionX("_px",i,i);
+
+        bool ok = CheckFitProperties(proj);
+
+        if(!ok) {
+            gbash_color->WarningMessage("No histogram found for energy calibration, ignored");
+            return;
+        }
+
+        if(!fEnergies.size()) {
+            gbash_color->WarningMessage("No source with energies defined, ignored");
+            return;
+        }
+
+        fRecalEnergy->StartCalib();
+        fCalib2DGraph->SetPoint(fCalib2DGraph->GetN(),i-1,fRecalEnergy->f_ref_fw05);
+
+        if(fVerboseLevel->GetNumber()==0) {
+            int prec = cout.precision();
+            cout<< left << scientific << setprecision(6);
+            cout<< Form("%s_%d: ",hist->GetName(),i-1);
+            if(fRecalEnergy->fCalibFunction) {
+                cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
+                for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) {
+                    cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1);
+                }
+            }
+            else {
+                cout << setw(14) << 0.;
+                for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) {
+                    cout << setw(14) << 0.;
+                }
+                cout << " => Fit failed";
+            }
+            cout<<endl;
+            cout.precision(prec);
+            cout << fixed;
+        }
+    }
+
+    if(fCalib2DCanvas && fCalib2DCanvas->GetCanvasImp()) {
+        fCalib2DCanvas->cd();
+    }
+    else {
+        if(fCalib2DCanvas) {
+            for(int i=0 ; i<gROOT->GetListOfCanvases()->GetEntries() ; i++) {
+                if(((TString)gROOT->GetListOfCanvases()->At(i)->GetTitle()).EqualTo("Calibration 2D Results")) {
+                    gROOT->GetListOfCanvases()->RemoveAt(i);
+                    i--;
+                }
+            }
+        }
+        fCalib2DCanvas = new TCanvas("Calibration2DResults","Calibration 2D Results");
+    }
+    fCalib2DGraph->Draw("ape");
+
+    gErrorIgnoreLevel=kFatal;
+    fCalib2DCanvas->Update();
+    fCalib2DCanvas->Modified();
+    gErrorIgnoreLevel=kPrint;
+
+    fCalib2DCanvas->RaiseWindow();
+
+    fMainWindow->GetCanvas()->cd();
 }
 
 void CXHist1DCalib::Calibrate()
 {
     CleanCalib();
 
-    TH1 *hist = CheckFitProperties();
+    TH1 *hist = fMainWindow->GetCanvas()->FindHisto(fMainWindow->GetCanvas());
 
-    if(hist == nullptr) {
+    if(hist->GetDimension()==2) {
+        Calibrate2D(dynamic_cast<TH2*>(hist));
+        return;
+    }
+
+    bool ok = CheckFitProperties(hist);
+
+    if(!ok) {
         gbash_color->WarningMessage("No histogram found for energy calibration, ignored");
         return;
     }
@@ -490,12 +585,21 @@ void CXHist1DCalib::Calibrate()
 
     vector < Fitted > FitResults = fRecalEnergy->GetFitResults();
 
-    if(fVerboseLevel->GetNumber()==0 && fRecalEnergy->fCalibFunction) {
+    if(fVerboseLevel->GetNumber()==0) {
         int prec = cout.precision();
         cout<< left << scientific << setprecision(6);
         cout<< hist->GetName()<<": ";
-        cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(0);
-        for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i)*TMath::Power(fRecalEnergy->hGain,i);
+        if(fRecalEnergy->fCalibFunction) {
+            cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(1);
+            for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) cout << setw(14) << fRecalEnergy->fCalibFunction->GetParameter(i+1);
+        }
+        else {
+            cout << setw(14) << 0.;
+            for(int i=1 ; i<=fRecalEnergy->fCalibOrder ; i++) {
+                cout << setw(14) << 0.;
+            }
+            cout << " => Fit failed";
+        }
         cout<<endl;
         cout.precision(prec);
         cout << fixed;
@@ -594,6 +698,7 @@ void CXHist1DCalib::Calibrate()
             fCalibCanvas->Divide(1,2,0.0001,0.0001);
         }
         fCalibCanvas->cd(1);
+
         fRecalEnergy->fCalibGraph->Draw("ape");
         fRecalEnergy->fCalibFunction->Draw("same");
         if(fRecalEnergy->fCalibConfidenceIntervall) fRecalEnergy->fCalibConfidenceIntervall->Draw("e3 same");
@@ -601,8 +706,11 @@ void CXHist1DCalib::Calibrate()
         fCalibCanvas->cd(2);
         fRecalEnergy->fResidueGraph->Draw("ape");
 
+        gErrorIgnoreLevel=kFatal;
         fCalibCanvas->Update();
         fCalibCanvas->Modified();
+        gErrorIgnoreLevel=kPrint;
+
         fCalibCanvas->RaiseWindow();
     }
 
@@ -614,9 +722,11 @@ void CXHist1DCalib::BuildFWHMGraph()
 {
     CleanCalib();
 
-    TH1 *hist = CheckFitProperties();
+    TH1 *hist = fMainWindow->GetCanvas()->FindHisto(fMainWindow->GetCanvas());
 
-    if(hist == nullptr) {
+    bool ok = CheckFitProperties(hist);
+
+    if(!ok) {
         gbash_color->WarningMessage("No histogram found for energy calibration, ignored");
         return;
     }
@@ -776,8 +886,13 @@ void CXHist1DCalib::FWHMCalib()
         (TVirtualFitter::GetFitter())->GetConfidenceIntervals(fFWHMConfidenceIntervall);
         fFWHMConfidenceIntervall->SetLineWidth(0);
         fFWHMConfidenceIntervall->SetFillColor(kBlue);
-        fFWHMConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
-        fFWHMConfidenceIntervall->SetFillStyle(1001);
+        if(gPad->GetCanvas()->SupportAlpha()) {
+            fFWHMConfidenceIntervall->SetFillColorAlpha(kBlue,0.1);
+            fFWHMConfidenceIntervall->SetFillStyle(1001);
+        }
+        else {
+            fFWHMConfidenceIntervall->SetFillStyle(3003);
+        }
         fFWHMConfidenceIntervall->SetStats(false);
         fFWHMConfidenceIntervall->SetDirectory(nullptr);
         fFWHMConfidenceIntervall->GetXaxis()->SetTitle(fFWHMGraph->GetXaxis()->GetTitle());

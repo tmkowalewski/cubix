@@ -195,8 +195,13 @@ void CXWorkspace::ReadWS()
                     fCalibrationErrors = new TH1D("CalibrationConfidence95","Calibration 0.95 confidence band", nbins, min, max);
                     fCalibrationErrors->SetLineWidth(0);
                     fCalibrationErrors->SetFillColor(kBlue);
-                    fCalibrationErrors->SetFillColorAlpha(kBlue,0.1);
-                    fCalibrationErrors->SetFillStyle(1001);
+                    if(gPad->GetCanvas()->SupportAlpha()) {
+                        fCalibrationErrors->SetFillColorAlpha(kBlue,0.1);
+                        fCalibrationErrors->SetFillStyle(1001);
+                    }
+                    else {
+                        fCalibrationErrors->SetFillStyle(3003);
+                    }
                     fCalibrationErrors->SetStats(false);
                     fCalibrationErrors->SetDirectory(nullptr);
                     if(fCalibrationGraph) {
@@ -311,8 +316,13 @@ void CXWorkspace::ReadWS()
                     fFWHMErrors = new TH1D("FWHMConfidence95","FWHM 0.95 confidence band", nbins, min, max);
                     fFWHMErrors->SetLineWidth(0);
                     fFWHMErrors->SetFillColor(kBlue);
-                    fFWHMErrors->SetFillColorAlpha(kBlue,0.1);
-                    fFWHMErrors->SetFillStyle(1001);
+                    if(gPad->GetCanvas()->SupportAlpha()) {
+                        fFWHMErrors->SetFillColorAlpha(kBlue,0.1);
+                        fFWHMErrors->SetFillStyle(1001);
+                    }
+                    else {
+                        fFWHMErrors->SetFillStyle(3003);
+                    }
                     fFWHMErrors->SetStats(false);
                     fFWHMErrors->SetDirectory(nullptr);
                     if(fFWHMGraph) {
@@ -410,8 +420,13 @@ void CXWorkspace::ReadWS()
                     fEfficiencyErrors = new TH1D("EfficiencyConfidence95","Efficiency 0.95 confidence band", nbins, min, max);
                     fEfficiencyErrors->SetLineWidth(0);
                     fEfficiencyErrors->SetFillColor(kBlue);
-                    fEfficiencyErrors->SetFillColorAlpha(kBlue,0.1);
-                    fEfficiencyErrors->SetFillStyle(1001);
+                    if(gPad->GetCanvas()->SupportAlpha()) {
+                        fEfficiencyErrors->SetFillColorAlpha(kBlue,0.1);
+                        fEfficiencyErrors->SetFillStyle(1001);
+                    }
+                    else {
+                        fEfficiencyErrors->SetFillStyle(3003);
+                    }
                     fEfficiencyErrors->SetStats(false);
                     fEfficiencyErrors->SetDirectory(nullptr);
                     if(fEfficiencyGraph) {

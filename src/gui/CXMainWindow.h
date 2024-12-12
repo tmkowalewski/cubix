@@ -34,6 +34,8 @@
 #ifndef CXMainWindow_H
 #define CXMainWindow_H
 
+#include <set>
+
 #include "TGFrame.h"
 #include <future>
 
@@ -197,6 +199,8 @@ protected:
 
     double fSavedRangeXMin=0.;
     double fSavedRangeXMax=0.;
+
+    vector<int> fColorWheel;
 
 public:
 

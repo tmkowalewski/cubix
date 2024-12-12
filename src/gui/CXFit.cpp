@@ -386,6 +386,22 @@ void CXFit::Fit()
     fResidue->SetLineColor(kBlack);
     fResidue->Draw("same");
 
+    // estimate uncertainty comming from the background
+    for(auto i=0U ; i<fEnergies.size() ; i++) {
+        //Height
+        fFitFunction->FixParameter(4+i*6+0,fFitFunction->GetParameter(4+i*6+0));
+        fFitFunction->FixParameter(4+i*6+1,fFitFunction->GetParameter(4+i*6+1));
+        fFitFunction->FixParameter(4+i*6+2,fFitFunction->GetParameter(4+i*6+2));
+        fFitFunction->FixParameter(4+i*6+3,fFitFunction->GetParameter(4+i*6+3));
+        fFitFunction->FixParameter(4+i*6+4,fFitFunction->GetParameter(4+i*6+4));
+    }
+    TFitResultPtr r2 = fHistogram->Fit(fFitFunction,(FitOpt+"Q").Data());
+    double total_area = fFitFunction->Integral(fBackgd[0],fBackgd[1])/fHistogram->GetBinWidth(1);
+    gErrorIgnoreLevel=kFatal;
+    double background_uncertainty = fFitFunction->IntegralError(fBackgd[0],fBackgd[1],r2->GetParams(), r2->GetCovarianceMatrix().GetMatrixArray())/fHistogram->GetBinWidth(1);
+    gErrorIgnoreLevel=kPrint;
+    double relative_background_uncertainty = background_uncertainty/total_area;
+
     ostringstream text;
 
     text << "Fit results :";
@@ -416,8 +432,8 @@ void CXFit::Fit()
         cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kPrint); fsavedStream << text.str() << endl; text.str("");
 
         TF1 *peak = new TF1(Form("Peak%d",i), this, &CXFit::PeakFunction, fBackgd[0], fBackgd[1], NPars, "CXFit", "PeakFunction");
-        peak->SetParameters(fFitFunction->GetParameters());
-        peak->SetParErrors(fFitFunction->GetParErrors());
+        peak->SetParameters(r->GetParams());
+        peak->SetParErrors(r->GetErrors());
         peak->SetParameter(1,1);//with backgroud
         peak->SetParameter(0,i);
         peak->SetNpx(1000);
@@ -428,8 +444,10 @@ void CXFit::Fit()
 
         fListOfPeaks->Add(peak);
 
-        Double_t Area     = (peak->Integral(fBackgd[0],fBackgd[1],1e-6)-fBackFunction->Integral(fBackgd[0],fBackgd[1],1e-6))/fHistogram->GetBinWidth(1);
-        Double_t AreaErr  = 2*sqrt(Area);
+        // old way to calculate the area error -> Integral from TF1 and ∆N=2*sqrt(N)
+        // Double_t Area     = (peak->Integral(fBackgd[0],fBackgd[1],1e-6)-fBackFunction->Integral(fBackgd[0],fBackgd[1],1e-6))/fHistogram->GetBinWidth(1);
+        // Double_t AreaErr  = 2*sqrt(Area);
+
         Double_t Mean     = peak->GetParameter(4+i*6+1);
         Double_t MeanErr  = peak->GetParError(4+i*6+1);
         Double_t FWHM     = peak->GetParameter(4+i*6+2);
@@ -439,14 +457,52 @@ void CXFit::Fit()
         //        Double_t Right    = peak->GetParameter(4+i*6+4);
         //        Double_t RightErr = peak->GetParError(4+i*6+4);
 
+
+        // calculation of the integrat and its uncertainty from the analytical analysis of the function (inspired from Dino method in RecalEnergy code)
+        const double  sqrt2pi = sqrt(8.*atan(1.));
+        double area_tail = 0;
+        if(fPlayer->fUseLT->GetState() == kButtonDown) {
+            double L = TMath::Abs(peak->GetParameter(4+i*6+3));
+            double a = exp(-0.5*L*L)/L;
+            double b = sqrt2pi/2*std::erf(L/sqrt(2.));
+            area_tail += a + b;
+        }
+        else {
+            area_tail += sqrt2pi/2;
+        }
+        if(fPlayer->fUseRT->GetState() == kButtonDown) {
+            double R = TMath::Abs(peak->GetParameter(4+i*6+4));
+            double a = exp(-0.5*R*R)/R;
+            double b = sqrt2pi/2*std::erf(R/sqrt(2.));
+            area_tail += a + b;
+        }
+        else {
+            area_tail += sqrt2pi/2;
+        }
+        double area_gauss = peak->GetParameter(4+i*6+0) * peak->GetParameter(4+i*6+2)*1./sqrt(8.*log(2.)) / fHistogram->GetBinWidth(1);
+        double Area_calc = area_tail*area_gauss;
+        double background_err = relative_background_uncertainty*Area_calc;
+
+        double Area_peak_calcErr = area_gauss*sqrt(
+                             pow(peak->GetParError(4+i*6+0)/peak->GetParameter(4+i*6+0),2.) +
+                             pow(peak->GetParError(4+i*6+2)/peak->GetParameter(4+i*6+2),2.));
+
+        Area_peak_calcErr *= Area_calc/area_gauss; // error with tail only rescaled to the proportion of the peak area relatively to the gaus area
+        double Area_tot_calcErr = sqrt(pow(Area_peak_calcErr,2) + pow(background_err,2)); // quadrative sum of error comming from the peak and background fit
+
+        cout<<left<<setw(31)<<"Peak area"<<": "<<setprecision(7)<<setw(10)<<Area_calc<<endl;
+        cout<<left<<setw(31)<<"Uncertainty from peak fit"<<": "<<setprecision(7)<<setw(10)<<Area_peak_calcErr<<Form(" (%.2f%%)",Area_peak_calcErr/Area_calc*100.)<<endl;
+        cout<<left<<setw(31)<<"Uncertainty from background fit"<<": "<<setprecision(7)<<setw(10)<<background_err<<Form(" (%.2f%%)",background_err/Area_calc*100.)<<endl;
+        cout<<left<<setw(31)<<"Total uncertainty"<<": "<<setprecision(7)<<setw(10)<<Area_tot_calcErr<<Form(" (%.2f%%)",Area_tot_calcErr/Area_calc*100.)<<endl;
+
         Double_t Area_eff = 0.;
         Double_t Area_eff_err = 0.;
         if(fWorkspace && fWorkspace->fEfficiencyFunction) {
             double eff = fWorkspace->fEfficiencyFunction->Eval(Mean);
-            Area_eff = Area / eff;
+            Area_eff = Area_calc / eff;
             double error = 0.;
             if(fWorkspace->fEfficiencyErrors) error = fWorkspace->fEfficiencyErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(Mean));
-            Area_eff_err = Area_eff * sqrt(AreaErr*AreaErr/(Area*Area) + error*error/(eff*eff));
+            Area_eff_err = Area_eff * sqrt(Area_tot_calcErr*Area_tot_calcErr/(Area_calc*Area_calc) + error*error/(eff*eff));
         }
 
         peak->SetParameter(1,0);//without backgroud
@@ -500,7 +556,7 @@ void CXFit::Fit()
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
-        text<<left<<setw(11)<<"Area"<<": "<<setprecision(7)<<setw(10)<<Area<<" ("<<setprecision(7)<<setw(10)<<AreaErr<<")";
+        text<<left<<setw(11)<<"Area"<<": "<<setprecision(7)<<setw(10)<<Area_calc<<" ("<<setprecision(7)<<setw(10)<<Area_tot_calcErr<<")";
         cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
