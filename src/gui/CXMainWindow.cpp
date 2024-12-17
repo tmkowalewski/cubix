@@ -121,7 +121,7 @@ void CXMainWindow::Init()
     fMenuFile->AddEntry("New multi-pad Canvas", M_New_MultiPad_Canvas, nullptr , gClient->GetPicture("multiple_pads.png"));
     fMenuFile->AddEntry("New Browser", M_New_Browser, nullptr, gClient->GetPicture("browser.xpm"));
     fMenuFile->AddEntry("Save Canvas as", M_Save_As, nullptr, gClient->GetPicture("bld_save.png"));
-    fMenuFile->AddEntry("Save hist to ascii", M_Save_To_Ascii, nullptr, gClient->GetPicture("query_new.xpm"));
+    fMenuFile->AddEntry("Save hist as", M_Save_Hist_As, nullptr, gClient->GetPicture("query_new.xpm"));
     fMenuFile->AddSeparator();
     fMenuFile->AddEntry("Exit", M_Exit, nullptr, gClient->GetPicture("bld_exit.png"));
     fMenuFile->Connect("Activated(Int_t)", "CXMainWindow", this, "HandleMenu(Int_t)");
@@ -777,8 +777,8 @@ void CXMainWindow::HandleMenu(Int_t id)
     case M_Save_As:
         fCanvas->SaveCanvasAs();
         break;
-    case M_Save_To_Ascii:
-        SaveToAscii();
+    case M_Save_Hist_As:
+        SaveHistTo();
         break;
     case M_Exit:
         CloseWindow();

@@ -143,7 +143,9 @@ public:
    TGraph* FindGraph(TVirtualPad *pad = nullptr);
    TAxis* GetAxis(TVirtualPad *pad = nullptr, int _iaxis=0);
 
-   void SaveHistToAsciiFile();
+   void SaveHistTo();
+   void SaveHistToASCII(TH1 *_hist, TString _nameout);
+   void SaveHistToGF3(TH1 *_hist, TString _nameout);
 
    void CopyObject(TObject *obj);
    void CutObject(TObject *obj);

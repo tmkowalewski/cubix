@@ -1554,8 +1554,76 @@ void CXCanvas::SaveCanvasAs()
     fPadSave = dynamic_cast<TPad*>(fCanvas->cd());
 }
 
+void CXCanvas::SaveHistToGF3(TH1 *_hist, TString _nameout)
+{
+    FILE *fprad;
+    int /*dum,*/ i, j = 24, toto, tab[4] = {0,1,1,1}, size; char spname[8];
 
-void CXCanvas::SaveHistToAsciiFile()
+    int nbins_to_copy = min(_hist->GetNbinsX(),MAXCHS);
+
+    if(_hist->GetNbinsX()>MAXCHS) {
+        cout << "conversion limited to the first " << MAXCHS << " bins to fulfil radware's convention" << endl;
+    }
+
+    ::strncpy(spname,_hist->GetName(),8);
+    tab[0] = size = nbins_to_copy;
+    toto = size * sizeof(float);
+    fprad = fopen(_nameout.Data(),"w");
+    if (fprad == nullptr) {
+        cout << "[RADConverter::Write] Cannot open %s in writing mode" << _nameout.Data() << endl;;
+    }
+    float *spectre = new float[nbins_to_copy];
+    for ( i = 0; i < tab[0]; i++ )
+        spectre[i] = _hist->GetBinContent(i+1);
+
+    fwrite(&j, sizeof(int), 1, fprad);
+    fwrite(spname, 8, 1, fprad);
+    fwrite(tab, sizeof(int), 4, fprad);
+    fwrite(&j, sizeof(int), 1, fprad);
+    fwrite(&toto, sizeof(int), 1, fprad);
+    fwrite(spectre, sizeof(float), size, fprad);
+    fwrite(&toto,sizeof(int),1,fprad);
+
+    fclose(fprad); delete []spectre;
+}
+
+void CXCanvas::SaveHistToASCII(TH1 *_hist, TString _nameout)
+{
+    if(!_hist->InheritsFrom("TH2")) {
+        ofstream outfile(_nameout);
+        outfile<<"# "<<_hist->GetName()<<endl;
+        outfile<<"# X axis : "<<_hist->GetXaxis()->GetTitle()<<endl;
+        outfile<<"# Y axis : "<<_hist->GetYaxis()->GetTitle()<<endl;
+        outfile<<"# N Bins : "<<_hist->GetXaxis()->GetNbins()<<endl;
+        outfile<<"# X value at the center of the bins"<<endl;
+        for(int ibin = 1 ; ibin<=_hist->GetXaxis()->GetNbins() ; ibin++)
+        {
+            outfile<<_hist->GetBinCenter(ibin)<<" "<<_hist->GetBinContent(ibin)<<endl;
+        }
+
+        outfile.close();
+    }
+    else {
+        TH2 *Hist2D = dynamic_cast<TH2*>(_hist);
+
+        ofstream outfile(_nameout);
+        outfile<<"# "<<_hist->GetName()<<endl;
+        outfile<<"# X axis : "<<Hist2D->GetXaxis()->GetTitle()<<endl;
+        outfile<<"# Y axis : "<<Hist2D->GetYaxis()->GetTitle()<<endl;
+        outfile<<"# N BinsX : "<<Hist2D->GetXaxis()->GetNbins()<<endl;
+        outfile<<"# N BinsY : "<<Hist2D->GetYaxis()->GetNbins()<<endl;
+
+        outfile<<"# Value at the center of the bins"<<endl;
+        for(int ibinx = 1 ; ibinx<=Hist2D->GetXaxis()->GetNbins() ; ibinx++) {
+            for(int ibiny = 1 ; ibiny<=Hist2D->GetYaxis()->GetNbins() ; ibiny++) {
+                outfile<<Hist2D->GetXaxis()->GetBinCenter(ibinx)<<" "<<Hist2D->GetYaxis()->GetBinCenter(ibiny)<<" "<<Hist2D->GetBinContent(ibinx,ibiny)<<endl;
+            }
+        }
+        outfile.close();
+    }
+}
+
+void CXCanvas::SaveHistTo()
 {
     TH1 *hist = FindHisto();
 
@@ -1567,6 +1635,7 @@ void CXCanvas::SaveHistToAsciiFile()
 
     const char* SaveAsTypes[] = {
         "ASCII",          "*.dat",
+        "Radware",        "*.spe",
         nullptr,          nullptr
     };
 
@@ -1587,38 +1656,8 @@ void CXCanvas::SaveHistToAsciiFile()
     typeidx = fi.fFileTypeIdx;
     overwr  = fi.fOverwrite;
 
-    if(!hist->InheritsFrom("TH2")) {
-        ofstream outfile(fn);
-        outfile<<"# "<<hist->GetName()<<endl;
-        outfile<<"# X axis : "<<hist->GetXaxis()->GetTitle()<<endl;
-        outfile<<"# Y axis : "<<hist->GetYaxis()->GetTitle()<<endl;
-        outfile<<"# N Bins : "<<hist->GetXaxis()->GetNbins()<<endl;
-        outfile<<"# X value at the center of the bins"<<endl;
-        for(int ibin = 1 ; ibin<=hist->GetXaxis()->GetNbins() ; ibin++)
-        {
-            outfile<<hist->GetBinCenter(ibin)<<" "<<hist->GetBinContent(ibin)<<endl;
-        }
-
-        outfile.close();
-    }
-    else {
-        TH2 *Hist2D = dynamic_cast<TH2*>(hist);
-
-        ofstream outfile(fn);
-        outfile<<"# "<<hist->GetName()<<endl;
-        outfile<<"# X axis : "<<Hist2D->GetXaxis()->GetTitle()<<endl;
-        outfile<<"# Y axis : "<<Hist2D->GetYaxis()->GetTitle()<<endl;
-        outfile<<"# N BinsX : "<<Hist2D->GetXaxis()->GetNbins()<<endl;
-        outfile<<"# N BinsY : "<<Hist2D->GetYaxis()->GetNbins()<<endl;
-
-        outfile<<"# Value at the center of the bins"<<endl;
-        for(int ibinx = 1 ; ibinx<=Hist2D->GetXaxis()->GetNbins() ; ibinx++) {
-            for(int ibiny = 1 ; ibiny<=Hist2D->GetYaxis()->GetNbins() ; ibiny++) {
-                outfile<<Hist2D->GetXaxis()->GetBinCenter(ibinx)<<" "<<Hist2D->GetYaxis()->GetBinCenter(ibiny)<<" "<<Hist2D->GetBinContent(ibinx,ibiny)<<endl;
-            }
-        }
-        outfile.close();
-    }
+    if(fn.EndsWith(".dat")) SaveHistToASCII(hist,fn);
+    if(fn.EndsWith(".spe") && hist->GetDimension()==1) SaveHistToGF3(hist,fn);
 }
 
 

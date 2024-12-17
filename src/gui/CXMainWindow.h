@@ -82,7 +82,7 @@ public:
         M_New_MultiPad_Canvas,
         M_New_Browser,
         M_Save_As,
-        M_Save_To_Ascii,
+        M_Save_Hist_As,
         M_Exit,
         M_Editor,
         M_GammaSearch,
@@ -293,7 +293,7 @@ protected:
 private:
 
     void ToggleTab(Bool_t &Enable, TGCompositeFrame *tab, const char * name);
-    void SaveToAscii(){fCanvas->SaveHistToAsciiFile();}
+    void SaveHistTo(){fCanvas->SaveHistTo();}
 
     std::future<void> loadingFuture;
     bool fdb_loaded=false;
