@@ -386,22 +386,6 @@ void CXFit::Fit()
     fResidue->SetLineColor(kBlack);
     fResidue->Draw("same");
 
-    // estimate uncertainty comming from the background
-    for(auto i=0U ; i<fEnergies.size() ; i++) {
-        //Height
-        fFitFunction->FixParameter(4+i*6+0,fFitFunction->GetParameter(4+i*6+0));
-        fFitFunction->FixParameter(4+i*6+1,fFitFunction->GetParameter(4+i*6+1));
-        fFitFunction->FixParameter(4+i*6+2,fFitFunction->GetParameter(4+i*6+2));
-        fFitFunction->FixParameter(4+i*6+3,fFitFunction->GetParameter(4+i*6+3));
-        fFitFunction->FixParameter(4+i*6+4,fFitFunction->GetParameter(4+i*6+4));
-    }
-    TFitResultPtr r2 = fHistogram->Fit(fFitFunction,(FitOpt+"Q").Data());
-    double total_area = fFitFunction->Integral(fBackgd[0],fBackgd[1])/fHistogram->GetBinWidth(1);
-    gErrorIgnoreLevel=kFatal;
-    double background_uncertainty = fFitFunction->IntegralError(fBackgd[0],fBackgd[1],r2->GetParams(), r2->GetCovarianceMatrix().GetMatrixArray())/fHistogram->GetBinWidth(1);
-    gErrorIgnoreLevel=kPrint;
-    double relative_background_uncertainty = background_uncertainty/total_area;
-
     ostringstream text;
 
     text << "Fit results :";
@@ -481,19 +465,12 @@ void CXFit::Fit()
         }
         double area_gauss = peak->GetParameter(4+i*6+0) * peak->GetParameter(4+i*6+2)*1./sqrt(8.*log(2.)) / fHistogram->GetBinWidth(1);
         double Area_calc = area_tail*area_gauss;
-        double background_err = relative_background_uncertainty*Area_calc;
 
         double Area_peak_calcErr = area_gauss*sqrt(
                              pow(peak->GetParError(4+i*6+0)/peak->GetParameter(4+i*6+0),2.) +
                              pow(peak->GetParError(4+i*6+2)/peak->GetParameter(4+i*6+2),2.));
 
         Area_peak_calcErr *= Area_calc/area_gauss; // error with tail only rescaled to the proportion of the peak area relatively to the gaus area
-        double Area_tot_calcErr = sqrt(pow(Area_peak_calcErr,2) + pow(background_err,2)); // quadrative sum of error comming from the peak and background fit
-
-        cout<<left<<setw(31)<<"Peak area"<<": "<<setprecision(7)<<setw(10)<<Area_calc<<endl;
-        cout<<left<<setw(31)<<"Uncertainty from peak fit"<<": "<<setprecision(7)<<setw(10)<<Area_peak_calcErr<<Form(" (%.2f%%)",Area_peak_calcErr/Area_calc*100.)<<endl;
-        cout<<left<<setw(31)<<"Uncertainty from background fit"<<": "<<setprecision(7)<<setw(10)<<background_err<<Form(" (%.2f%%)",background_err/Area_calc*100.)<<endl;
-        cout<<left<<setw(31)<<"Total uncertainty"<<": "<<setprecision(7)<<setw(10)<<Area_tot_calcErr<<Form(" (%.2f%%)",Area_tot_calcErr/Area_calc*100.)<<endl;
 
         Double_t Area_eff = 0.;
         Double_t Area_eff_err = 0.;
@@ -502,7 +479,7 @@ void CXFit::Fit()
             Area_eff = Area_calc / eff;
             double error = 0.;
             if(fWorkspace->fEfficiencyErrors) error = fWorkspace->fEfficiencyErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(Mean));
-            Area_eff_err = Area_eff * sqrt(Area_tot_calcErr*Area_tot_calcErr/(Area_calc*Area_calc) + error*error/(eff*eff));
+            Area_eff_err = Area_eff * sqrt(Area_peak_calcErr*Area_peak_calcErr/(Area_calc*Area_calc) + error*error/(eff*eff));
         }
 
         peak->SetParameter(1,0);//without backgroud
@@ -556,7 +533,7 @@ void CXFit::Fit()
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
 
-        text<<left<<setw(11)<<"Area"<<": "<<setprecision(7)<<setw(10)<<Area_calc<<" ("<<setprecision(7)<<setw(10)<<Area_tot_calcErr<<")";
+        text<<left<<setw(11)<<"Area"<<": "<<setprecision(7)<<setw(10)<<Area_calc<<" ("<<setprecision(7)<<setw(10)<<Area_peak_calcErr<<")";
         cout<<text.str()<<endl;fsavedStream << text.str() << endl;
         fPlayer->PrintInListBox(text.str(),kInfo);
         text.str("");
