@@ -5,7 +5,7 @@
 # [J. Dudouet]
 
 # Effective cmake required
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
 project(cubix
         DESCRIPTION  "ROOT based utility for gamma-ray spectroscopy analysis"
@@ -214,6 +214,11 @@ configure_file (
     @ONLY
     )
 configure_file (
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/thiscubix.zsh.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/thiscubix.zsh"
+    @ONLY
+    )
+configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/thiscubix.csh.cmake"
     "${CMAKE_CURRENT_BINARY_DIR}/thiscubix.csh"
     @ONLY
@@ -278,9 +283,11 @@ endforeach()
 print(NOTICE "Cubix Configuration")
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/thiscubix.sh DESTINATION bin)
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/thiscubix.zsh DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/thiscubix.csh DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cubix-config DESTINATION bin)
 install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/cubix-autocompletion.sh DESTINATION bin)
+install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/cmake/scripts/cubix-autocompletion.zsh DESTINATION bin)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cubix_config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
