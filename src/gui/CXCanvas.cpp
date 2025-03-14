@@ -1387,6 +1387,15 @@ void CXCanvas::SetVenerMode(Int_t value)
     fVenerMode = value;
 }
 
+void CXCanvas::SetPickable(Bool_t mode)
+{
+    fCanvas->GetFrame()->SetBit(TObject::kCannotPick,!mode);
+    fPickable = mode;
+    for(auto &&pad: *GetListOfPrimitives()) {
+        if(pad->InheritsFrom(TPad::Class())) ((TPad*)pad)->GetFrame()->SetBit(TObject::kCannotPick,!mode);
+    }
+}
+
 void CXCanvas::SetAgeOfEmpireMode(Int_t value)
 {
     fAgeOfEmpireMode = value;
