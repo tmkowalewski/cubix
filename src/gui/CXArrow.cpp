@@ -42,18 +42,48 @@
 #include "CXFit.h"
 #include "CXBgdFit.h"
 
-CXArrow::CXArrow(CXFit *fit, Double_t E,Double_t y1 ,Double_t y2,Float_t arrowsize, Float_t textsize, Option_t *option) : TArrow(E, y1, E, y2, arrowsize, option)
-{
-    fFit = fit;
-    fTextSize = textsize;
+CXArrow::CXArrow(CXFit *fit, Double_t E, Double_t y1, Double_t y2, Float_t arrowsize, Float_t textsize, Option_t *option)
+    : TArrow(E, y1, E, y2, arrowsize, option), fFit(fit), fTextSize(textsize) {
 }
 
-CXArrow::CXArrow(CXBgdFit *fit, Double_t E,Double_t y1 ,Double_t y2,Float_t arrowsize, Float_t textsize, Option_t *option) : TArrow(E, y1, E, y2, arrowsize, option)
-{
-    fBgdFit = fit;
-    fTextSize = textsize;
+CXArrow::CXArrow(CXBgdFit *fit, Double_t E, Double_t y1, Double_t y2, Float_t arrowsize, Float_t textsize, Option_t *option)
+    : TArrow(E, y1, E, y2, arrowsize, option), fBgdFit(fit), fTextSize(textsize) {
 }
 
+CXArrow::CXArrow(const CXArrow &other) : TArrow(other), fTextSize(other.fTextSize) {
+    fFit = other.fFit;
+    fBgdFit = other.fBgdFit;
+
+    fLatex = other.fLatex ? new TLatex(*other.fLatex) : nullptr;
+    fBox = other.fBox ? new CXArrowBox(*other.fBox) : nullptr;
+}
+
+CXArrow::~CXArrow() {
+    delete fLatex;
+    delete fBox;
+}
+
+CXArrow &CXArrow::operator=(const CXArrow &other) {
+    if (this == &other) return *this;
+
+    TArrow::operator=(other);
+
+    fFit = other.fFit;
+    fBgdFit = other.fBgdFit;
+    fTextSize = other.fTextSize;
+
+    delete fLatex;
+    delete fBox;
+
+    fLatex = other.fLatex ? new TLatex(*other.fLatex) : nullptr;
+    fBox = other.fBox ? new CXArrowBox(*other.fBox) : nullptr;
+
+    return *this;
+}
+
+TObject* CXArrow::Clone(const char* newname) const {
+    return new CXArrow(*this);
+}
 
 void CXArrow::SetEnergy(Float_t E)
 {

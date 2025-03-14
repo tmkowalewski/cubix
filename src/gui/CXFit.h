@@ -69,7 +69,13 @@ private:
 
 public:
     CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
-    ~CXFit();
+    CXFit(const CXFit &other);  // Copy constructor
+    CXFit& operator=(const CXFit &other);  // Copy assignment operator
+    virtual ~CXFit();
+
+    virtual TObject* Clone(const char* newname = "") const override;
+
+    void UpdateFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
 
     void AddArrow(Double_t Energy);
     void RemoveArrow(CXArrow *arrow = nullptr);
@@ -87,7 +93,7 @@ public:
 
     TString Save();
 
-    ClassDef(CXFit,0);
+    ClassDefOverride(CXFit,0);
 };
 
 #endif

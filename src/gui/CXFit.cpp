@@ -56,24 +56,82 @@
 
 using namespace std;
 
-CXFit::CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace) : TObject()
-{
-    fHistogram = hist;
-    fPad = pad;
-    fPlayer = player;
-
-    fWorkspace = _workspace;
-
-    fListOfArrows = new TList;
+CXFit::CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace)
+    : fPlayer(player), fPad(pad), fHistogram(hist), fWorkspace(_workspace) {
+    fListOfArrows = new TList();
     fListOfArrows->SetOwner();
 
-    fListOfPeaks = new TList;
+    fListOfPeaks = new TList();
     fListOfPeaks->SetOwner();
+}
+
+CXFit::CXFit(const CXFit &other): TObject(other), fEnergies(other.fEnergies), fBackgd(other.fBackgd)
+{
+    fListOfArrows = new TList();
+    if (other.fListOfArrows) {
+        for (TObject *obj : *(other.fListOfArrows)) {
+            fListOfArrows->Add(obj->Clone());
+        }
+    }
+    fListOfPeaks = new TList();
+    if (other.fListOfPeaks) {
+        for (TObject *obj : *(other.fListOfPeaks)) {
+            fListOfPeaks->Add(obj->Clone());
+        }
+    }
+}
+
+CXFit& CXFit::operator=(const CXFit &other) {
+    if (this == &other) return *this;  // Handle self-assignment
+
+    TObject::operator=(other);
+
+    fPad = other.fPad;
+    fPlayer = other.fPlayer;
+    fWorkspace = other.fWorkspace;
+
+    fEnergies = other.fEnergies;
+    fBackgd = other.fBackgd;
+
+    // Delete existing objects before assigning new ones
+    delete fHistogram;
+    delete fFitFunction;
+    delete fBackFunction;
+    delete fResidue;
+    delete fListOfArrows;
+    delete fListOfPeaks;
+
+    fHistogram = nullptr;
+    fFitFunction = nullptr;
+    fBackFunction = nullptr;
+    fResidue = nullptr;
+
+    fListOfArrows = new TList();
+    if (other.fListOfArrows) {
+        for (TObject *obj : *(other.fListOfArrows)) {
+            fListOfArrows->Add(obj->Clone());
+        }
+    }
+
+    fListOfPeaks = new TList();
+    if (other.fListOfPeaks) {
+        for (TObject *obj : *(other.fListOfPeaks)) {
+            fListOfPeaks->Add(obj->Clone());
+        }
+    }
+
+    fsavedStream.str();
+
+    return *this;
+}
+
+TObject* CXFit::Clone(const char* newname) const {
+    return new CXFit(*this);
 }
 
 CXFit::~CXFit()
 {
-    Clear(fPad);
+    if(fPad) Clear(fPad);
 
     delete fListOfArrows;
 
@@ -82,8 +140,18 @@ CXFit::~CXFit()
     delete fResidue;
     delete fListOfPeaks;
 
-    fPlayer->GetMainWindow()->RefreshPads();
+    if(fPlayer) fPlayer->GetMainWindow()->RefreshPads();
 }
+
+void CXFit::UpdateFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace)
+{
+    fHistogram = hist;
+    fPad = pad;
+    fPlayer = player;
+
+    fWorkspace = _workspace;
+}
+
 
 void CXFit::AddArrow(Double_t Energy)
 {
@@ -171,7 +239,7 @@ void CXFit::Update()
 
 void CXFit::Clear(TVirtualPad *pad)
 {
-    fPlayer->EndFit();
+    if(fPlayer) fPlayer->EndFit();
 
     if(fPad==nullptr) {
         gbash_color->WarningMessage("No selected pad, ignored");

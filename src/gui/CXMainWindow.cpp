@@ -483,17 +483,25 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
             }
         }
 
-        if((EKeySym)EventY==kKey_f && !fCTRL) {
+        if((EKeySym)EventY==kKey_f && (EKeySym)fLastEventY==kKey_l && !fCTRL) {
+            if(IsHist1DPlayerEnabled==false)
+                ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());
+            fMainTab->SetTab(fHist1DPlayer->GetName());
+
+            fHist1DPlayer->LastFit();
+        }
+        else if((EKeySym)EventY==kKey_f && !fCTRL) {
             if(IsHist1DPlayerEnabled==false)
                 ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());
             fMainTab->SetTab(fHist1DPlayer->GetName());
 
             fHist1DPlayer->NewFit();
         }
-        if((EKeySym)EventY==kKey_f && fCTRL) {
+        else if((EKeySym)EventY==kKey_f && fCTRL) {
             fHist1DPlayer->DoFit();
             fCanvas->Update();
         }
+
         if((EKeySym)EventY==kKey_s && !fCTRL) {
             if(IsHist1DPlayerEnabled==false)
                 ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());

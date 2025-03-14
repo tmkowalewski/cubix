@@ -149,7 +149,7 @@ CXHist1DPlayer::CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
     fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Fit options:"), new TGLayoutHints(kLHintsBottom | kLHintsLeft,10,10,0,0));
-    fFitOptions = new TGTextEntry(fHorizontalFrame, "I");
+    fFitOptions = new TGTextEntry(fHorizontalFrame, "");
     fHorizontalFrame->AddFrame(fFitOptions,new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,10,10,0,0));
     fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
@@ -354,6 +354,9 @@ CXHist1DPlayer::CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fListOfFitObjects = new TList;
     fListOfFitObjects->SetOwner();
 
+    fListOfFitObjectsSaved = new TList;
+    fListOfFitObjectsSaved->SetOwner();
+
     fListOfBgdFitObjects = new TList;
     fListOfBgdFitObjects->SetOwner();
 }
@@ -471,6 +474,25 @@ void CXHist1DPlayer::NewFit()
     fListOfFitObjects->Add(fCurrentFit);
 }
 
+void CXHist1DPlayer::LastFit()
+{
+    ClearFits();
+
+    fCurrentHist = fMainWindow->GetHisto();
+    if(fCurrentHist==nullptr || fCurrentHist->InheritsFrom(TH2::Class())) {
+        cout<<"No 1D istogram found, ignored"<<endl;
+        return;
+    }
+
+    for(int i=0 ; i<fListOfFitObjectsSaved->GetEntries() ; i++) {
+        CXFit *fit = (CXFit*)fListOfFitObjectsSaved->At(i)->Clone();
+        fit->UpdateFit(fCurrentHist,fMainWindow->GetSelectedPad(),this, fMainWindow->GetWSManager()->GetActiveWorkspace());
+        fListOfFitObjects->Add(fit);
+    }
+    cout << "updated fit" << endl;
+    DoFit();
+}
+
 void CXHist1DPlayer::RemoveFit(CXFit *fit)
 {
     fListOfFitObjects->Remove(fit);
@@ -494,7 +516,7 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
         if(arr->GetBgdFit()) arr->GetBgdFit()->Update();
     }
 
-    if(DoNewFit) {
+    if(DoNewFit && fCurrentFit) {
         if(EventType == kButton1Up && (!selected || !selected->InheritsFrom("CXArrow"))) {
             if(     pad->AbsPixeltoX(EventX)>gPad->GetUxmin() &&
                     pad->AbsPixeltoX(EventX)<gPad->GetUxmax() &&
@@ -508,10 +530,11 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
         if(EventType == kButton1Double) {
             DoNewFit = false;
             fCurrentFit->Fit();
+            fCurrentFit = nullptr;
         }
     }
 
-    if(DoNewBgdFit) {
+    if(DoNewBgdFit && fCurrentBgdFit) {
         if(EventType == kButton1Up && (!selected || !selected->InheritsFrom("CXArrow"))) {
             if(     pad->AbsPixeltoX(EventX)>gPad->GetUxmin() &&
                 pad->AbsPixeltoX(EventX)<gPad->GetUxmax() &&
@@ -525,6 +548,7 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
         if(EventType == kButton1Double) {
             DoNewBgdFit = false;
             fCurrentBgdFit->Fit();
+            fCurrentBgdFit = nullptr;
         }
     }
 }
@@ -558,23 +582,29 @@ void CXHist1DPlayer::ClearFits()
     }
 
     DoNewFit = false;
+    fCurrentFit=nullptr;
     DoNewBgdFit = false;
+    fCurrentBgdFit=nullptr;
 
     fMainWindow->RefreshPads();
 }
 
 void CXHist1DPlayer::DoFit()
 {
+    fListOfFitObjectsSaved->Clear();
+
     fFitResultsBox->RemoveAll();
 
     for(int i=0 ; i<fListOfFitObjects->GetEntries() ; i++) {
         CXFit *fit = (CXFit*)fListOfFitObjects->At(i);
+        fListOfFitObjectsSaved->Add(fit->Clone());
         fit->Fit();
     }
 
     fMainWindow->RefreshPads();
 
     DoNewFit=false;
+    fCurrentFit=nullptr;
 }
 
 void CXHist1DPlayer::DoBgdFit()
@@ -589,6 +619,7 @@ void CXHist1DPlayer::DoBgdFit()
     fMainWindow->RefreshPads();
 
     DoNewBgdFit=false;
+    fCurrentBgdFit=nullptr;
 }
 
 

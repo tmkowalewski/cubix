@@ -51,8 +51,6 @@ class CXArrow : public  TArrow
 {
 
 private:
-
-    TList *fList = nullptr;
     CXFit *fFit = nullptr;
     CXBgdFit *fBgdFit = nullptr;
 
@@ -65,8 +63,11 @@ public:
 
     CXArrow(CXFit *fit, Double_t E,Double_t y1 ,Double_t y2,Float_t arrowsize=0.05, Float_t textsize = 0.03, Option_t *option=">");
     CXArrow(CXBgdFit *fit, Double_t E,Double_t y1 ,Double_t y2,Float_t arrowsize=0.05, Float_t textsize = 0.03, Option_t *option=">");
+    CXArrow(const CXArrow &other);  // Copy constructor
+    CXArrow &operator=(const CXArrow &other); // Copy assignment operator
+    virtual ~CXArrow();
 
-    ~CXArrow() = default;
+    virtual TObject* Clone(const char* newname = "") const override;
 
     CXFit *GetFit(){return fFit;}
     CXBgdFit *GetBgdFit(){return fBgdFit;}
@@ -84,13 +85,13 @@ public:
 
     void ClearPad(TVirtualPad *pad = nullptr, bool refresh = true);
 
-    virtual void Paint(Option_t *option = "");
+    virtual void Paint(Option_t *option = "") override;
 
     //! Sort
-    virtual Bool_t  IsSortable() const {return kTRUE;}
-    virtual Int_t Compare(const TObject *obj) const;
+    virtual Bool_t  IsSortable() const override {return kTRUE;}
+    virtual Int_t Compare(const TObject *obj) const override;
 
-    ClassDef(CXArrow,0);
+    ClassDefOverride(CXArrow,0);
 };
 
 class CXArrowBox : public  TBox
@@ -104,7 +105,7 @@ public:
 
     void Clean(){if(fArrow) {fArrow->ClearPad(); delete fArrow; fArrow = nullptr;}}
 
-    ClassDef(CXArrowBox,0);
+    ClassDefOverride(CXArrowBox,0);
 };
 
 #endif
