@@ -56,6 +56,7 @@
 #include "TGFileDialog.h"
 #include "TRootBrowser.h"
 #include "TPaletteAxis.h"
+#include "TEnv.h"
 
 #include "cubix_config.h"
 
@@ -1483,7 +1484,7 @@ void CXMainWindow::ProcessedKeyEvent(Event_t *event)
 
 void CXMainWindow::SetPalette()
 {
-    gStyle->SetPalette();
+    gStyle->SetPalette(gEnv->GetValue("CX_Palette",57));
 }
 
 void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
@@ -1658,7 +1659,7 @@ void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
             if(palette) {
                 palette->SetX2NDC(0.97);
                 palette->SetX1NDC(0.95);
-                palette->SetTickLength(0.02);
+                hist->GetZaxis()->SetTickLength(0.02);
                 gPad->SetRightMargin(0.055);
             }
         }

@@ -96,6 +96,9 @@ bool ReadCubixrc()
         if(Key.EqualTo("Default_WS",TString::kIgnoreCase) && arr->GetEntries()==2) {
             Default_WS = arr->Last()->GetName();
         }
+        if(Key.EqualTo("Palette",TString::kIgnoreCase) && arr->GetEntries()==2) {
+            gEnv->SetValue("CX_Palette",atoi(arr->Last()->GetName()));
+        }
         delete arr;
     }
 
