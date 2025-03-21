@@ -372,13 +372,13 @@ void CXFit::Fit()
             fFitFunction->FixParameter(4+i*6+1,fEnergies[i]);
 
         //FWHM
-        if(fPlayer->fUseFWHM) {
+        if(fPlayer->fUseFWHM && fWorkspace && fWorkspace->fFWHMFunction && fWorkspace->fFWHMErrors) {
             double FWHM = fWorkspace->fFWHMFunction->Eval(fEnergies[i]);
             if(fPlayer->fFixFWHM->GetState() == kButtonDown) {
                 fFitFunction->FixParameter(4+i*6+2,FWHM);
             }
             else {
-                double error = fWorkspace->fFWHMErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(fEnergies[i]));
+                double error = fWorkspace->fFWHMErrors->GetBinError(fWorkspace->fFWHMErrors->FindBin(fEnergies[i]));
                 double sigma = fPlayer->fFWHMSigma->GetNumber();
                 fFitFunction->SetParameter(4+i*6+2, FWHM);
                 fFitFunction->SetParLimits(4+i*6+2, std::max(0.,FWHM-error*sigma) , FWHM+error*sigma);
@@ -404,7 +404,7 @@ void CXFit::Fit()
         }
 
         fFitFunction->SetParameter(4+i*6+0, max - (fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[0]))+fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[1])))*0.5 );
-        fFitFunction->SetParLimits(4+i*6+0, fFitFunction->GetParameters()[4+i*6+0]*0.5, fFitFunction->GetParameters()[4+i*6+0]*2);
+        fFitFunction->SetParLimits(4+i*6+0, 0, fFitFunction->GetParameters()[4+i*6+0]*2);
 
         //LeftTail
         fFitFunction->SetParameter(4+i*6+3, LeftTailVal);
