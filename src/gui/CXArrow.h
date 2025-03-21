@@ -59,6 +59,8 @@ private:
 
     Float_t fTextSize = 0.03;
 
+    Bool_t fMeanFixed = false;
+
 public:
 
     CXArrow(CXFit *fit, Double_t E,Double_t y1 ,Double_t y2,Float_t arrowsize=0.05, Float_t textsize = 0.03, Option_t *option=">");
@@ -69,6 +71,7 @@ public:
 
     virtual TObject* Clone(const char* newname = "") const override;
 
+    void SetFit(CXFit *_fit){fFit = _fit;}
     CXFit *GetFit(){return fFit;}
     CXBgdFit *GetBgdFit(){return fBgdFit;}
 
@@ -80,6 +83,9 @@ public:
 
     void RemoveArrow(); // *MENU*
     void RemoveFit(); // *MENU*
+
+    void SetMeanFixed(Bool_t on = true); // *TOGGLE*
+    Bool_t GetMeanFixed() { return fMeanFixed; }
 
     void SetText(TH1 *hist, const TString &text, const TString &tooltip);
 

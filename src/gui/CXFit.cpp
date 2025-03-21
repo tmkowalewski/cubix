@@ -65,33 +65,31 @@ CXFit::CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_
     fListOfPeaks->SetOwner();
 }
 
-CXFit::CXFit(const CXFit &other): TObject(other), fEnergies(other.fEnergies), fBackgd(other.fBackgd)
+CXFit::CXFit(const CXFit &other): TObject(other), fEnergies(other.fEnergies), fBackgd(other.fBackgd), fFixedMean(other.fFixedMean)
 {
     fListOfArrows = new TList();
     if (other.fListOfArrows) {
         for (TObject *obj : *(other.fListOfArrows)) {
-            fListOfArrows->Add(obj->Clone());
+            CXArrow *arr = dynamic_cast<CXArrow*>(obj->Clone());
+            arr->SetFit(this);
+            fListOfArrows->Add(arr);
         }
     }
     fListOfPeaks = new TList();
-    if (other.fListOfPeaks) {
-        for (TObject *obj : *(other.fListOfPeaks)) {
-            fListOfPeaks->Add(obj->Clone());
-        }
-    }
+    fListOfPeaks->SetOwner();
 }
 
 CXFit& CXFit::operator=(const CXFit &other) {
     if (this == &other) return *this;  // Handle self-assignment
 
     TObject::operator=(other);
-
     fPad = other.fPad;
     fPlayer = other.fPlayer;
     fWorkspace = other.fWorkspace;
 
     fEnergies = other.fEnergies;
     fBackgd = other.fBackgd;
+    fFixedMean = other.fFixedMean;
 
     // Delete existing objects before assigning new ones
     delete fHistogram;
@@ -150,6 +148,8 @@ void CXFit::UpdateFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWor
     fPlayer = player;
 
     fWorkspace = _workspace;
+
+    DrawArrows();
 }
 
 
@@ -192,10 +192,19 @@ void CXFit::RemoveArrow(CXArrow *arrow)
     Update();
 }
 
+void CXFit::DrawArrows()
+{
+    for(int i=0 ; i<fListOfArrows->GetEntries() ; i++) {
+        auto *arr = dynamic_cast<CXArrow*>(fListOfArrows->At(i));
+        arr->Draw();
+    }
+}
+
 void CXFit::Update()
 {
     fEnergies.clear();
     fBackgd.clear();
+    fFixedMean.clear();
 
     fListOfArrows->Sort();
     TList back,Ener;
@@ -232,6 +241,7 @@ void CXFit::Update()
         arr->SetLineColor(kRed);
         arr->SetFillColor(kRed);
         fEnergies.push_back(E);
+        fFixedMean.push_back(arr->GetMeanFixed());
     }
 
     fPlayer->GetMainWindow()->RefreshPads();
@@ -308,7 +318,7 @@ void CXFit::Fit()
     Double_t RightTailValMax = fPlayer->fNE_RT[2]->GetNumber();;
 
     Double_t StepVal = 0.01;
-    Double_t StepValMin = -1.;
+    Double_t StepValMin = 0.;
     Double_t StepValMax = 1.;
 
     Int_t NPars = 4+6*fEnergies.size();
@@ -355,14 +365,10 @@ void CXFit::Fit()
         fFitFunction->FixParameter(3,0);
 
     for(auto i=0U ; i<fEnergies.size() ; i++) {
-        //Height
-        fFitFunction->SetParameter(4+i*6+0, fHistogram->GetBinContent(fHistogram->FindBin(fEnergies[i])) - (fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[0]))+fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[1])))*0.5 );
-        fFitFunction->SetParLimits(4+i*6+0, fFitFunction->GetParameters()[4+i*6+0]*0.5, fFitFunction->GetParameters()[4+i*6+0]*1.5);
-
         //Position
         fFitFunction->SetParameter(4+i*6+1, fEnergies[i]);
         fFitFunction->SetParLimits(4+i*6+1, fEnergies[i]-DefFWHM, fEnergies[i]+DefFWHM);
-        if(fPlayer->fFixMean->GetState() == kButtonDown)
+        if((fPlayer->fFixMean->GetState() == kButtonDown) || fFixedMean.at(i))
             fFitFunction->FixParameter(4+i*6+1,fEnergies[i]);
 
         //FWHM
@@ -384,6 +390,21 @@ void CXFit::Fit()
             if(fPlayer->fFixFWHM->GetState() == kButtonDown)
                 fFitFunction->FixParameter(4+i*6+2,DefFWHM);
         }
+
+        //Height
+        // find max in E+-FWHM
+        int bin1 = fHistogram->FindBin(fEnergies[i]-fFitFunction->GetParameters()[4+i*6+2]);
+        int bin2 = fHistogram->FindBin(fEnergies[i]+fFitFunction->GetParameters()[4+i*6+2]);
+        double max = fHistogram->GetBinContent(bin1);
+
+        for (int i = bin1 + 1; i <= bin2; ++i) {
+            if (fHistogram->GetBinContent(i) > max) {
+                max = fHistogram->GetBinContent(i);
+            }
+        }
+
+        fFitFunction->SetParameter(4+i*6+0, max - (fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[0]))+fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[1])))*0.5 );
+        fFitFunction->SetParLimits(4+i*6+0, fFitFunction->GetParameters()[4+i*6+0]*0.5, fFitFunction->GetParameters()[4+i*6+0]*2);
 
         //LeftTail
         fFitFunction->SetParameter(4+i*6+3, LeftTailVal);

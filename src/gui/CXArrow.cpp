@@ -50,7 +50,7 @@ CXArrow::CXArrow(CXBgdFit *fit, Double_t E, Double_t y1, Double_t y2, Float_t ar
     : TArrow(E, y1, E, y2, arrowsize, option), fBgdFit(fit), fTextSize(textsize) {
 }
 
-CXArrow::CXArrow(const CXArrow &other) : TArrow(other), fTextSize(other.fTextSize) {
+CXArrow::CXArrow(const CXArrow &other) : TArrow(other), fTextSize(other.fTextSize), fMeanFixed(other.fMeanFixed) {
     fFit = other.fFit;
     fBgdFit = other.fBgdFit;
 
@@ -71,6 +71,7 @@ CXArrow &CXArrow::operator=(const CXArrow &other) {
     fFit = other.fFit;
     fBgdFit = other.fBgdFit;
     fTextSize = other.fTextSize;
+    fMeanFixed = other.fMeanFixed;
 
     delete fLatex;
     delete fBox;
@@ -182,6 +183,12 @@ void CXArrow::ClearPad(TVirtualPad *pad, bool refresh)
 void CXArrow::Paint(Option_t *option)
 {
     TArrow::Paint(option);
+}
+
+void CXArrow::SetMeanFixed(Bool_t on)
+{
+    fMeanFixed=on;
+    fFit->Update();
 }
 
 

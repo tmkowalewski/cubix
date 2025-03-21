@@ -484,10 +484,6 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
         }
 
         if((EKeySym)EventY==kKey_f && (EKeySym)fLastEventY==kKey_l && !fCTRL) {
-            if(IsHist1DPlayerEnabled==false)
-                ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());
-            fMainTab->SetTab(fHist1DPlayer->GetName());
-
             fHist1DPlayer->LastFit();
         }
         else if((EKeySym)EventY==kKey_f && !fCTRL) {
@@ -736,8 +732,11 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
             TVirtualPad *pad = fCanvas->GetPad(i+1);
             pad->cd();
             pad->SetLeftMargin(0.06);
-            if(px>1) pad->SetLeftMargin(0.06*px*0.85);
-            pad->SetRightMargin(fCanvas->GetRightMargin());
+            if(px>1) {
+                pad->SetLeftMargin(0.06*px*0.85);
+                pad->SetLeftMargin(0.05*px*0.85);
+            }
+            // pad->SetRightMargin(fCanvas->GetRightMargin());
             pad->SetBottomMargin(fCanvas->GetBottomMargin());
             if(py>1) pad->SetBottomMargin(fCanvas->GetBottomMargin()*py*0.7);
             pad->SetTopMargin(fCanvas->GetTopMargin());
@@ -1665,10 +1664,18 @@ void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
             RefreshPads();
             TPaletteAxis *palette = (TPaletteAxis*)hist->GetListOfFunctions()->FindObject("palette");
             if(palette) {
-                palette->SetX2NDC(0.97);
-                palette->SetX1NDC(0.95);
+                if(fabs(gPad->GetRightMargin()-0.03)<0.001) { // case of a standard margin
+                    gPad->SetRightMargin(0.055);
+                    palette->SetX2NDC(0.97);
+                    palette->SetX1NDC(0.95);
+                }
+                else {
+                    palette->SetX1NDC(1.-gPad->GetRightMargin()+0.01);
+                    palette->SetX2NDC(1.-gPad->GetRightMargin()+0.03);
+                }
+
                 hist->GetZaxis()->SetTickLength(0.02);
-                gPad->SetRightMargin(0.055);
+
             }
         }
         else

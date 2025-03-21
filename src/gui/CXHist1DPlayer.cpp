@@ -149,7 +149,7 @@ CXHist1DPlayer::CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
     fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Fit options:"), new TGLayoutHints(kLHintsBottom | kLHintsLeft,10,10,0,0));
-    fFitOptions = new TGTextEntry(fHorizontalFrame, "");
+    fFitOptions = new TGTextEntry(fHorizontalFrame, "I");
     fHorizontalFrame->AddFrame(fFitOptions,new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,10,10,0,0));
     fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
@@ -478,18 +478,18 @@ void CXHist1DPlayer::LastFit()
 {
     ClearFits();
 
-    fCurrentHist = fMainWindow->GetHisto();
+    fCurrentHist = fMainWindow->GetHisto(fMainWindow->GetSelectedPad());
+
     if(fCurrentHist==nullptr || fCurrentHist->InheritsFrom(TH2::Class())) {
         cout<<"No 1D istogram found, ignored"<<endl;
         return;
     }
-
     for(int i=0 ; i<fListOfFitObjectsSaved->GetEntries() ; i++) {
         CXFit *fit = (CXFit*)fListOfFitObjectsSaved->At(i)->Clone();
         fit->UpdateFit(fCurrentHist,fMainWindow->GetSelectedPad(),this, fMainWindow->GetWSManager()->GetActiveWorkspace());
         fListOfFitObjects->Add(fit);
     }
-    cout << "updated fit" << endl;
+    cout << "updated fit on: " << fCurrentHist->GetName() << endl;
     DoFit();
 }
 
@@ -519,10 +519,10 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
     if(DoNewFit && fCurrentFit) {
         if(EventType == kButton1Up && (!selected || !selected->InheritsFrom("CXArrow"))) {
             if(     pad->AbsPixeltoX(EventX)>gPad->GetUxmin() &&
-                    pad->AbsPixeltoX(EventX)<gPad->GetUxmax() &&
-                    pad->AbsPixeltoY(EventY)>gPad->GetUymin() &&
-                    pad->AbsPixeltoY(EventY)<gPad->GetUymax()
-                    ) {
+                pad->AbsPixeltoX(EventX)<gPad->GetUxmax() &&
+                pad->AbsPixeltoY(EventY)>gPad->GetUymin() &&
+                pad->AbsPixeltoY(EventY)<gPad->GetUymax()
+                ) {
                 Float_t E = pad->AbsPixeltoX(EventX);
                 fCurrentFit->AddArrow(E);
             }
@@ -530,6 +530,7 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
         if(EventType == kButton1Double) {
             DoNewFit = false;
             fCurrentFit->Fit();
+            fListOfFitObjectsSaved->Add(fCurrentFit->Clone());
             fCurrentFit = nullptr;
         }
     }
@@ -595,10 +596,19 @@ void CXHist1DPlayer::DoFit()
 
     fFitResultsBox->RemoveAll();
 
+    TVirtualPad *pad = fMainWindow->GetSelectedPad();
+
+    if(pad==nullptr) {
+        cout<<"No selected pad, ignored"<<endl;
+        return;
+    }
+
     for(int i=0 ; i<fListOfFitObjects->GetEntries() ; i++) {
         CXFit *fit = (CXFit*)fListOfFitObjects->At(i);
-        fListOfFitObjectsSaved->Add(fit->Clone());
-        fit->Fit();
+        if(pad == fit->GetPad()) {
+            fListOfFitObjectsSaved->Add(fit->Clone());
+            fit->Fit();
+        }
     }
 
     fMainWindow->RefreshPads();
@@ -732,7 +742,7 @@ void CXHist1DPlayer::HandleMyButton()
 
 void CXHist1DPlayer::PrintInListBox(TString mess, Int_t Type)
 {
-// #if (OS_TYPE == OS_LINUX)
+    // #if (OS_TYPE == OS_LINUX)
     const TGFont *ufont;         // will reflect user font changes
     ufont = gClient->GetFont("-*-courier-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
     // ufont = gClient->GetFont("-adobe-times-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
@@ -747,9 +757,9 @@ void CXHist1DPlayer::PrintInListBox(TString mess, Int_t Type)
     uGC = gClient->GetGC(&val, kTRUE);
 
     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1, uGC->GetGC(), ufont->GetFontStruct());
-// #else
-//     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1);
-// #endif
+    // #else
+    //     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1);
+    // #endif
 
     if(Type == kError)
         entry->SetBackgroundColor((Pixel_t)0xff0000);

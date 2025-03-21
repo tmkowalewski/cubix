@@ -61,6 +61,7 @@ private:
     TList       *fListOfPeaks       = nullptr;
 
     std::vector<Double_t> fEnergies;
+    std::vector<Bool_t> fFixedMean;
     std::vector<Double_t> fBackgd;
 
     CXWorkspace *fWorkspace = nullptr;
@@ -79,6 +80,7 @@ public:
 
     void AddArrow(Double_t Energy);
     void RemoveArrow(CXArrow *arrow = nullptr);
+    void DrawArrows();
     void Update();
     void Fit();
 
