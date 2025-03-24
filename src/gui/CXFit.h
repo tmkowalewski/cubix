@@ -68,6 +68,8 @@ private:
 
     std::ostringstream fsavedStream;
 
+    Bool_t fBindFWHM = false;
+
 public:
     CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
     CXFit(const CXFit &other);  // Copy constructor
@@ -94,6 +96,8 @@ public:
     void Clear(TVirtualPad *pad = nullptr);
 
     TString Save();
+
+    void BindFWHM(Bool_t on);
 
     ClassDefOverride(CXFit,0);
 };

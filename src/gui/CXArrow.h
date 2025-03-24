@@ -60,6 +60,7 @@ private:
     Float_t fTextSize = 0.03;
 
     Bool_t fMeanFixed = false;
+    Bool_t fBindFWHM = false;
 
 public:
 
@@ -86,6 +87,9 @@ public:
 
     void SetMeanFixed(Bool_t on = true); // *TOGGLE*
     Bool_t GetMeanFixed() { return fMeanFixed; }
+
+    void SetBindFWHM(Bool_t on = true); // *TOGGLE*
+    Bool_t GetBindFWHM() { return fBindFWHM; }
 
     void SetText(TH1 *hist, const TString &text, const TString &tooltip);
 

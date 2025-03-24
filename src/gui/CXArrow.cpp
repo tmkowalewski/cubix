@@ -50,7 +50,7 @@ CXArrow::CXArrow(CXBgdFit *fit, Double_t E, Double_t y1, Double_t y2, Float_t ar
     : TArrow(E, y1, E, y2, arrowsize, option), fBgdFit(fit), fTextSize(textsize) {
 }
 
-CXArrow::CXArrow(const CXArrow &other) : TArrow(other), fTextSize(other.fTextSize), fMeanFixed(other.fMeanFixed) {
+CXArrow::CXArrow(const CXArrow &other) : TArrow(other), fTextSize(other.fTextSize), fMeanFixed(other.fMeanFixed), fBindFWHM(other.fBindFWHM) {
     fFit = other.fFit;
     fBgdFit = other.fBgdFit;
 
@@ -72,6 +72,7 @@ CXArrow &CXArrow::operator=(const CXArrow &other) {
     fBgdFit = other.fBgdFit;
     fTextSize = other.fTextSize;
     fMeanFixed = other.fMeanFixed;
+    fBindFWHM = other.fBindFWHM;
 
     delete fLatex;
     delete fBox;
@@ -191,5 +192,10 @@ void CXArrow::SetMeanFixed(Bool_t on)
     fFit->Update();
 }
 
+void CXArrow::SetBindFWHM(Bool_t on) {
+    if (fBindFWHM == on) return;
+    fBindFWHM = on;
+    if(fFit) fFit->BindFWHM(on);
+}
 
 ClassImp(CXArrow);
