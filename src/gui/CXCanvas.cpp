@@ -1604,6 +1604,8 @@ void CXCanvas::SaveHistToASCII(TH1 *_hist, TString _nameout)
         outfile<<"# X axis : "<<_hist->GetXaxis()->GetTitle()<<endl;
         outfile<<"# Y axis : "<<_hist->GetYaxis()->GetTitle()<<endl;
         outfile<<"# N Bins : "<<_hist->GetXaxis()->GetNbins()<<endl;
+        outfile<<"# X Min : "<<_hist->GetXaxis()->GetXmin()<<endl;
+        outfile<<"# X Max : "<<_hist->GetXaxis()->GetXmax()<<endl;
         outfile<<"# X value at the center of the bins"<<endl;
         for(int ibin = 1 ; ibin<=_hist->GetXaxis()->GetNbins() ; ibin++)
         {
