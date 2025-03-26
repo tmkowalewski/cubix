@@ -418,7 +418,6 @@ void CXFileList::DisplayASCII(const TString &fname)
     if(xval.size() && content.size() && xval.size() == content.size()) {
         for(int ix=0 ; ix<content.size() ; ix++) {
             hist->Fill(xval.at(ix),content.at(ix));
-            cout << xval.at(ix) << " " << content.at(ix) << endl;
         }
     }
     else if(xval.size()==0) {
