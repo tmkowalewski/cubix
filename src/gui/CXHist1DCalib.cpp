@@ -474,10 +474,6 @@ bool CXHist1DCalib::CheckFitProperties(TH1 *hist)
 
 void CXHist1DCalib::Calibrate2D(TH2 *hist)
 {
-    if(hist->GetNbinsY()>100) {
-        gbash_color->WarningMessage("Too many channels on Y axis for an auto calibration of all Y bins");
-        return;
-    }
     if(hist->GetYaxis()->GetBinWidth(1)!=1) {
         gbash_color->WarningMessage("Auto TH2 calib can only be done on histogram with Y bins width = 1");
         return;
