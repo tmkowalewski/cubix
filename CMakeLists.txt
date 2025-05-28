@@ -267,7 +267,7 @@ file(GLOB databases ${CMAKE_CURRENT_SOURCE_DIR}/databases)
 
 print(NOTICE "Building Cubix executable")
 
-set (user_programs cubix CubeBuilder)
+set (user_programs cubix CubeBuilder trans-prob-calc)
 
 foreach( prog ${user_programs} )
     print(STATUS " -> ${prog}")
