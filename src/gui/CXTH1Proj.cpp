@@ -412,7 +412,7 @@ void CXTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, TObj
             f2DPlayer->Project();
         if( KeySym == kKey_d  && selected && selected->InheritsFrom(CXGateBox::Class()))
             RemoveGate(dynamic_cast<CXGateBox*>(selected));
-        if( KeySym == kKey_l )
+        if((EKeySym)KeySym==kKey_g && (EKeySym)fLastSym==kKey_l)
             f2DPlayer->ApplyLastGate();
 
         UpdateGates();

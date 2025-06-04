@@ -155,6 +155,8 @@ void CXFileList::DoubleClicked(TGListTreeItem *item, Int_t /*a_int*/)
                     DisplayRadCube(filename);
                 if(filename.EndsWith(".spe") || filename.EndsWith(".2dp"))
                     DisplayRadSpe(filename);
+                if(filename.EndsWith(".asc") || filename.EndsWith(".ascii") || filename.EndsWith(".txt") || filename.EndsWith(".dat"))
+                    DisplayASCII(filename);
             }
         }
     }
@@ -353,6 +355,79 @@ void CXFileList::DisplayRadSpe(const TString &fname)
     else if(fname.EndsWith(".2dp")) hist = fRadReader->GetHistFrom2dpFile(filanem);
 
     if(hist) fMainWindow->DoDraw(hist,fBrowser->GetDrawOption());
+}
+
+void CXFileList::DisplayASCII(const TString &fname)
+{
+    TString CanvasName = fMainWindow->GetCanvas()->GetName();
+
+    if(CanvasName.BeginsWith("GxG") || CanvasName.BeginsWith("RadGG") ){
+        cout<<" cannot plot in a Tab dedicated to Gamma Gamma projections" << endl;
+        return;
+    }
+    if(CanvasName.BeginsWith("RadCube")){
+        cout<<" cannot plot in a Tab dedicated to Cube projections" << endl;
+        return;
+    }
+
+    TString filanem = fname.Copy().ReplaceAll(Form("%s/",gSystem->pwd()),"");
+
+    double xmin=0.;
+    double xmax=0.;
+    int NBins=0;
+    TString line;
+    ifstream file(fname);
+
+    vector<double> content;
+    vector<double> xval;
+
+    while(line.ReadLine(file)) {
+        if(line.Contains("N Bins")) {
+            TObjArray *arr = line.Tokenize(" ");
+            NBins = atoi(arr->Last()->GetName());
+            delete arr;
+        }
+        else if(line.Contains("X Min")) {
+            TObjArray *arr = line.Tokenize(" ");
+            xmin = atoi(arr->Last()->GetName());
+            delete arr;
+        }
+        else if(line.Contains("X Max")) {
+            TObjArray *arr = line.Tokenize(" ");
+            xmax = atoi(arr->Last()->GetName());
+            delete arr;
+        }
+        else if(line.BeginsWith("#")) continue;
+        TObjArray *arr = line.Tokenize(" ");
+        if(arr->GetEntries()==2) {
+            content.emplace_back(atof(arr->At(1)->GetName()));
+            xval.emplace_back(atof(arr->At(0)->GetName()));
+        }
+        else if(arr->GetEntries()==1) {
+            content.emplace_back(atof(arr->At(1)->GetName()));
+        }
+    }
+
+    if(NBins==0) {
+        NBins = content.size();
+        xmax = content.size();
+    }
+
+    TH1 *hist = new TH1F(filanem,filanem,NBins,xmin,xmax);
+
+    if(xval.size() && content.size() && xval.size() == content.size()) {
+        for(int ix=0 ; ix<content.size() ; ix++) {
+            hist->Fill(xval.at(ix),content.at(ix));
+        }
+    }
+    else if(xval.size()==0) {
+        for(int ix=0 ; ix<content.size() ; ix++) {
+            hist->SetBinContent(ix+1,content.at(ix));
+        }
+    }
+
+    if(hist->Integral()) fMainWindow->DoDraw(hist,fBrowser->GetDrawOption());
+    else delete hist;
 }
 
 void CXFileList::DisplayList(TList *list)

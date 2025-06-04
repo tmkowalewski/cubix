@@ -118,6 +118,7 @@ private:
 
     int DisplayRadCube(const TString &fname);
     void DisplayRadSpe(const TString &fname);
+    void DisplayASCII(const TString &fname);
 
     void DisplayObject(const TString& fname,const TString& name);
     void DisplayList(TList *list);

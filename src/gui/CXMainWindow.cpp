@@ -55,6 +55,8 @@
 #include "TSystem.h"
 #include "TGFileDialog.h"
 #include "TRootBrowser.h"
+#include "TPaletteAxis.h"
+#include "TEnv.h"
 
 #include "cubix_config.h"
 
@@ -362,9 +364,9 @@ void CXMainWindow::Init()
     ToggleTab(IsEditorEnabled,fEditorTab,"Editor");
 
     // status bar
-    array<Int_t,5> parts{20 , 20 , 20 , 20 ,20};
+    array<Int_t,4> parts{15 , 30 , 10 ,45};
     fStatusBar = new TGStatusBar(fVFRight,50,10,kHorizontalFrame);
-    fStatusBar->SetParts(parts.data(),5);
+    fStatusBar->SetParts(parts.data(),4);
     fStatusBar->Draw3DCorner(kFALSE);
     fStatusBar->SetLayoutBroken(true);
     fVFRight->AddFrame(fStatusBar, new TGLayoutHints(kLHintsBottom | kLHintsLeft | kLHintsExpandX, 0, 0, 2, 0));
@@ -412,14 +414,18 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
     fSelectedPad = fCanvas->GetClickSelectedPad();
 
     if(gPad && selected != nullptr) {
-        const char *text0, *text1, *text2, *text4;
-        char text3[50];
+        const char *text0, *text1, *text3;
+        char text2[50];
         text0 = selected->ClassName();
         SetStatusText(text0,0);
-        text1 = selected->GetTitle();
+
+        TString Name = selected->GetName();
+        if(Name=="") Name = "NoName";
+        TString Title = selected->GetTitle();
+        if(Title=="") Title = "NoTitle";
+
+        text1 = Form("%s:%s",Name.Data(),Title.Data());
         SetStatusText(text1,1);
-        text2 = selected->GetName();
-        SetStatusText(text2,2);
 
         if(fCanvas->GetCrosshair() == 1 && (selected->InheritsFrom("TFrame") || selected->InheritsFrom("TH1") || selected->InheritsFrom("CXCanvas") || selected->InheritsFrom("TPad"))) {
             if (EventType == kButton2) {
@@ -433,13 +439,13 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
         }
 
         if (EventType == kKeyPress)
-            snprintf(text3, sizeof(text3), "%c", (char) EventY);
+            snprintf(text2, sizeof(text2), "%c", (char) EventY);
         else
-            snprintf(text3, sizeof(text3), "%.2f,%.2f", gPad->AbsPixeltoX(EventX)- fRefX, gPad->AbsPixeltoY(EventY) - fRefY );
-        SetStatusText(text3,3);
+            snprintf(text2, sizeof(text2), "%.2f,%.2f", gPad->AbsPixeltoX(EventX)- fRefX, gPad->AbsPixeltoY(EventY) - fRefY );
+        SetStatusText(text2,2);
 
-        text4 = selected->GetObjectInfo(EventX,EventY);
-        SetStatusText(text4,4);
+        text3 = selected->GetObjectInfo(EventX,EventY);
+        SetStatusText(text3,3);
     }
 
     //    if (EventType == kButton1Down)
@@ -477,17 +483,21 @@ void CXMainWindow::HandleMovement(Int_t EventType, Int_t EventX, Int_t EventY, T
             }
         }
 
-        if((EKeySym)EventY==kKey_f && !fCTRL) {
+        if((EKeySym)EventY==kKey_f && (EKeySym)fLastEventY==kKey_l && !fCTRL) {
+            fHist1DPlayer->LastFit();
+        }
+        else if((EKeySym)EventY==kKey_f && !fCTRL) {
             if(IsHist1DPlayerEnabled==false)
                 ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());
             fMainTab->SetTab(fHist1DPlayer->GetName());
 
             fHist1DPlayer->NewFit();
         }
-        if((EKeySym)EventY==kKey_f && fCTRL) {
+        else if((EKeySym)EventY==kKey_f && fCTRL) {
             fHist1DPlayer->DoFit();
             fCanvas->Update();
         }
+
         if((EKeySym)EventY==kKey_s && !fCTRL) {
             if(IsHist1DPlayerEnabled==false)
                 ToggleTab(IsHist1DPlayerEnabled,fHist1DPlayerTab,fHist1DPlayer->GetName());
@@ -722,8 +732,11 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
             TVirtualPad *pad = fCanvas->GetPad(i+1);
             pad->cd();
             pad->SetLeftMargin(0.06);
-            if(px>1) pad->SetLeftMargin(0.06*px*0.85);
-            pad->SetRightMargin(fCanvas->GetRightMargin());
+            if(px>1) {
+                pad->SetLeftMargin(0.06*px*0.85);
+                pad->SetLeftMargin(0.05*px*0.85);
+            }
+            // pad->SetRightMargin(fCanvas->GetRightMargin());
             pad->SetBottomMargin(fCanvas->GetBottomMargin());
             if(py>1) pad->SetBottomMargin(fCanvas->GetBottomMargin()*py*0.7);
             pad->SetTopMargin(fCanvas->GetTopMargin());
@@ -745,7 +758,7 @@ void CXMainWindow::NewTab(Int_t px, Int_t py, const TString &name)
     fCanvas->SetNPads(px*py);
 
     fCanvas->Update();
-    fCanvas->GetFrame()->SetBit(TObject::kCannotPick);
+    fCanvas->SetPickable(false);
 
     fCanvasTab->SetTab(fCanvasTab->GetNumberOfTabs()-1);
 
@@ -1478,7 +1491,7 @@ void CXMainWindow::ProcessedKeyEvent(Event_t *event)
 
 void CXMainWindow::SetPalette()
 {
-    gStyle->SetPalette();
+    gStyle->SetPalette(gEnv->GetValue("CX_Palette",57));
 }
 
 void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
@@ -1646,6 +1659,25 @@ void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
                 HistToMult->Multiply(HistToMult,hist,1,Fact);
             }
         }
+        else if(DrawOpt.Contains("colz") && hist->GetDimension()>1) {
+            hist->Draw(DrawOpt);
+            RefreshPads();
+            TPaletteAxis *palette = (TPaletteAxis*)hist->GetListOfFunctions()->FindObject("palette");
+            if(palette) {
+                if(fabs(gPad->GetRightMargin()-0.03)<0.001) { // case of a standard margin
+                    gPad->SetRightMargin(0.055);
+                    palette->SetX2NDC(0.97);
+                    palette->SetX1NDC(0.95);
+                }
+                else {
+                    palette->SetX1NDC(1.-gPad->GetRightMargin()+0.01);
+                    palette->SetX2NDC(1.-gPad->GetRightMargin()+0.03);
+                }
+
+                hist->GetZaxis()->SetTickLength(0.02);
+
+            }
+        }
         else
             hist->Draw(DrawOpt);
     }
@@ -1661,7 +1693,7 @@ void CXMainWindow::DoDraw(TObject *obj, TString DrawOpt)
         obj->Draw(DrawOpt);
 
     RefreshPads();
-    gPad->GetFrame()->SetBit(TObject::kCannotPick);
+    if(!fCanvas->GetPickable()) gPad->GetFrame()->SetBit(TObject::kCannotPick);
 }
 
 void CXMainWindow::OpenFile(TString filename)

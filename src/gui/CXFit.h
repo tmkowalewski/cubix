@@ -61,18 +61,28 @@ private:
     TList       *fListOfPeaks       = nullptr;
 
     std::vector<Double_t> fEnergies;
+    std::vector<Bool_t> fFixedMean;
     std::vector<Double_t> fBackgd;
 
     CXWorkspace *fWorkspace = nullptr;
 
     std::ostringstream fsavedStream;
 
+    Bool_t fBindFWHM = false;
+
 public:
     CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
-    ~CXFit();
+    CXFit(const CXFit &other);  // Copy constructor
+    CXFit& operator=(const CXFit &other);  // Copy assignment operator
+    virtual ~CXFit();
+
+    virtual TObject* Clone(const char* newname = "") const override;
+
+    void UpdateFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace=nullptr);
 
     void AddArrow(Double_t Energy);
     void RemoveArrow(CXArrow *arrow = nullptr);
+    void DrawArrows();
     void Update();
     void Fit();
 
@@ -87,7 +97,9 @@ public:
 
     TString Save();
 
-    ClassDef(CXFit,0);
+    void BindFWHM(Bool_t on);
+
+    ClassDefOverride(CXFit,0);
 };
 
 #endif

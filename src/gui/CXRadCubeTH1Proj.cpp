@@ -450,7 +450,7 @@ void CXRadCubeTH1Proj::HandleMovement(Int_t EventType, Int_t EventX, Int_t Event
         }
         if( KeySym == kKey_d  && selected && selected->InheritsFrom("CXGateBox"))
             RemoveGate(((CXGateBox*)selected));
-        if( KeySym == kKey_l ) {
+        if((EKeySym)KeySym==kKey_g && (EKeySym)fLastSym==kKey_l) {
             if(fRadCubePlayer)
                 fRadCubePlayer->ApplyLastGates();
             else if(fRad2DPlayer)

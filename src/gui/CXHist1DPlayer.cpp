@@ -354,6 +354,9 @@ CXHist1DPlayer::CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
     fListOfFitObjects = new TList;
     fListOfFitObjects->SetOwner();
 
+    fListOfFitObjectsSaved = new TList;
+    fListOfFitObjectsSaved->SetOwner();
+
     fListOfBgdFitObjects = new TList;
     fListOfBgdFitObjects->SetOwner();
 }
@@ -471,6 +474,25 @@ void CXHist1DPlayer::NewFit()
     fListOfFitObjects->Add(fCurrentFit);
 }
 
+void CXHist1DPlayer::LastFit()
+{
+    ClearFits();
+
+    fCurrentHist = fMainWindow->GetHisto(fMainWindow->GetSelectedPad());
+
+    if(fCurrentHist==nullptr || fCurrentHist->InheritsFrom(TH2::Class())) {
+        cout<<"No 1D istogram found, ignored"<<endl;
+        return;
+    }
+    for(int i=0 ; i<fListOfFitObjectsSaved->GetEntries() ; i++) {
+        CXFit *fit = (CXFit*)fListOfFitObjectsSaved->At(i)->Clone();
+        fit->UpdateFit(fCurrentHist,fMainWindow->GetSelectedPad(),this, fMainWindow->GetWSManager()->GetActiveWorkspace());
+        fListOfFitObjects->Add(fit);
+    }
+    cout << "updated fit on: " << fCurrentHist->GetName() << endl;
+    DoFit();
+}
+
 void CXHist1DPlayer::RemoveFit(CXFit *fit)
 {
     fListOfFitObjects->Remove(fit);
@@ -494,13 +516,13 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
         if(arr->GetBgdFit()) arr->GetBgdFit()->Update();
     }
 
-    if(DoNewFit) {
+    if(DoNewFit && fCurrentFit) {
         if(EventType == kButton1Up && (!selected || !selected->InheritsFrom("CXArrow"))) {
             if(     pad->AbsPixeltoX(EventX)>gPad->GetUxmin() &&
-                    pad->AbsPixeltoX(EventX)<gPad->GetUxmax() &&
-                    pad->AbsPixeltoY(EventY)>gPad->GetUymin() &&
-                    pad->AbsPixeltoY(EventY)<gPad->GetUymax()
-                    ) {
+                pad->AbsPixeltoX(EventX)<gPad->GetUxmax() &&
+                pad->AbsPixeltoY(EventY)>gPad->GetUymin() &&
+                pad->AbsPixeltoY(EventY)<gPad->GetUymax()
+                ) {
                 Float_t E = pad->AbsPixeltoX(EventX);
                 fCurrentFit->AddArrow(E);
             }
@@ -508,10 +530,12 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
         if(EventType == kButton1Double) {
             DoNewFit = false;
             fCurrentFit->Fit();
+            fListOfFitObjectsSaved->Add(fCurrentFit->Clone());
+            fCurrentFit = nullptr;
         }
     }
 
-    if(DoNewBgdFit) {
+    if(DoNewBgdFit && fCurrentBgdFit) {
         if(EventType == kButton1Up && (!selected || !selected->InheritsFrom("CXArrow"))) {
             if(     pad->AbsPixeltoX(EventX)>gPad->GetUxmin() &&
                 pad->AbsPixeltoX(EventX)<gPad->GetUxmax() &&
@@ -525,6 +549,7 @@ void CXHist1DPlayer::HandleMouse(Int_t EventType,Int_t EventX,Int_t EventY, TObj
         if(EventType == kButton1Double) {
             DoNewBgdFit = false;
             fCurrentBgdFit->Fit();
+            fCurrentBgdFit = nullptr;
         }
     }
 }
@@ -558,23 +583,38 @@ void CXHist1DPlayer::ClearFits()
     }
 
     DoNewFit = false;
+    fCurrentFit=nullptr;
     DoNewBgdFit = false;
+    fCurrentBgdFit=nullptr;
 
     fMainWindow->RefreshPads();
 }
 
 void CXHist1DPlayer::DoFit()
 {
+    fListOfFitObjectsSaved->Clear();
+
     fFitResultsBox->RemoveAll();
+
+    TVirtualPad *pad = fMainWindow->GetSelectedPad();
+
+    if(pad==nullptr) {
+        cout<<"No selected pad, ignored"<<endl;
+        return;
+    }
 
     for(int i=0 ; i<fListOfFitObjects->GetEntries() ; i++) {
         CXFit *fit = (CXFit*)fListOfFitObjects->At(i);
-        fit->Fit();
+        if(pad == fit->GetPad()) {
+            fListOfFitObjectsSaved->Add(fit->Clone());
+            fit->Fit();
+        }
     }
 
     fMainWindow->RefreshPads();
 
     DoNewFit=false;
+    fCurrentFit=nullptr;
 }
 
 void CXHist1DPlayer::DoBgdFit()
@@ -589,6 +629,7 @@ void CXHist1DPlayer::DoBgdFit()
     fMainWindow->RefreshPads();
 
     DoNewBgdFit=false;
+    fCurrentBgdFit=nullptr;
 }
 
 
@@ -701,7 +742,7 @@ void CXHist1DPlayer::HandleMyButton()
 
 void CXHist1DPlayer::PrintInListBox(TString mess, Int_t Type)
 {
-// #if (OS_TYPE == OS_LINUX)
+    // #if (OS_TYPE == OS_LINUX)
     const TGFont *ufont;         // will reflect user font changes
     ufont = gClient->GetFont("-*-courier-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
     // ufont = gClient->GetFont("-adobe-times-medium-r-*-*-12-*-*-*-*-*-iso8859-1");
@@ -716,9 +757,9 @@ void CXHist1DPlayer::PrintInListBox(TString mess, Int_t Type)
     uGC = gClient->GetGC(&val, kTRUE);
 
     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1, uGC->GetGC(), ufont->GetFontStruct());
-// #else
-//     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1);
-// #endif
+    // #else
+    //     TGTextLBEntry *entry = new TGTextLBEntry(fFitResultsBox->GetContainer(), new TGString(mess), fFitResultsBox->GetNumberOfEntries()+1);
+    // #endif
 
     if(Type == kError)
         entry->SetBackgroundColor((Pixel_t)0xff0000);

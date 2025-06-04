@@ -56,24 +56,81 @@
 
 using namespace std;
 
-CXFit::CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace) : TObject()
-{
-    fHistogram = hist;
-    fPad = pad;
-    fPlayer = player;
-
-    fWorkspace = _workspace;
-
-    fListOfArrows = new TList;
+CXFit::CXFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace)
+    : fPlayer(player), fPad(pad), fHistogram(hist), fWorkspace(_workspace) {
+    fListOfArrows = new TList();
     fListOfArrows->SetOwner();
 
-    fListOfPeaks = new TList;
+    fListOfPeaks = new TList();
     fListOfPeaks->SetOwner();
+}
+
+CXFit::CXFit(const CXFit &other): TObject(other), fEnergies(other.fEnergies), fBackgd(other.fBackgd), fFixedMean(other.fFixedMean), fBindFWHM(other.fBindFWHM)
+{
+    fListOfArrows = new TList();
+    if (other.fListOfArrows) {
+        for (TObject *obj : *(other.fListOfArrows)) {
+            CXArrow *arr = dynamic_cast<CXArrow*>(obj->Clone());
+            arr->SetFit(this);
+            fListOfArrows->Add(arr);
+        }
+    }
+    fListOfPeaks = new TList();
+    fListOfPeaks->SetOwner();
+}
+
+CXFit& CXFit::operator=(const CXFit &other) {
+    if (this == &other) return *this;  // Handle self-assignment
+
+    TObject::operator=(other);
+    fPad = other.fPad;
+    fPlayer = other.fPlayer;
+    fWorkspace = other.fWorkspace;
+
+    fEnergies = other.fEnergies;
+    fBackgd = other.fBackgd;
+    fFixedMean = other.fFixedMean;
+    fBindFWHM = other.fBindFWHM;
+
+    // Delete existing objects before assigning new ones
+    delete fHistogram;
+    delete fFitFunction;
+    delete fBackFunction;
+    delete fResidue;
+    delete fListOfArrows;
+    delete fListOfPeaks;
+
+    fHistogram = nullptr;
+    fFitFunction = nullptr;
+    fBackFunction = nullptr;
+    fResidue = nullptr;
+
+    fListOfArrows = new TList();
+    if (other.fListOfArrows) {
+        for (TObject *obj : *(other.fListOfArrows)) {
+            fListOfArrows->Add(obj->Clone());
+        }
+    }
+
+    fListOfPeaks = new TList();
+    if (other.fListOfPeaks) {
+        for (TObject *obj : *(other.fListOfPeaks)) {
+            fListOfPeaks->Add(obj->Clone());
+        }
+    }
+
+    fsavedStream.str();
+
+    return *this;
+}
+
+TObject* CXFit::Clone(const char* newname) const {
+    return new CXFit(*this);
 }
 
 CXFit::~CXFit()
 {
-    Clear(fPad);
+    if(fPad) Clear(fPad);
 
     delete fListOfArrows;
 
@@ -82,8 +139,21 @@ CXFit::~CXFit()
     delete fResidue;
     delete fListOfPeaks;
 
-    fPlayer->GetMainWindow()->RefreshPads();
+    if(fPlayer) fPlayer->GetMainWindow()->RefreshPads();
 }
+
+void CXFit::UpdateFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWorkspace *_workspace)
+{
+    fHistogram = hist;
+    fPad = pad;
+    fPlayer = player;
+
+    fWorkspace = _workspace;
+
+    DrawArrows();
+    Update();
+}
+
 
 void CXFit::AddArrow(Double_t Energy)
 {
@@ -124,10 +194,19 @@ void CXFit::RemoveArrow(CXArrow *arrow)
     Update();
 }
 
+void CXFit::DrawArrows()
+{
+    for(int i=0 ; i<fListOfArrows->GetEntries() ; i++) {
+        auto *arr = dynamic_cast<CXArrow*>(fListOfArrows->At(i));
+        arr->Draw();
+    }
+}
+
 void CXFit::Update()
 {
     fEnergies.clear();
     fBackgd.clear();
+    fFixedMean.clear();
 
     fListOfArrows->Sort();
     TList back,Ener;
@@ -164,6 +243,7 @@ void CXFit::Update()
         arr->SetLineColor(kRed);
         arr->SetFillColor(kRed);
         fEnergies.push_back(E);
+        fFixedMean.push_back(arr->GetMeanFixed());
     }
 
     fPlayer->GetMainWindow()->RefreshPads();
@@ -171,7 +251,7 @@ void CXFit::Update()
 
 void CXFit::Clear(TVirtualPad *pad)
 {
-    fPlayer->EndFit();
+    if(fPlayer) fPlayer->EndFit();
 
     if(fPad==nullptr) {
         gbash_color->WarningMessage("No selected pad, ignored");
@@ -240,7 +320,7 @@ void CXFit::Fit()
     Double_t RightTailValMax = fPlayer->fNE_RT[2]->GetNumber();;
 
     Double_t StepVal = 0.01;
-    Double_t StepValMin = -1.;
+    Double_t StepValMin = 0.;
     Double_t StepValMax = 1.;
 
     Int_t NPars = 4+6*fEnergies.size();
@@ -287,24 +367,21 @@ void CXFit::Fit()
         fFitFunction->FixParameter(3,0);
 
     for(auto i=0U ; i<fEnergies.size() ; i++) {
-        //Height
-        fFitFunction->SetParameter(4+i*6+0, fHistogram->GetBinContent(fHistogram->FindBin(fEnergies[i])) - (fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[0]))+fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[1])))*0.5 );
-        fFitFunction->SetParLimits(4+i*6+0, fFitFunction->GetParameters()[4+i*6+0]*0.5, fFitFunction->GetParameters()[4+i*6+0]*1.5);
-
         //Position
         fFitFunction->SetParameter(4+i*6+1, fEnergies[i]);
         fFitFunction->SetParLimits(4+i*6+1, fEnergies[i]-DefFWHM, fEnergies[i]+DefFWHM);
-        if(fPlayer->fFixMean->GetState() == kButtonDown)
+        if((fPlayer->fFixMean->GetState() == kButtonDown) || fFixedMean.at(i))
             fFitFunction->FixParameter(4+i*6+1,fEnergies[i]);
 
         //FWHM
-        if(fPlayer->fUseFWHM) {
+        if(fBindFWHM && i>0) fFitFunction->FixParameter(4+i*6+2,0.);
+        else if(fPlayer->fUseFWHM && fWorkspace && fWorkspace->fFWHMFunction && fWorkspace->fFWHMErrors) {
             double FWHM = fWorkspace->fFWHMFunction->Eval(fEnergies[i]);
             if(fPlayer->fFixFWHM->GetState() == kButtonDown) {
                 fFitFunction->FixParameter(4+i*6+2,FWHM);
             }
             else {
-                double error = fWorkspace->fFWHMErrors->GetBinError(fWorkspace->fEfficiencyErrors->FindBin(fEnergies[i]));
+                double error = fWorkspace->fFWHMErrors->GetBinError(fWorkspace->fFWHMErrors->FindBin(fEnergies[i]));
                 double sigma = fPlayer->fFWHMSigma->GetNumber();
                 fFitFunction->SetParameter(4+i*6+2, FWHM);
                 fFitFunction->SetParLimits(4+i*6+2, std::max(0.,FWHM-error*sigma) , FWHM+error*sigma);
@@ -316,6 +393,21 @@ void CXFit::Fit()
             if(fPlayer->fFixFWHM->GetState() == kButtonDown)
                 fFitFunction->FixParameter(4+i*6+2,DefFWHM);
         }
+
+        //Height
+        // find max in E+-FWHM
+        int bin1 = fHistogram->FindBin(fEnergies[i]-fFitFunction->GetParameters()[4+0*6+2]);
+        int bin2 = fHistogram->FindBin(fEnergies[i]+fFitFunction->GetParameters()[4+0*6+2]);
+        double max = fHistogram->GetBinContent(bin1);
+
+        for (int i = bin1 + 1; i <= bin2; ++i) {
+            if (fHistogram->GetBinContent(i) > max) {
+                max = fHistogram->GetBinContent(i);
+            }
+        }
+
+        fFitFunction->SetParameter(4+i*6+0, max - (fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[0]))+fHistogram->GetBinContent(fHistogram->FindBin(fBackgd[1])))*0.5 );
+        fFitFunction->SetParLimits(4+i*6+0, 0, fFitFunction->GetParameters()[4+i*6+0]*2);
 
         //LeftTail
         fFitFunction->SetParameter(4+i*6+3, LeftTailVal);
@@ -359,6 +451,13 @@ void CXFit::Fit()
             fFitFunction->FixParameter(4+i*6+0,Ampli);
         }
 
+        r = fHistogram->Fit(fFitFunction,FitOpt.Data());
+    }
+
+    if(fBindFWHM) {
+        for(auto i=1U ; i<fEnergies.size() ; i++) {
+            fFitFunction->FixParameter(4+i*6+2, fFitFunction->GetParameter(4+0*6+2));
+        }
         r = fHistogram->Fit(fFitFunction,FitOpt.Data());
     }
 
@@ -573,6 +672,7 @@ Double_t CXFit::DoubleTailedStepedGaussian(Double_t*xx,Double_t*pp)
         Double_t Ampli     = pp[4+i*Npar+0];
         Double_t Mean      = pp[4+i*Npar+1];
         Double_t Sigma     = pp[4+i*Npar+2]*1./sqrt(8.*log(2.));
+        if(fBindFWHM) Sigma     = pp[4+0*Npar+2]*1./sqrt(8.*log(2.));
         Double_t Lambda    = pp[4+i*Npar+3];
         Double_t Rho       = pp[4+i*Npar+4];
         Double_t S         = pp[4+i*Npar+5];
@@ -674,3 +774,14 @@ TString CXFit::Save()
 {
     return fsavedStream.str();
 }
+
+void CXFit::BindFWHM(Bool_t on)
+{
+    fBindFWHM = on;
+    TIter next(fListOfArrows);
+    CXArrow* arrow = nullptr;
+    while ((arrow = (CXArrow*)next())) {
+        arrow->SetBindFWHM(on);
+    }
+}
+

@@ -1387,6 +1387,15 @@ void CXCanvas::SetVenerMode(Int_t value)
     fVenerMode = value;
 }
 
+void CXCanvas::SetPickable(Bool_t mode)
+{
+    fCanvas->GetFrame()->SetBit(TObject::kCannotPick,!mode);
+    fPickable = mode;
+    for(auto &&pad: *GetListOfPrimitives()) {
+        if(pad->InheritsFrom(TPad::Class())) ((TPad*)pad)->GetFrame()->SetBit(TObject::kCannotPick,!mode);
+    }
+}
+
 void CXCanvas::SetAgeOfEmpireMode(Int_t value)
 {
     fAgeOfEmpireMode = value;
@@ -1595,6 +1604,8 @@ void CXCanvas::SaveHistToASCII(TH1 *_hist, TString _nameout)
         outfile<<"# X axis : "<<_hist->GetXaxis()->GetTitle()<<endl;
         outfile<<"# Y axis : "<<_hist->GetYaxis()->GetTitle()<<endl;
         outfile<<"# N Bins : "<<_hist->GetXaxis()->GetNbins()<<endl;
+        outfile<<"# X Min : "<<_hist->GetXaxis()->GetXmin()<<endl;
+        outfile<<"# X Max : "<<_hist->GetXaxis()->GetXmax()<<endl;
         outfile<<"# X value at the center of the bins"<<endl;
         for(int ibin = 1 ; ibin<=_hist->GetXaxis()->GetNbins() ; ibin++)
         {

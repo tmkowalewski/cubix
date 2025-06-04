@@ -96,6 +96,7 @@ private:
     TGNumberEntry *fPrintLevel = nullptr;
 
     TList *fListOfFitObjects = nullptr;
+    TList *fListOfFitObjectsSaved = nullptr;
     TList *fListOfBgdFitObjects = nullptr;
 
     vector<Float_t> fEnergies;
@@ -124,6 +125,7 @@ public:
     void PeakSearchClear();
     void NewFit();
     void NewBgdFit();
+    void LastFit();
 
     void EndFit(){DoNewFit = false;}
     void DoFit();

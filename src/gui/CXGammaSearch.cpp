@@ -229,8 +229,8 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
     Int_t AMin = fARange[0]->GetNumber();
     Int_t AMax = fARange[1]->GetNumber();
 
-    double Gates[fNGammas];
-    double Width[fNGammas];
+    std::vector<double> Gates(fNGammas);
+    std::vector<double> Width(fNGammas);
 
     for(int ig=0 ; ig<fNGammas ; ig++) {
         Gates[ig] = fEnergies[ig]->GetNumber();
@@ -254,8 +254,7 @@ void CXGammaSearch::FindGammaRays(Bool_t Bash)
 
             vector<shared_ptr<tkn::tkdecay>> GoodGammas;
 
-            Bool_t gatetrig[fNGammas];
-            memset(gatetrig,0,sizeof(fNGammas));
+            std::vector<bool> gatetrig(fNGammas, false);
 
             Int_t NGatesTrig=0;
             for(int ig=0 ; ig<fNGammas ; ig++) {
@@ -354,8 +353,7 @@ void CXGammaSearch::FindInDoubleCoincidence(Bool_t Bash)
         /// taille du schema de niveau
         const Int_t Dim_LS = fLevelScheme->get_decays().size();
 
-        double Flag[Dim_LS];
-        for(int ii=0 ; ii<Dim_LS ; ii++) Flag[ii] = -1;
+        std::vector<double> Flag(Dim_LS, -1.0);
 
         TMatrixD Mat_LS(Dim_LS,Dim_LS); // Raw matrix in TS Space
         TMatrixD Mat_P(Dim_LS,Dim_LS);  // Total probability matrix
@@ -366,19 +364,22 @@ void CXGammaSearch::FindInDoubleCoincidence(Bool_t Bash)
         Mat_E  = Get_E_Matrix(fLevelScheme);
 
         Bool_t Det = fSp->IsDet(Mat_LS,Dim_LS);
-
-        TString TransitionName[Dim_LS];
-        double ETrans[Dim_LS];
-        double EI[Dim_LS];
-        double EF[Dim_LS];
+        
+        std::vector<TString> TransitionName(Dim_LS);
+        std::vector<double> ETrans(Dim_LS);
+        std::vector<double> EI(Dim_LS);
+        std::vector<double> EF(Dim_LS);
 
         //get the coordinates of the gammas
-        for(Int_t ig=0 ; ig<Dim_LS ; ig++) {
-            for(size_t j=0 ; j<avec.size() ; j++) {
-                GammaTransition GT = avec[j];
-                if(GT.EGamma == Mat_E[ig][0]) {
+        for (Int_t ig = 0; ig < Dim_LS; ++ig) {
+            for (const auto& GT : avec) {
+                if (GT.EGamma == Mat_E[ig][0]) {
                     Flag[ig] = Mat_E[ig][0];
-                    TransitionName[ig] = Form(" %6.1f keV : %5s (%s%6.1f keV) --> %5s (%s%6.1f keV)%s ",GT.EGamma,GT.SpinI.Data(),GT.Offset.Data(),GT.EI,GT.SpinF.Data(),GT.Offset.Data(),GT.EF,GT.LifeTime.Data());
+                    TransitionName[ig] = Form(" %6.1f keV : %5s (%s%6.1f keV) --> %5s (%s%6.1f keV)%s ",
+                                              GT.EGamma,
+                                              GT.SpinI.Data(), GT.Offset.Data(), GT.EI,
+                                              GT.SpinF.Data(), GT.Offset.Data(), GT.EF,
+                                              GT.LifeTime.Data());
                     ETrans[ig] = GT.EGamma;
                     EI[ig] = GT.EI;
                     EF[ig] = GT.EF;
@@ -386,18 +387,18 @@ void CXGammaSearch::FindInDoubleCoincidence(Bool_t Bash)
             }
         }
 
-        Bool_t gatetrig[fNGammas];
-        double Gates[fNGammas];
-        double Width[fNGammas];
 
-        for(int ig=0 ; ig<fNGammas ; ig++) {
+        std::vector<bool> gatetrig(fNGammas, false); // ou juste fNGammas si tu veux initialiser après
+        std::vector<double> Gates(fNGammas);
+        std::vector<double> Width(fNGammas);
+
+        for (int ig = 0; ig < fNGammas; ++ig) {
             Gates[ig] = fEnergies[ig]->GetNumber();
             Width[ig] = fWidths[ig]->GetNumber();
         }
 
         for(Int_t j=0 ; j<Dim_LS ; j++) {
             for(Int_t m=0 ; m<j ; m++) {
-                memset(gatetrig,0,sizeof(fNGammas));
                 Int_t NGatesTrig=0;
 
                 for(int ig=0 ; ig<fNGammas ; ig++) {
@@ -485,9 +486,7 @@ void CXGammaSearch::FindInTripleCoincidence()
         /// taille du schema de niveau
         const Int_t Dim_LS = fLevelScheme->get_decays().size();
 
-        double Flag[Dim_LS];
-        for(int ii=0 ; ii<Dim_LS ; ii++)
-            Flag[ii] = -1;
+        std::vector<double> Flag(Dim_LS, -1.0);
 
         TMatrixD Mat_LS(Dim_LS,Dim_LS); // Raw matrix in TS Space
         TMatrixD Mat_P(Dim_LS,Dim_LS);  // Total probability matrix
@@ -499,19 +498,22 @@ void CXGammaSearch::FindInTripleCoincidence()
 
         Bool_t Det = fSp->IsDet(Mat_LS,Dim_LS);
 
-        TString TransitionName[Dim_LS];
-        double ETrans[Dim_LS];
-        double EI[Dim_LS];
-        double EF[Dim_LS];
+        std::vector<TString> TransitionName(Dim_LS);
+        std::vector<double> ETrans(Dim_LS);
+        std::vector<double> EI(Dim_LS);
+        std::vector<double> EF(Dim_LS);
 
         //get the coordinates of the gammas
-        for(Int_t ig=0 ; ig<Dim_LS ; ig++) {
-            for(size_t j=0 ; j<avec.size() ; j++) {
-                GammaTransition GT = avec[j];
 
-                if(GT.EGamma == Mat_E[ig][0]) {
+        for (Int_t ig = 0; ig < Dim_LS; ++ig) {
+            for (const auto& GT : avec) {
+                if (GT.EGamma == Mat_E[ig][0]) {
                     Flag[ig] = Mat_E[ig][0];
-                    TransitionName[ig] = Form(" %6.1f keV : %5s (%6.1f keV) --> %5s (%6.1f keV)%s ",GT.EGamma,GT.SpinI.Data(),GT.EI,GT.SpinF.Data(),GT.EF,GT.LifeTime.Data());
+                    TransitionName[ig] = Form(" %6.1f keV : %5s (%s%6.1f keV) --> %5s (%s%6.1f keV)%s ",
+                                              GT.EGamma,
+                                              GT.SpinI.Data(), GT.Offset.Data(), GT.EI,
+                                              GT.SpinF.Data(), GT.Offset.Data(), GT.EF,
+                                              GT.LifeTime.Data());
                     ETrans[ig] = GT.EGamma;
                     EI[ig] = GT.EI;
                     EF[ig] = GT.EF;
@@ -519,19 +521,19 @@ void CXGammaSearch::FindInTripleCoincidence()
             }
         }
 
-        Bool_t gatetrig[fNGammas];
-        double Gates[fNGammas];
-        double Width[fNGammas];
+        std::vector<bool> gatetrig(fNGammas, false); // ou juste fNGammas si tu veux initialiser après
+        std::vector<double> Gates(fNGammas);
+        std::vector<double> Width(fNGammas);
 
-        for(int ig=0 ; ig<fNGammas ; ig++) {
+        for (int ig = 0; ig < fNGammas; ++ig) {
             Gates[ig] = fEnergies[ig]->GetNumber();
             Width[ig] = fWidths[ig]->GetNumber();
         }
 
+
         for(Int_t j=0 ; j<Dim_LS ; j++) {
             for(Int_t m=0 ; m<j ; m++) {
                 for(Int_t k=0 ; k<m ; k++) {
-                    memset(gatetrig,0,sizeof(fNGammas));
                     Int_t NGatesTrig=0;
 
                     for(int ig=0 ; ig<fNGammas ; ig++) {

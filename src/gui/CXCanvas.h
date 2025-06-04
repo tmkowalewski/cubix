@@ -72,6 +72,7 @@ protected:
    Bool_t   fJPressed;
    Bool_t   fAgeOfEmpireMode;
    Bool_t   fVenerMode;
+   Bool_t   fPickable=false;
    Bool_t   fHasDisabledClasses;
    TString  fDisabledClasses;
    Bool_t   fHasDisabledObject;
@@ -129,15 +130,17 @@ public:
 
    void ShowShortcutsInfos(); // *MENU*
 
-   void SetAgeOfEmpireMode(Int_t value = 1); // *TOGGLE*
-   void SetVenerMode(Int_t value = 1); // *TOGGLE*
-
+   void SetVenerMode(Int_t value = 1); // *TOGGLE*   
    Int_t GetVenerMode() { return fVenerMode; }
 
+   void SetAgeOfEmpireMode(Int_t value = 1); // *TOGGLE*
    Int_t GetAgeOfEmpireMode() {return fAgeOfEmpireMode;}
 
    void SetEnabledShortcuts(Int_t value = 1); // *TOGGLE*
    Int_t GetEnabledShortcuts() { return fEnabledShortcuts; }
+
+   void SetPickable(Bool_t mode = kTRUE); // *TOGGLE*
+   Int_t GetPickable() { return fPickable; }
 
    TH1* FindHisto(TVirtualPad *pad = nullptr);
    TGraph* FindGraph(TVirtualPad *pad = nullptr);
