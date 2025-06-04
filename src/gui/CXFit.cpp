@@ -151,6 +151,7 @@ void CXFit::UpdateFit(TH1 *hist, TVirtualPad *pad, CXHist1DPlayer *player, CXWor
     fWorkspace = _workspace;
 
     DrawArrows();
+    Update();
 }
 
 

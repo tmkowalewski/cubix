@@ -344,7 +344,7 @@ void CXNucChart::SetPalette(Int_t Mode)
 {
     if(Mode == M_LifeTime || Mode == M_1stIsomer || Mode == M_2ndIsomer ) {
         Int_t NColors = 33;
-        int ColNbr[NColors];
+        std::vector<int> ColNbr(NColors);
         for(int i=0 ; i<NColors ;i++) ColNbr[i] = 2000+i;
         int icol=0;
         if(gROOT->GetColor(ColNbr[icol]) == nullptr) {
@@ -382,13 +382,13 @@ void CXNucChart::SetPalette(Int_t Mode)
             new TColor(ColNbr[icol++],60./256.,0./256.,109./256.); // 1e15
             new TColor(ColNbr[icol++],0./256.,0./256.,0./256.); // >1e15
         }
-        Int_t palette[NColors];
+        std::vector<int> palette(NColors);
         for(int i=0 ; i<NColors ;i++) palette[i] = ColNbr[i];
-        gStyle->SetPalette(NColors,palette,0.);
+        gStyle->SetPalette(NColors,palette.data(),0.);
     }
     else if(Mode == M_DecayMode) {
         Int_t NColors = 7;
-        int ColNbr[NColors];
+        std::vector<int> ColNbr(NColors);
         for(int i=0 ; i<NColors ;i++) ColNbr[i] = 2100+i;
         int icol=0;
         if(gROOT->GetColor(ColNbr[icol]) == nullptr) {
@@ -400,9 +400,9 @@ void CXNucChart::SetPalette(Int_t Mode)
             new TColor(ColNbr[icol++],187./256.,218./256.,228./256.); // N => 6
             new TColor(ColNbr[icol++],0./256.,149./256.,0./256.); // SF => 7
         }
-        Int_t palette[NColors];
+        std::vector<int> palette(NColors);
         for(int i=0 ; i<NColors ;i++) palette[i] = ColNbr[i];
-        gStyle->SetPalette(NColors,palette,0.);
+        gStyle->SetPalette(NColors,palette.data(),0.);
     }
     if(Mode == M_1rstExcitedState ) {
         gStyle->SetPalette(1);
