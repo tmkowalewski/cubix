@@ -1,0 +1,13 @@
+#Generated from http://www.nndc.bnl.gov/nudat3/indx_dec.jsp with conditions:
+#
+#Nucleus             = 40K
+#T1/2                > 1d && < 1e10y
+#DecayMode           = Disabled
+#Radiation Type      = Gamma
+#Radiation energy    > 10keV && < 10000keV
+#Radiation intensity > 0.1% && < 100%
+#Ordering            = Z, A, T1/2, E
+#Output              = Formated File
+#Uncertainties       = Standard style
+Dec Node	Daughter	Rad Ene.	Unc		RadInt.		Unc
+EC		40AR		1460.820	0.005		10.66		0.17

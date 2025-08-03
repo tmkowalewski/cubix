@@ -1,0 +1,41 @@
+#Generated from http://www.nndc.bnl.gov/nudat3/indx_dec.jsp with conditions:
+#
+#Nucleus             = 56Co
+#T1/2                > 1d && < 1e10y
+#DecayMode           = Disabled
+#Radiation Type      = Gamma
+#Radiation energy    > 10keV && < 10000keV
+#Radiation intensity > 0.1% && < 100%
+#Ordering            = Z, A, T1/2, E
+#Output              = Formated File
+#Uncertainties	     = Standard style
+#
+Dec Mode	Daughter	Rad Ene.  	Unc       	Rad Int.  	Unc
+#EC      	56FE    	511.0     	0.          	39        	3
+EC      	56FE    	733.514   	0.004     	0.191     	0.003
+EC      	56FE    	787.743   	0.005     	0.311     	0.003
+EC      	56FE    	846.770*   	0.002     	99.9399		0.2
+EC      	56FE    	977.372   	0.005     	1.421     	0.006
+EC      	56FE    	996.948   	0.005     	0.111     	0.004
+EC      	56FE    	1037.843  	0.004     	14.05     	0.04
+EC      	56FE    	1140.368  	0.006     	0.132     	0.003
+EC      	56FE    	1175.101  	0.004     	2.252     	0.006
+EC      	56FE    	1238.288  	0.003     	66.46     	0.12
+EC      	56FE    	1335.40   	0.03      	0.1224    	0.0012
+EC      	56FE    	1360.212  	0.004     	4.283     	0.012
+EC      	56FE    	1442.746  	0.006     	0.180     	0.004
+EC      	56FE    	1771.357  	0.004     	15.41     	0.06
+EC      	56FE    	1810.757  	0.004     	0.640     	0.003
+EC      	56FE    	1963.741  	0.008     	0.707     	0.004
+EC      	56FE    	2015.215  	0.005     	3.016     	0.012
+EC      	56FE    	2034.791  	0.005     	7.77      	0.03
+EC      	56FE    	2113.135  	0.005     	0.377     	0.003
+EC      	56FE    	2212.944  	0.004     	0.388     	0.004
+EC      	56FE    	2276.131  	0.004     	0.118     	0.004
+EC      	56FE    	2598.500  	0.004     	16.97     	0.04
+EC      	56FE    	3009.645  	0.004     	1.036     	0.013
+EC      	56FE    	3202.029  	0.008     	3.209     	0.012
+EC      	56FE    	3253.503  	0.004     	7.923     	0.021
+EC      	56FE    	3273.079  	0.004     	1.8759    	0.002
+EC      	56FE    	3451.232  	0.004     	0.949     	0.005
+EC      	56FE    	3548.05   	0.06      	0.1955    	0.0015

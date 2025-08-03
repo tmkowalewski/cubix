@@ -1,0 +1,17 @@
+#Generated from http://www.nndc.bnl.gov/nudat3/indx_dec.jsp with conditions:
+#
+#Nucleus             = 208Tl
+#T1/2                = Disabled
+#DecayMode           = Disabled
+#Radiation Type      = Gamma
+#Radiation energy    > 200keV && < 8000keV
+#Radiation intensity > 20% && < 100%
+#Ordering            = Z, A, T1/2, E
+#Output              = Formated File
+#Uncertainties	     = Standard style
+#
+Dec Mode	Daughter	Rad Ene.  	Unc       	Rad Int.  	Unc
+
+B-      	208PB   	510.77    	0.1       	22.60     	0.2
+B-      	208PB   	583.187   	0.002     	85.0      	0.3
+B-      	208PB   	2614.511  	0.01      	99.754    	0.004

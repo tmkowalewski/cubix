@@ -1,0 +1,16 @@
+#Generated from http://www.nndc.bnl.gov/nudat2/indx_dec.jsp with conditions:
+#
+#Nucleus             = 57Co
+#T1/2                > 1d && < 1e10y
+#DecayMode           = Disabled
+#Radiation Type      = Gamma
+#Radiation energy    > 10keV && < 10000keV
+#Radiation intensity > 0.1% && < 100%
+#Ordering            = Z, A, T1/2, E
+#Output              = Formated File
+#Uncertainties	     = Standard style
+#
+Dec Mode	Daughter	Rad Ene.  	Unc       	Rad Int.  	Unc
+EC      	57FE    	122.06065* 	1.2E-4    	85.60     	0.17
+EC      	57FE    	136.47356 	2.9E-4    	10.68     	0.08
+EC      	57FE    	692.41    	0.07      	0.149     	0.01
