@@ -194,7 +194,7 @@ void CXBgdFit::Fit()
     Int_t NPars = 3;
 
     delete fBackFunction;
-    fBackFunction = new TF1("MyFit", this, &CXBgdFit::FuncBackground, fBackgd.front(), fBackgd.back(), NPars, "CXBgdFit", "FuncBackground");
+    fBackFunction = new TF1("MyFit", [this](double* x, double* p) -> double { return this->FuncBackground(x, p); }, fBackgd.front(), fBackgd.back(), NPars);
 
     fBackFunction->SetParName(0, "BkgConst");
     fBackFunction->SetParName(1, "BkgSlope");

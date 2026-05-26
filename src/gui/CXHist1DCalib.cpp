@@ -1012,7 +1012,7 @@ double CXHist1DCalib::DinoFct(double*xx,double*pp)
 
 TF1 *CXHist1DCalib::GetDinoFct(TString Name,double min, double max, int Npar)
 {
-    TF1 *f = new TF1(Name,this,&CXHist1DCalib::DinoFct,min,max,Npar,"CXHist1DCalib","DinoFct");
+    TF1 *f = new TF1(Name,[this](double* x, double* p) -> double { return this->DinoFct(x, p); },min,max,Npar);
 
     return f;
 }

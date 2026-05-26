@@ -936,7 +936,7 @@ double CXFitEfficiency::DinoFct(double*xx,double*pp)
 
 TF1 *CXFitEfficiency::GetDinoFct(TString Name,double min, double max, int Npar)
 {
-    TF1 *f = new TF1(Name,this,&CXFitEfficiency::DinoFct,min,max,Npar,"CXFitEfficiency","DinoFct");
+    TF1 *f = new TF1(Name,[this](double* x, double* p) -> double { return this->DinoFct(x, p); },min,max,Npar);
 
     return f;
 }

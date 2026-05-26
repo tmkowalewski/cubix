@@ -433,7 +433,7 @@ void CXAngCorrPlayer::FitCorrectionFactors()
     }
 
     delete fAngularDistributionFunction;
-    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, min, max, 6, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), [this](double* x, double* p) -> double { return this->ExpAngCorrFunction(x, p); }, min, max, 6);
     fAngularDistributionFunction->FixParameter(5,deg);
 
     double mean;
@@ -538,7 +538,7 @@ void CXAngCorrPlayer::FitDistribution()
     }
 
     delete fAngularDistributionFunction;
-    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, min, max, 6, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fAngularDistributionFunction = new TF1(Form("%s_Exp",fMainWindow->GetCanvas()->GetName()), [this](double* x, double* p) -> double { return this->ExpAngCorrFunction(x, p); }, min, max, 6);
     fAngularDistributionFunction->FixParameter(5,deg);
 
     double mean;
@@ -656,7 +656,7 @@ void CXAngCorrPlayer::FitMixing1D()
     while(TGraph *g = GetElement<TGraph>(fAngCorrPads[1],"A2A4BestChi2Marker")) delete g;
 
     delete fChi2Func;
-    fChi2Func = new TF1(Form("Chi2_1D_%s",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::EvalChi2, -90,90, 11, "CXAngCorrPlayer", "EvalChi2");
+    fChi2Func = new TF1(Form("Chi2_1D_%s",fMainWindow->GetCanvas()->GetName()), [this](double* x, double* p) -> double { return this->EvalChi2(x, p); }, -90,90, 11);
 
     fAngCorrPads[3]->Clear();
 
@@ -694,8 +694,8 @@ void CXAngCorrPlayer::FitMixing1D()
     fChi2Func->GetYaxis()->CenterTitle();
 
 
-    TF1 *fChi2FuncDeriv = new TF1("Chi2FuncDeriv",this,&CXAngCorrPlayer::EvalChi2Deriv,-90,90,0, "CXAngCorrPlayer", "EvalChi2Deriv");
-    TF1 *fChi2FuncDeriv2 = new TF1("Chi2FuncDeriv2",this,&CXAngCorrPlayer::EvalChi2Deriv2,-90,90,0, "CXAngCorrPlayer", "EvalChi2Deriv2");
+    TF1 *fChi2FuncDeriv = new TF1("Chi2FuncDeriv",[this](double* x, double* p) -> double { return this->EvalChi2Deriv(x, p); },-90,90,0);
+    TF1 *fChi2FuncDeriv2 = new TF1("Chi2FuncDeriv2",[this](double* x, double* p) -> double { return this->EvalChi2Deriv2(x, p); },-90,90,0);
     fChi2FuncDeriv->SetNpx(5000);
     fChi2FuncDeriv2->SetNpx(5000);
 
@@ -813,7 +813,7 @@ void CXAngCorrPlayer::FitMixing1D()
     }
     gErrorIgnoreLevel=kInfo;
 
-    TF1 *ftest = new TF1("temp", this, &CXAngCorrPlayer::EvalChi2, -90,90, 11, "CXAngCorrPlayer", "EvalChi2");
+    TF1 *ftest = new TF1("temp", [this](double* x, double* p) -> double { return this->EvalChi2(x, p); }, -90,90, 11);
     ftest->SetParameters(mode+10,
                          TwoJ1,TwoJ2,TwoJ3,
                          mix,
@@ -888,7 +888,7 @@ void CXAngCorrPlayer::FitMixing2D()
     while(TGraph *g = GetElement<TGraph>(fAngCorrPads[1],"A2A4BestChi2Marker")) delete g;
 
     delete fChi2Func2D;
-    fChi2Func2D = new TF2(Form("Chi2_2D_%s",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::EvalChi2, -90,90,-90,90, 11, "CXAngCorrPlayer", "EvalChi2");
+    fChi2Func2D = new TF2(Form("Chi2_2D_%s",fMainWindow->GetCanvas()->GetName()), [this](double* x, double* p) -> double { return this->EvalChi2(x, p); }, -90,90,-90,90, 11);
 
     fAngCorrPads[3]->Clear();
 
@@ -1108,7 +1108,7 @@ void CXAngCorrPlayer::UpdateTheory()
     }
 
     delete fTheoreticalDistribution;
-    fTheoreticalDistribution = new TF1(Form("%s_Theo",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::TheoreticalAngCorrFunction, 0, 180, 7, "CXAngCorrPlayer", "TheoreticalAngCorrFunction");
+    fTheoreticalDistribution = new TF1(Form("%s_Theo",fMainWindow->GetCanvas()->GetName()), [this](double* x, double* p) -> double { return this->TheoreticalAngCorrFunction(x, p); }, 0, 180, 7);
     fTheoreticalDistribution->SetParameters(1,TwoJ1,TwoJ2,TwoJ3,mix12,mix23,1);
 
     fTheoreticalDistribution->SetNpx(5000);
@@ -1529,7 +1529,7 @@ void CXAngCorrPlayer::PlotTheoryOnDist()
         deg=0;
     }
 
-    fTheoreticalDistributionOnExp = new TF1(Form("%s_TheoOnExp",fMainWindow->GetCanvas()->GetName()), this, &CXAngCorrPlayer::ExpAngCorrFunction, min, max, 6, "CXAngCorrPlayer", "ExpAngCorrFunction");
+    fTheoreticalDistributionOnExp = new TF1(Form("%s_TheoOnExp",fMainWindow->GetCanvas()->GetName()), [this](double* x, double* p) -> double { return this->ExpAngCorrFunction(x, p); }, min, max, 6);
     fTheoreticalDistributionOnExp->SetParameters(fAngularDistributionFunction->GetParameter(0),_A2,_A4,_Q2,_Q4,deg);
 
     fTheoreticalDistributionOnExp->SetNpx(5000);

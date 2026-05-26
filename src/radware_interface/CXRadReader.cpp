@@ -627,7 +627,11 @@ void CXRadReader::BuildHistos()
     fECalibFunc->SetNpx(1000);
 
     delete fEffFunc;
-    fEffFunc = new TF1("EfficiencyFunc",this,&CXRadReader::EffFuncFormula,0,xxgd.nclook,10,"CXRadReader","EffFuncFormula");
+    fEffFunc = new TF1("EfficiencyFunc",
+        [this](double* x, double* p) -> double {
+            return this->EffFuncFormula(x, p);
+        },
+        0, xxgd.nclook, 10);
     fEffFunc->SetParameters(feff_pars);
     //    fEffFunc->SetParameters(7.04,0.7,0.,5.273,-0.863,0.01,11,100.,1000.); //default from radware's web site
 

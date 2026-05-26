@@ -326,7 +326,7 @@ void CXFit::Fit()
     Int_t NPars = 4+6*fEnergies.size();
 
     delete fFitFunction;
-    fFitFunction = new TF1("MyFit", this, &CXFit::DoubleTailedStepedGaussian, fBackgd[0], fBackgd[1], NPars, "CXFit", "DoubleTailedStepedGaussian");
+    fFitFunction = new TF1("MyFit", [this](double* x, double* p) -> double { return this->DoubleTailedStepedGaussian(x, p); }, fBackgd[0], fBackgd[1], NPars);
 
     fFitFunction->SetParName(0, "NumberOfPeaks");
     fFitFunction->SetParName(1, "BkgConst");
@@ -443,7 +443,7 @@ void CXFit::Fit()
 
         //Extract Background
         delete fBackFunction;
-        fBackFunction = new TF1("Background", this, &CXFit::StepedBackground, fBackgd[0], fBackgd[1], NPars, "CXFit", "StepedBackground");
+        fBackFunction = new TF1("Background", [this](double* x, double* p) -> double { return this->StepedBackground(x, p); }, fBackgd[0], fBackgd[1], NPars);
         fBackFunction->SetParameters(fFitFunction->GetParameters());
 
         for(auto i=0U ; i<fEnergies.size() ; i++) {
@@ -468,7 +468,7 @@ void CXFit::Fit()
 
     //Extract Background
     delete fBackFunction;
-    fBackFunction = new TF1("Background", this, &CXFit::StepedBackground, fBackgd[0], fBackgd[1], NPars, "CXFit", "StepedBackground");
+    fBackFunction = new TF1("Background", [this](double* x, double* p) -> double { return this->StepedBackground(x, p); }, fBackgd[0], fBackgd[1], NPars);
     fBackFunction->SetParameters(fFitFunction->GetParameters());
     fBackFunction->SetNpx(1000);
 
@@ -477,7 +477,7 @@ void CXFit::Fit()
 
     //Extract Residue
     delete fResidue;
-    fResidue = new TF1("Residue", this, &CXFit::Residue, fBackgd[0], fBackgd[1], NPars, "CXFit", "Residue");
+    fResidue = new TF1("Residue", [this](double* x, double* p) -> double { return this->Residue(x, p); }, fBackgd[0], fBackgd[1], NPars);
     fResidue->SetParameters(fFitFunction->GetParameters());
     fResidue->SetNpx(1000);
 
@@ -514,7 +514,7 @@ void CXFit::Fit()
         text<<"Peak "<<i<<":";
         cout<<text.str()<<endl;fPlayer->PrintInListBox(text.str(),kPrint); fsavedStream << text.str() << endl; text.str("");
 
-        TF1 *peak = new TF1(Form("Peak%d",i), this, &CXFit::PeakFunction, fBackgd[0], fBackgd[1], NPars, "CXFit", "PeakFunction");
+        TF1 *peak = new TF1(Form("Peak%d",i), [this](double* x, double* p) -> double { return this->PeakFunction(x, p); }, fBackgd[0], fBackgd[1], NPars);
         peak->SetParameters(r->GetParams());
         peak->SetParErrors(r->GetErrors());
         peak->SetParameter(1,1);//with backgroud
