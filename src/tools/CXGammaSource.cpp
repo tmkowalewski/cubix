@@ -36,6 +36,7 @@
 #include <fstream>
 
 #include "TSystem.h"
+#include "TObjArray.h"
 
 CXGammaSource::CXGammaSource(const char *name) : TNamed(name,name)
 {

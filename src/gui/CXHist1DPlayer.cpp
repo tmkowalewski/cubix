@@ -44,6 +44,7 @@
 #include "TGClient.h"
 #include "TSystem.h"
 #include "TError.h"
+#include "TMath.h"
 
 // #if (OS_TYPE == OS_LINUX)
 #include "TGResourcePool.h"

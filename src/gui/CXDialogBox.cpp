@@ -35,6 +35,7 @@
 
 #include <iostream>
 
+#include "TMath.h"
 #include "TGLabel.h"
 #include "TGTextEntry.h"
 #include "TGButton.h"
