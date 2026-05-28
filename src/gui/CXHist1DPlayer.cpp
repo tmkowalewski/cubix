@@ -150,7 +150,7 @@ CXHist1DPlayer::CXHist1DPlayer(const TGCompositeFrame *MotherFrame, UInt_t w, UI
 
     fHorizontalFrame = new TGCompositeFrame(fGroupFrame, 60, 20, kHorizontalFrame);
     fHorizontalFrame->AddFrame(new TGLabel(fHorizontalFrame, "Fit options:"), new TGLayoutHints(kLHintsBottom | kLHintsLeft,10,10,0,0));
-    fFitOptions = new TGTextEntry(fHorizontalFrame, "I");
+    fFitOptions = new TGTextEntry(fHorizontalFrame, "ILME");
     fHorizontalFrame->AddFrame(fFitOptions,new TGLayoutHints(kLHintsTop | kLHintsLeft| kLHintsExpandX,10,10,0,0));
     fGroupFrame->AddFrame(fHorizontalFrame,new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX,-10,-10,5,0));
 
